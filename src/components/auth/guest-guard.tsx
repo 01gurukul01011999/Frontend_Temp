@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { useRouter, usePathname } from 'next/navigation';
+import { useRouter} from 'next/navigation';
 import Alert from '@mui/material/Alert';
 
 import { paths } from '@/paths';

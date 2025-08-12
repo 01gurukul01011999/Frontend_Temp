@@ -1,4 +1,3 @@
-import { Category } from "@mui/icons-material";
 
 export const paths = {
  home: '/',
@@ -16,6 +15,9 @@ export const paths = {
     payments: '/dashboard/payments',
     quality: '/dashboard/quality',
     warehouse: '/dashboard/warehouse',
+   barcodedPacketScan: '/dashboard/order/barcode-scan',
+   BulkCatalogUpload: '/dashboard/catalog-uploads/Bulk-Catalog-Upload',
+   SingleCatalogUpload: '/dashboard/catalog-uploads/Single-Catalog-Upload',
       
    
    

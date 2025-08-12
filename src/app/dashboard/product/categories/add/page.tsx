@@ -1,12 +1,12 @@
 'use client'
-import React, { use } from 'react';
+import React from 'react';
+import Image from 'next/image';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
-import Grid from '@mui/material';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import { UserContext } from '@/contexts/user-context';  
@@ -101,9 +101,11 @@ const router = useRouter();
                 sx={{ width: 180, height: 180, borderRadius: 2, bgcolor: '#f5f5f5', color: 'primary.main', fontWeight: 500, fontSize: 16, boxShadow: 1 }}
               >
                 {image ? (
-                  <img
+                  <Image
                     src={URL.createObjectURL(image)}
                     alt="Preview"
+                    width={180}
+                    height={180}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }}
                   />
                 ) : (

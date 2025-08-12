@@ -9,8 +9,7 @@ import IconButton from "@mui/material/IconButton";
 import CloseIcon from '@mui/icons-material/Close';
 import { authClient } from '@/lib/auth/client';
 import { User } from '@/types/user';
-import axios from "axios";
-import { toast, ToastContainer } from 'react-toastify';
+import { toast } from 'react-toastify';
 
 interface AvatarUploadModalProps {
   open: boolean;

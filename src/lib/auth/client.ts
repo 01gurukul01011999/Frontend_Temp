@@ -94,7 +94,7 @@ class AuthClient {
       }
       return { error: 'No token received' };
     } catch (error: any) {
-      return { error: error.response?.data?.error || 'Sign in failed' };
+      return { error: error.response?.data?.error || 'Invalid Email or Password' };
     }
   }
 
@@ -122,8 +122,11 @@ class AuthClient {
     try {
       await axios.post('http://localhost:4000/newPassword', params);
       return {};
-    } catch (error: any) {
-      return { error: error.response?.data?.error || 'Update password failed' };
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        return { error: error.response?.data?.error || 'Update password failed' };
+      }
+      return { error: 'Update password failed' };
     }
   }
 
@@ -133,8 +136,11 @@ async profile(params: profileParams): Promise<{ error?: string }> {
     try {
       await axios.post('http://localhost:4000/update_profile', params);
       return {};
-    } catch (error: any) {
-      return { error: error.response?.data?.error || 'Update data failed' };
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        return { error: error.response?.data?.error || 'Update data failed' };
+      }
+      return { error: 'Update data failed' };
     }
   }
 
@@ -142,8 +148,11 @@ async profile(params: profileParams): Promise<{ error?: string }> {
     try {
       await axios.post('/api/auth/update-password', params);
       return {};
-    } catch (error: any) {
-      return { error: error.response?.data?.error || 'Update password failed' };
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        return { error: error.response?.data?.error || 'Update password failed' };
+      }
+      return { error: 'Update password failed' };
     }
   }
 

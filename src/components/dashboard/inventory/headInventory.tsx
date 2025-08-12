@@ -1,53 +1,21 @@
 "use client";
 import React from 'react'
-
 import Image from 'next/image';
-import { Box, Button, Popover, Typography } from '@mui/material';
-import { toast } from 'react-toastify';
+import { Box, Button, Typography } from '@mui/material';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 import TextField from '@mui/material/TextField';
 import Dialog from '@mui/material/Dialog';
 import IconButton from '@mui/material/IconButton';
-
-
 dayjs.extend(relativeTime);
-
-
-
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 
 function HeadInventory(): React.JSX.Element {
    const [learnOpen, setLearnOpen] = React.useState(false);
-   const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-   const [anchorE2, setAnchorE2] = React.useState<null | HTMLElement>(null);
    const [search, setSearch] = React.useState('');
   
-   const open = Boolean(anchorEl);
-   const open2 = Boolean(anchorE2);
-  // Download handler
-  const handleDownload = (format: 'csv' | 'excel') => {
-    // TODO: Implement actual download logic
-    // For now, just show a toast
-    toast.info(`Download as ${format.toUpperCase()} coming soon!`);
-  };
-    const handleDateClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorE2(event.currentTarget);
-  };
-  const handleDateClose = () => {
-    setAnchorE2(null);
-  };
-   const handleFilterClick = (event: React.MouseEvent<HTMLElement>) => {
-            setAnchorEl(event.currentTarget);
- };
-          
-   const handleFilterClose = () => {
-    setAnchorEl(null);
-   };
-         
-
   return (
     <>
    <Box sx={{ mb: 0, mt: 0.5, ml:-3, mr:-3, backgroundColor: '#ffffff', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>

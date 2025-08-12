@@ -1,6 +1,5 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardActions from '@mui/material/CardActions';
 import CardHeader from '@mui/material/CardHeader';
@@ -12,11 +11,9 @@ import TableBody from '@mui/material/TableBody';
 import TableCell from '@mui/material/TableCell';
 import TableHead from '@mui/material/TableHead';
 import TableRow from '@mui/material/TableRow';
-
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
-
 import IconButton from '@mui/material/IconButton';
 import DeleteIcon from '@mui/icons-material/Delete';
 import EditIcon from '@mui/icons-material/Edit';
@@ -42,9 +39,7 @@ export interface categoryProps {
   sx?: SxProps;
   onDelete?: (catId: string) => void;
 }
-const handleChipClick = () => {
-  console.log("Chip clicked!");
-};
+
 export function Category({ category = [], sx, onDelete }: categoryProps): React.JSX.Element {
   const [sortBy, setSortBy] = React.useState<'catId' | 'title' | 'slug' | 'sta' | 'datestamp'>('catId');
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');

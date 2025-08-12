@@ -1,5 +1,5 @@
 'use client';
-import React, { use } from 'react';
+import React from 'react';
 import Link from 'next/link';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
@@ -8,7 +8,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import SearchIcon from '@mui/icons-material/Search';
 import MenuItem from '@mui/material/MenuItem';
 import Grid from '@mui/material/Grid';
-import { Category } from '@/components/dashboard/product/category';
+import { Category, category } from '@/components/dashboard/product/category';
 import Typography from '@mui/material/Typography';
 import { UserContext } from '@/contexts/user-context';
 import { toast, ToastContainer } from 'react-toastify';
@@ -17,7 +17,7 @@ import { useSearchParams, useRouter } from 'next/navigation';
 function Page(): React.JSX.Element {
   const [filter, setFilter] = React.useState('all');
   const [search, setSearch] = React.useState('');
-  const [categories, setCategories] = React.useState<any[]>([]);
+  const [categories, setCategories] = React.useState<category[]>([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const userContext = React.useContext(UserContext);
@@ -32,10 +32,9 @@ function Page(): React.JSX.Element {
       try {
         const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + 'categoryfetch';
         const res = await fetch(apiUrl, {
-       method: 'POST',
-       headers: { 'Content-Type': 'application/json',
-        },
-       body: JSON.stringify(user ? { userId: user.id } : {}),
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(user ? { userId: user.id } : {}),
         });
 
         if (!res.ok) throw new Error('Failed to fetch categories');
@@ -44,22 +43,25 @@ function Page(): React.JSX.Element {
           return;
         }
         const data = await res.json();
-        //console.log('data', data);
         setCategories(data);
-      } catch (err: any) {
-        setError(err.message || 'Error fetching categories');
+      } catch (error_: unknown) {
+        if (error_ instanceof Error) {
+          setError(error_.message || 'Error fetching categories');
+        } else {
+          setError('Error fetching categories');
+        }
       } finally {
         setLoading(false);
       }
     };
     fetchCategories();
-  }, []);
+  }, [user]);
 
   React.useEffect(() => {
     if (searchParams.get('added')) {
       toast.success('Category added successfully!');
       // Remove the param so it doesn't show again on refresh
-      const params = new URLSearchParams(Array.from(searchParams.entries()));
+  const params = new URLSearchParams([...searchParams.entries()]);
       params.delete('added');
       router.replace(`?${params.toString()}`, { scroll: false });
     }
@@ -67,14 +69,18 @@ function Page(): React.JSX.Element {
 
   // Delete handler
   const handleDelete = async (catId: string) => {
-    if (!window.confirm('Are you sure you want to delete this category?')) return;
+  if (!globalThis.window.confirm('Are you sure you want to delete this category?')) return;
     try {
       const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + 'category/' + catId;
       const res = await fetch(apiUrl, { method: 'DELETE' });
       if (!res.ok) throw new Error('Failed to delete category');
       setCategories((prev) => prev.filter((cat) => cat.catId !== catId));
-    } catch (err: any) {
-      alert(err.message || 'Error deleting category');
+    } catch (error_: unknown) {
+      if (error_ instanceof Error) {
+        alert(error_.message || 'Error deleting category');
+      } else {
+        alert('Error deleting category');
+      }
     }
   };
 

@@ -1,89 +1,135 @@
 "use client";
 import React from 'react'
-
-import Image from 'next/image';
 import { Box, Button, Popover, Typography } from '@mui/material';
-import { toast } from 'react-toastify';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
-import TextField from '@mui/material/TextField';
 import Dialog from '@mui/material/Dialog';
 import IconButton from '@mui/material/IconButton';
-
-
+import Stack from '@mui/material/Stack';
+import Select from '@mui/material/Select';
+import MenuItem from '@mui/material/MenuItem';
 dayjs.extend(relativeTime);
-
-
-
 import SearchIcon from '@mui/icons-material/Search';
-import InputAdornment from '@mui/material/InputAdornment';
+import Download from '@mui/icons-material/Download';
+import ExpandMore from '@mui/icons-material/ExpandMore';
+import ExpandLess from '@mui/icons-material/ExpandLess';
 
 function HeadPayments(): React.JSX.Element {
    const [learnOpen, setLearnOpen] = React.useState(false);
    const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
-   const [anchorE2, setAnchorE2] = React.useState<null | HTMLElement>(null);
-   const [search, setSearch] = React.useState('');
-  
-   const open = Boolean(anchorEl);
-   const open2 = Boolean(anchorE2);
+   const openPopover = Boolean(anchorEl);
   // Download handler
-  const handleDownload = (format: 'csv' | 'excel') => {
-    // TODO: Implement actual download logic
-    // For now, just show a toast
-    toast.info(`Download as ${format.toUpperCase()} coming soon!`);
-  };
-    const handleDateClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorE2(event.currentTarget);
-  };
-  const handleDateClose = () => {
-    setAnchorE2(null);
-  };
-   const handleFilterClick = (event: React.MouseEvent<HTMLElement>) => {
-            setAnchorEl(event.currentTarget);
- };
-          
-   const handleFilterClose = () => {
-    setAnchorEl(null);
-   };
+ 
          
 
   return (
     <>
-   <Box sx={{ mb: 0, mt: 0.5, ml:-3, mr:-3, backgroundColor: '#ffffff', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <Typography variant="h4" sx={{fontWeight: 600, ml:2}}>
-        Payments
-      </Typography>
-      <Box sx={{ display: 'flex', gap: 2,  mr:3 }}>
-        
-        <Button
-          variant="text"
-          color="inherit"
-          onClick={() => setLearnOpen(true)}
-          sx={{ fontWeight: 500, display: 'flex', alignItems: 'center', gap: 1 , fontSize: '0.7rem' }}
-          
-        >
-          <Image src={'/assets/youtube.svg'} alt="YTLOGO" width={20} height={20}  /> How it works?
+      <Box sx={{ mb: 0, mt: 0.5, ml: -3, mr: -3, backgroundColor: '#ffffff', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <Typography variant="h4" sx={{ fontWeight: 600, ml: 2 }}>
+          Payments
+        </Typography>
+        <Box sx={{ display: 'flex', gap: 2, mr: 3 }}>
+          <Stack direction="row" alignItems="center" spacing={1}>
+            {/* Download Button */}
+            <Box sx={{ position: "relative" }}>
+              <Button
+                variant="contained"
+                startIcon={<Download />}
+                endIcon={openPopover ? <ExpandLess /> : <ExpandMore />}
+                sx={{
+                  backgroundColor: "#2d2dff", // Deep blue
+                  textTransform: "none",
+                  px: 2.5,
+                  fontWeight: "bold",
+                  borderRadius: 1.5,
+                  boxShadow: "none",
+                  "&:hover": {
+                    backgroundColor: "#1d1dde",
+                  },
+                }}
+                onClick={(e) => setAnchorEl(e.currentTarget)}
+              >
+                Download
+              </Button>
+              {/* Red Notification Dot */}
+              <Box
+                sx={{
+                  position: "absolute",
+                  top: 4,
+                  right: 4,
+                  width: 8,
+                  height: 8,
+                  bgcolor: "red",
+                  borderRadius: "50%",
+                }}
+              />
+              <Popover
+                open={openPopover}
+                anchorEl={anchorEl}
+                onClose={() => setAnchorEl(null)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+                transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+                PaperProps={{ sx: { minWidth: 240, p: 1 , width:250} }}
+              >
+                <Box>
+                  <Button fullWidth sx={{ justifyContent: 'flex-start', textTransform: 'none', color: '#222', fontWeight: 500 }}>
+                    GST Report
+                  </Button>
+                  <Button fullWidth sx={{ justifyContent: 'flex-start', textTransform: 'none', color: '#222', fontWeight: 500 }}>
+                    Tax Invoice
+                  </Button>
+                  <Button fullWidth sx={{ justifyContent: 'flex-start', textTransform: 'none', color: '#222', fontWeight: 500 }}>
+                    Supplier Tax Invoice <Box component="span" sx={{ ml: 1, color: 'primary.main', fontSize: 12, fontWeight: 700 }}>New</Box>
+                  </Button>
+                  <Button fullWidth sx={{ justifyContent: 'flex-start', textTransform: 'none', color: '#222', fontWeight: 500 }}>
+                    Payments to Date <Box component="span" sx={{ ml: 1, color: 'primary.main', fontSize: 12, fontWeight: 700 }}>New</Box>
+                  </Button>
+                  <Button fullWidth sx={{ justifyContent: 'flex-start', textTransform: 'none', color: '#222', fontWeight: 500 }}>
+                    Outstanding Payments
+                  </Button>
+                </Box>
+              </Popover>
+            </Box>
+            {/* Grouped Dropdown and Search */}
+           <Box
+      sx={{
+        display: "flex",
+        alignItems: "center",
+        border: "1px solid #ccc",
+        borderRadius: "8px",
+        overflow: "hidden",
+        width: 450,
+        height: 40,
+      }}
+    >
+      {/* Dropdown (left) */}
+      <Select
+        defaultValue="Order / Sub Order No."
+        variant="standard"
+        disableUnderline
+        sx={{
+          flex: 1,
+          pl: 1.5,
+          fontSize: 14,
+          borderRight: "1px solid #ccc",
+          height: "100%",
+        }}
+      >
+        <MenuItem value="Order / Sub Order No.">Order / Sub Order No.</MenuItem>
+        <MenuItem value="Order ID">Order ID</MenuItem>
+        <MenuItem value="Sub Order ID">Sub Order ID</MenuItem>
+      </Select>
 
-        </Button>
-        <Box sx={{ flex: 1, display: 'flex', justifyContent: 'flex-end' }}>
-            <TextField
-              size="small"
-              placeholder="Search SKU ID..."
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              InputProps={{
-                startAdornment: (
-                  <InputAdornment position="end">
-                    <SearchIcon fontSize="small" />
-                  </InputAdornment>
-                ),
-              }}
-              sx={{ minWidth: 200, maxWidth: 400, ml: 'auto' }}
-            />
-          </Box>
-       
+      {/* Search icon (right) */}
+      <Box sx={{ px: 1.2 , width: 400,}}>
+        <IconButton size="small">
+          <SearchIcon fontSize="small" />
+        </IconButton>
       </Box>
+    </Box>
+          </Stack>
+        </Box>
       </Box>
 
        {/* Learn Dialog with YouTube embed */}

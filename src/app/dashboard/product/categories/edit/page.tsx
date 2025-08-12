@@ -1,17 +1,21 @@
 'use client'
-import React, { use } from 'react';
+import React from 'react';
+import Image from 'next/image';
 import Box from '@mui/material/Box';
 import TextField from '@mui/material/TextField';
 import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import Typography from '@mui/material/Typography';
 import Paper from '@mui/material/Paper';
-import Grid from '@mui/material';
 import Divider from '@mui/material/Divider';
 import Stack from '@mui/material/Stack';
 import { UserContext } from '@/contexts/user-context';  
 import { toast, ToastContainer } from 'react-toastify';
 import {useRouter} from 'next/navigation';
+
+
+
+
 
 function Page(): React.JSX.Element {
   const [image, setImage] = React.useState<File | null>(null);
@@ -27,48 +31,6 @@ function Page(): React.JSX.Element {
 const userContext = React.useContext(UserContext);
  const user = userContext?.user;
 const router = useRouter();
-
-  // Check if the 'added' param exists and show a success message
- 
-React.useEffect(() => {
-    // Only run on client side and when user is available
-    if (typeof window === 'undefined' || !user?.id) return;
-    const searchParams = new URLSearchParams(window.location.search);
-    const catid = searchParams.get('edit');
-    if (!catid) return;
-    const fetchEditCategories = async () => {
-      const userid = user.id;
-      try {
-        const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + 'categoryeditfetch/' + catid + '/' + userid;
-        const res = await fetch(apiUrl, {
-          method: 'GET',
-          headers: { 'Content-Type': 'application/json' },
-        });
-
-        if (!res.ok) throw new Error('Failed to fetch categories');
-        if (res.status === 204) {
-          return;
-        }
-        const data = await res.json();
-        // Ensure data is properly assigned to state variables
-        setImage(data[0]?.image || '');
-        setTitle(data[0]?.title || '');
-        setParent(data[0]?.parentCat || '');
-        setSlug(data[0]?.slug || '');
-        setMetaTitle(data[0]?.metaTitle || '');
-        setMetaDescription(data[0]?.descrip || '');
-        setMetaKeywords(data[0]?.metaKeywords || '');
-        setFeatured(data[0]?.featured || 'no');
-        setShowInFooter(data[0]?.footer || 'no');
-        setStatus(data[0]?.sta || 'active');
-      } catch (err: any) {
-        //console.error(err.message || 'Error fetching categories');
-        toast.error(err.message || 'Error fetching categories');
-      }
-    };
-    fetchEditCategories();
-  }, [user]);
-
   // Placeholder parent categories
   const parentCategories = [
     { value: '', label: 'None' },
@@ -84,47 +46,46 @@ React.useEffect(() => {
 
   const handleSubmit =  async (e: React.FormEvent) => {
     e.preventDefault();
+    // Submit logic here
     if (!title || !slug) {
       alert('Title and Slug are required fields.');
       return;
     }
-    let catid = '';
-    if (typeof window !== 'undefined') {
-      const searchParams = new URLSearchParams(window.location.search);
-      catid = searchParams.get('edit') || '';
-    }
-    const formData = new FormData();
-    if (image) formData.append('image', image);
-    formData.append('title', title);
-    formData.append('parent', parent);
-    formData.append('slug', slug);
-    formData.append('metaTitle', metaTitle);
-    formData.append('metaDescription', metaDescription);
-    formData.append('metaKeywords', metaKeywords);
-    formData.append('featured', featured);
-    formData.append('showInFooter', showInFooter);
-    formData.append('status', status);
-    formData.append('catid', catid);
-    formData.append('userId', user?.id || '');
-    
-    const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL+'categoryedit';
+ 
+ //console.log('user', user);
+ 
+ const formData = {image, title, parent, slug, metaTitle, metaDescription, metaKeywords, featured, showInFooter, status,  userId: user?.id || ''};
+  
+ 
+ const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL+'category';
+
     const response = await fetch(apiUrl, {
      method: 'POST',
-     body: formData,
-    });
+     headers: { 'Content-Type': 'application/json',
+     },
+     body: JSON.stringify(formData),
+      });
+
     if (response.ok) {
+      //alert('Form submitted successfully!');
+    
+
       router.push('/dashboard/product/categories?added=1');
       return;
     } else {
+      //alert('Error submitting form.');
       toast.error("some thing went Wrong!");
     }
   };
+
+
+
 
   return (
     <Box maxWidth={900} mx="auto" mt={4} mb={4}>
       <Paper elevation={3} sx={{ p: 4, borderRadius: 3 }}>
         <Typography variant="h4" mb={2} fontWeight={600} textAlign="center" color="primary.main">
-          Edit Category
+          Add Category
         </Typography>
         <Divider sx={{ mb: 3 }} />
         <form onSubmit={handleSubmit} encType="multipart/form-data">
@@ -137,15 +98,17 @@ React.useEffect(() => {
                 sx={{ width: 180, height: 180, borderRadius: 2, bgcolor: '#f5f5f5', color: 'primary.main', fontWeight: 500, fontSize: 16, boxShadow: 1 }}
               >
                 {image ? (
-                  <img
+                  <Image
                     src={URL.createObjectURL(image)}
                     alt="Preview"
+                    width={180}
+                    height={180}
                     style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: 12 }}
                   />
                 ) : (
                   <>Upload Image</>
                 )}
-                <input type="file" accept="image/*" name="image" hidden onChange={handleImageChange} />
+                <input type="file" accept="image/*" hidden onChange={handleImageChange} />
               </Button>
               {image && <Typography variant="body2">{image.name}</Typography>}
             </Box>

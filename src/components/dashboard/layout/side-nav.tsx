@@ -23,7 +23,6 @@ import { navItems } from './config';
 import { navIcons } from './nav-icons';
 import { UserContext } from '@/contexts/user-context';
 import { StorefrontIcon } from '@phosphor-icons/react/dist/ssr/Storefront'; // Assuming you are using lucide-react for icons
-import { Icon } from '@mui/material';
 
 export function SideNav(): React.JSX.Element {
   const pathname = usePathname();

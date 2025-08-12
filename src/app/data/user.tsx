@@ -14,8 +14,11 @@ export class UserClient {
         headers: { Authorization: `Bearer ${token}` },
       });
       return { data: response.data.user };
-    } catch (error: any) {
-      return { error: error.response?.data?.error || "Failed to fetch user" };
+    } catch (error: unknown) {
+      if (axios.isAxiosError(error)) {
+        return { error: error.response?.data?.error || "Failed to fetch user" };
+      }
+      return { error: "Failed to fetch user" };
     }
   }
 }

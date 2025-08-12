@@ -28,25 +28,7 @@ function HeadAccount(): React.JSX.Element {
    const open = Boolean(anchorEl);
    const open2 = Boolean(anchorE2);
   // Download handler
-  const handleDownload = (format: 'csv' | 'excel') => {
-    // TODO: Implement actual download logic
-    // For now, just show a toast
-    toast.info(`Download as ${format.toUpperCase()} coming soon!`);
-  };
-    const handleDateClick = (event: React.MouseEvent<HTMLElement>) => {
-    setAnchorE2(event.currentTarget);
-  };
-  const handleDateClose = () => {
-    setAnchorE2(null);
-  };
-   const handleFilterClick = (event: React.MouseEvent<HTMLElement>) => {
-            setAnchorEl(event.currentTarget);
- };
-          
-   const handleFilterClose = () => {
-    setAnchorEl(null);
-   };
-         
+  
 
   return (
     <>
