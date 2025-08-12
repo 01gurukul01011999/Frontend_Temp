@@ -7,6 +7,7 @@ import Typography from '@mui/material/Typography';
 import { config } from '@/config';
 import { AccountDetailsForm } from '@/components/dashboard/account/account-details-form';
 import { AccountInfo } from '@/components/dashboard/account/account-info';
+import HeadAccount from '@/components/dashboard/account/headAccount';
 
 export const metadata = { title: `Account | Dashboard | ${config.site.name}` } satisfies Metadata;
 
@@ -14,7 +15,7 @@ export default function Page(): React.JSX.Element {
   return (
     <Stack spacing={3}>
       <div>
-        <Typography variant="h4">Account</Typography>
+        <HeadAccount/>
       </div>
       <Grid container spacing={3}>
         <Grid

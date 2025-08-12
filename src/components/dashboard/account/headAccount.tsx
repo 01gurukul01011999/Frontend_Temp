@@ -19,7 +19,7 @@ dayjs.extend(relativeTime);
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
 
-function HeadPayments(): React.JSX.Element {
+function HeadAccount(): React.JSX.Element {
    const [learnOpen, setLearnOpen] = React.useState(false);
    const [anchorEl, setAnchorEl] = React.useState<null | HTMLElement>(null);
    const [anchorE2, setAnchorE2] = React.useState<null | HTMLElement>(null);
@@ -52,7 +52,7 @@ function HeadPayments(): React.JSX.Element {
     <>
    <Box sx={{ mb: 0, mt: 0.5, ml:-3, mr:-3, backgroundColor: '#ffffff', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <Typography variant="h4" sx={{fontWeight: 600, ml:2}}>
-        Payments
+      Account
       </Typography>
       <Box sx={{ display: 'flex', gap: 2,  mr:3 }}>
         
@@ -110,7 +110,8 @@ function HeadPayments(): React.JSX.Element {
         </Box>
       </Dialog>
       </>
+
   )
 }
 
-export default HeadPayments
+export default HeadAccount
