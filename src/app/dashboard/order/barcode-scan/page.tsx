@@ -1,5 +1,5 @@
 import React from "react";
-import BarcodedPacketScan from "@/components/dashboard/order/barcodePacketScan";
+import BarcodedPacketScan from "@/components/dashboard/order/barcode-packet-scan";
 import { config } from "@/config";
 export const metadata = {
   title: `Barcode Scan | Dashboard | ${config.site.name}`,

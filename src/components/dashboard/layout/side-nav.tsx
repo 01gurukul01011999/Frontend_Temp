@@ -1,7 +1,6 @@
 'use client';
 
 import * as React from 'react';
-import RouterLink from 'next/link';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import Box from '@mui/material/Box';
@@ -162,7 +161,7 @@ export function SideNav(): React.JSX.Element {
       </Box>
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
       <Stack spacing={2} sx={{ p: '12px' }}>
-      <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-flex' }}>
+  <Box component={Link} href={paths.home} sx={{ display: 'inline-flex' }}>
           <Logo color="light" height={32} width={122} /><br/>
          
         </Box>
@@ -199,22 +198,22 @@ function renderNavItems({
     acc.push(
       <React.Fragment key={key}>
         <NavItem
-        key={dropdownKey} {...item}
-        pathname={pathname}
-        hasChildren={hasChildren}
-        open={open}
-        onToggle={ hasChildren ? () => handleToggle(dropdownKey) : undefined}
-        childActive={childActive}
-        children={hasChildren
-          ? [
+          key={dropdownKey}
+          {...item}
+          pathname={pathname}
+          hasChildren={hasChildren}
+          open={open}
+          onToggle={hasChildren ? () => handleToggle(dropdownKey) : undefined}
+          childActive={childActive}
+        >
+          {[hasChildren && (
             <Collapse in={open} timeout="auto" unmountOnExit key="collapse">
               <Box sx={{ pl: 3 /* Indent submenu */, borderLeft: '2px solid var(--mui-palette-neutral-800)', ml: 2 }}>
-                   
                 {renderNavItems({ items: childItems, pathname, openDropdowns, handleToggle })}
               </Box>
             </Collapse>
-          ]
-          : undefined}        />
+          )].filter(Boolean)}
+        </NavItem>
       </React.Fragment>
     );
     return acc;
@@ -236,7 +235,7 @@ interface NavItemProps extends Omit<NavItemConfig, 'items'> {
 }
 
 function NavItem({ disabled,   external,    href,   icon,  matcher,   pathname,   title,   hasChildren,   open,   onToggle,   children,   childActive,
-}: NavItemProps & { childActive?: boolean }): React.JSX.Element {
+}: NavItemProps & { childActive?: boolean; children?: React.ReactNode }): React.JSX.Element {
   const active = isNavItemActive({ disabled, external, href, matcher, pathname }) || childActive;
   const Icon = icon ? navIcons[icon] : null;
 
@@ -248,7 +247,7 @@ function NavItem({ disabled,   external,    href,   icon,  matcher,   pathname, 
 
         {...(href
           ? {
-              component: external ? 'a' : RouterLink,
+              component: external ? 'a' : Link,
               href,
               target: external ? '_blank' : undefined,
               rel: external ? 'noreferrer' : undefined,

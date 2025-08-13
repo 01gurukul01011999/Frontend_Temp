@@ -9,13 +9,32 @@
 ## Pages
 
 - [Dashboard](https://techpotli.com/dashboard)
-- [Customers](https://techpotli.com/dashboard/customers)
-- [Integrations](https://techpotli.com/dashboard/integrations)
-- [Settings](https://techpotli.com/dashboard/settings)
 - [Account](https://techpotli.com/dashboard/account)
+- [Barcoded Packaging](https://techpotli.com/dashboard/barcoded-packaging)
+- [Bulk Upload](https://techpotli.com/dashboard/bulk-upload)
+- [Catalog Uploads](https://techpotli.com/dashboard/catalog-uploads)
+- [Bulk Catalog Upload](https://techpotli.com/dashboard/catalog-uploads/bulk-catalog-upload)
+- [Single Catalog Upload](https://techpotli.com/dashboard/catalog-uploads/single-catalog-upload)
+- [Claims](https://techpotli.com/dashboard/claims)
+- [Customers](https://techpotli.com/dashboard/customers)
+- [Image Bulk Upload](https://techpotli.com/dashboard/image-bulk-upload)
+- [Integrations](https://techpotli.com/dashboard/integrations)
+- [Inventory](https://techpotli.com/dashboard/inventory)
+- [Orders](https://techpotli.com/dashboard/order)
+- [Order Barcode Scan](https://techpotli.com/dashboard/order/barcode-scan)
+- [Payments](https://techpotli.com/dashboard/payments)
+- [Pricing](https://techpotli.com/dashboard/pricing)
+- [Product Categories](https://techpotli.com/dashboard/product/categories)
+- [Add Category](https://techpotli.com/dashboard/product/categories/add)
+- [Edit Category](https://techpotli.com/dashboard/product/categories/edit)
+- [Quality](https://techpotli.com/dashboard/quality)
+- [Return](https://techpotli.com/dashboard/return)
+- [Settings](https://techpotli.com/dashboard/settings)
+- [Warehouse](https://techpotli.com/dashboard/warehouse)
 - [Sign In](https://techpotli.com/auth/sign-in)
 - [Sign Up](https://techpotli.com/auth/sign-up)
 - [Reset Password](https://techpotli.com/auth/reset-password)
+
 
 
 ## Quick Start
@@ -40,27 +59,48 @@ http://localhost:3000
 ## File Structure
 
 ```
-├── .editorconfig
-├── .eslintrc.js
-├── .gitignore
-├── LICENSE.md
-├── next.config.js
-├── package.json
-├── tsconfig.json
-├── README.md
-├── public/
-└── src/
-    ├── app/
-    │   ├── layout.tsx
-    │   ├── page.tsx
-    │   ├── auth/
-    │   └── dashboard/
-    ├── components/
-    ├── contexts/
-    ├── hooks/
-    ├── lib/
-    ├── styles/
-    └── types/
+├── /
+├── /_not-found
+├── /auth/
+│   ├── reset-password
+│   ├── sign-in
+│   └── sign-up
+├── /dashboard/
+│   ├── account
+│   ├── barcoded-packaging
+│   ├── bulk-upload
+│   ├── catalog-uploads/
+│   │   ├── bulk-catalog-upload
+│   │   └── single-catalog-upload
+│   ├── claims
+│   ├── customers
+│   ├── image-bulk-upload
+│   ├── integrations
+│   ├── inventory
+│   ├── order/
+│   │   └── barcode-scan
+│   ├── payments
+│   ├── pricing
+│   ├── product/
+│   │   ├── attributes
+│   │   ├── brands
+│   │   ├── bundle_deals
+│   │   ├── categories/
+│   │   │   ├── add
+│   │   │   └── edit
+│   │   └── products
+│   ├── quality
+│   ├── rating-reviews
+│   ├── return
+│   ├── settings
+│   ├── warehouse
+│   └── withdrawal/
+│       ├── accounts
+│       └── requests
+├── /errors/
+│   └── not-found
+└── /template
+
 ```
 
 ## Resources

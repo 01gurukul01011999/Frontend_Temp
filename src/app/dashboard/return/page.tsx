@@ -1,5 +1,5 @@
 import * as React from 'react';
-import  HeadReturn  from '@/components/dashboard/returns/headReturn';
+import  HeadReturn  from '@/components/dashboard/returns/head-return';
 import TabsReturn from '@/components/dashboard/returns/tabsreturn';
 import { config } from '@/config';
 

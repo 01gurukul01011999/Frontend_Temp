@@ -1,14 +1,14 @@
 'use client';
 
 import type { User } from '@/types/user';
-import axios from 'axios';
+import axios, { isAxiosError } from 'axios';
 
 
-function generateToken(): string {
-  const arr = new Uint8Array(12);
-  globalThis.crypto.getRandomValues(arr);
-  return Array.from(arr, (v) => v.toString(16).padStart(2, '0')).join('');
-}
+//function generateToken(): string {
+//  const arr = new Uint8Array(12);
+//  globalThis.crypto.getRandomValues(arr);
+//  return Array.from(arr, (v) => v.toString(16).padStart(2, '0')).join('');
+//}
 
 
 export interface SignUpParams {
@@ -72,8 +72,11 @@ class AuthClient {
         return {};
       }
       return { error: 'No token received' };
-    } catch (error: any) {
-      return { error: error.response?.data?.error || 'Sign up failed' };
+    } catch (error: unknown) {
+  if (isAxiosError(error)) {
+        return { error: error.response?.data?.error || 'Sign up failed' };
+      }
+      return { error: 'Sign up failed' };
     }
   }
 
@@ -85,16 +88,16 @@ class AuthClient {
     try {
       const response = await axios.post('http://localhost:4000/user-data', params);
       const {token} = response.data;
-      //console.log('Response from signInWithPassword:', {token});
       if (token) {
         localStorage.setItem('custom-auth-token', token);
-        return {
-           
-        };
+        return {};
       }
       return { error: 'No token received' };
-    } catch (error: any) {
-      return { error: error.response?.data?.error || 'Invalid Email or Password' };
+    } catch (error: unknown) {
+  if (isAxiosError(error)) {
+        return { error: error.response?.data?.error || 'Invalid Email or Password' };
+      }
+      return { error: 'Invalid Email or Password' };
     }
   }
 
@@ -103,19 +106,24 @@ class AuthClient {
       //console.log('Resetting password with params:', params);
       await axios.post('http://localhost:4000/reset', params);
       return {};
-    } catch (error: any) {
-      return { error: error.response?.data?.error || 'Password reset failed' };
+    } catch (error: unknown) {
+  if (isAxiosError(error)) {
+        return { error: error.response?.data?.error || 'Password reset failed' };
+      }
+      return { error: 'Password reset failed' };
     }
   }
 
  async verifyCode(params: VerifyCodeParams): Promise<{ error?: string }> {
     try {
       console.log('Resetting password code with params:', params);
-      const response = await axios.post('http://localhost:4000/verify-code', params);
-      // You can handle token or other data here if your backend returns it
+      await axios.post('http://localhost:4000/verify-code', params);
       return {};
-    } catch (error: any) {
-      return { error: error.response?.data?.error || 'Verification failed' };
+    } catch (error: unknown) {
+  if (isAxiosError(error)) {
+        return { error: error.response?.data?.error || 'Verification failed' };
+      }
+      return { error: 'Verification failed' };
     }
   }
  async newUpdatePassword(params: newPasswordParams): Promise<{ error?: string }> {
@@ -123,7 +131,7 @@ class AuthClient {
       await axios.post('http://localhost:4000/newPassword', params);
       return {};
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
+  if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Update password failed' };
       }
       return { error: 'Update password failed' };
@@ -137,7 +145,7 @@ async profile(params: profileParams): Promise<{ error?: string }> {
       await axios.post('http://localhost:4000/update_profile', params);
       return {};
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
+  if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Update data failed' };
       }
       return { error: 'Update data failed' };
@@ -149,7 +157,7 @@ async profile(params: profileParams): Promise<{ error?: string }> {
       await axios.post('/api/auth/update-password', params);
       return {};
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
+  if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Update password failed' };
       }
       return { error: 'Update password failed' };
@@ -171,14 +179,17 @@ async profile(params: profileParams): Promise<{ error?: string }> {
       }
       if (response.data.user == "Token expired") {
         authClient.signOut();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/auth/sign-in';
+  if (globalThis.window !== undefined) {
+          globalThis.window.location.href = '/auth/sign-in';
         }
         return { data: null, error: 'Token expired' };
       }
       return { data: response.data.user };
-    } catch (error: any) {
-      return { error: error.response?.data?.error || 'Failed to fetch user', data: null };
+    } catch (error: unknown) {
+  if (isAxiosError(error)) {
+        return { error: error.response?.data?.error || 'Failed to fetch user', data: null };
+      }
+      return { error: 'Failed to fetch user', data: null };
     }
   }
 

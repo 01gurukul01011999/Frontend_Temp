@@ -1,5 +1,4 @@
 'use client';
-
 import * as React from 'react';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
@@ -18,13 +17,10 @@ import { User } from '@/types/user';
 import {State, City} from 'country-state-city'
 import { useRouter } from 'next/navigation';
 import { useUser } from '@/hooks/use-user';
-import { useForm } from 'react-hook-form';
+import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z as zod } from 'zod';
 import FormHelperText from '@mui/material/FormHelperText';
-import { Controller } from 'react-hook-form';
-import type { SubmitHandler } from 'react-hook-form';
-import { register } from 'module';
 import { toast, ToastContainer } from 'react-toastify';
 
 const schema = zod.object({
@@ -59,10 +55,21 @@ export function AccountDetailsForm(): React.JSX.Element {
 
   const clinet = userd || { fname: '', lname: '', email: '', };
   //console.log('clinet', clinet);
-  React.useEffect(() => {
-    authClient.getUser().then((result) => {
-      setUser(result.data ?? null);
-      if (result.data) {
+const defaultValues = {
+  email: '',
+  state: '',
+  city: '',
+  pincode: '',
+  address: '',
+  phone: ''
+};
+
+const { control, handleSubmit, setError, formState: { errors }, reset, watch, setValue } = useForm<Values>({ defaultValues, resolver: zodResolver(schema) });
+
+React.useEffect(() => {
+  authClient.getUser().then((result) => {
+    setUser(result.data ?? null);
+    if (result.data) {
       reset({
         phone: typeof result.data.phone === 'string' ? result.data.phone : '',
         address: typeof result.data.address === 'string' ? result.data.address : '',
@@ -73,38 +80,28 @@ export function AccountDetailsForm(): React.JSX.Element {
         // etc.
       });
     }
-      //console.log('user', result.data?.city);
-    });
-  }, []);
+    //console.log('user', result.data?.city);
+  });
+}, [reset]);
 
- const defaultValues = {
-  email: '',
-  state: '',
-  city: '',
-  pincode: '',
-  address: '',
-  phone: ''
-};
- 
-  const router = useRouter();
+const router = useRouter();
 
-  const { checkSession } = useUser();
+const { checkSession } = useUser();
 
-  const [isPending, setIsPending] = React.useState<boolean>(false);
-
-  const { control, handleSubmit, setError, formState: { errors }, reset, watch, setValue } = useForm<Values>({ defaultValues, resolver: zodResolver(schema) });
+const [isPending, setIsPending] = React.useState<boolean>(false);
 
   // Track the previous state value
 const prevState = React.useRef<string>("");
 
+
+const watchedState = watch("state");
 React.useEffect(() => {
-  const currentState = watch("state");
   // Only reset city if state changed after initial load
-  if (prevState.current && prevState.current !== currentState) {
+  if (prevState.current && prevState.current !== watchedState) {
     setValue("city", "");
   }
-  prevState.current = currentState;
-}, [watch("state"), setValue]);
+  prevState.current = watchedState;
+}, [watchedState, setValue]);
   
 
 

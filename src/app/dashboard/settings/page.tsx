@@ -4,7 +4,7 @@ import Stack from '@mui/material/Stack';
 import { config } from '@/config';
 import { Notifications } from '@/components/dashboard/settings/notifications';
 import { UpdatePasswordForm } from '@/components/dashboard/settings/update-password-form';
-import HeadSettings from '@/components/dashboard/settings/headSettings';
+import HeadSettings from '@/components/dashboard/settings/head-settings';
 
 export const metadata = { title: `Settings | Dashboard | ${config.site.name}` } satisfies Metadata;
 

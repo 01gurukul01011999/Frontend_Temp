@@ -87,7 +87,7 @@ export function ResetPasswordForm(): React.JSX.Element {
   return (
     <Stack spacing={4}>
       <Typography variant="h5">Reset password</Typography>
-      {!codeSent ? (
+  {codeSent === false ? (
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={2}>
             <Controller
@@ -107,7 +107,7 @@ export function ResetPasswordForm(): React.JSX.Element {
             </Button>
           </Stack>
         </form>
-      ) : !codeVerified ? (
+  ) : codeVerified === false ? (
         <form onSubmit={handleVerify}>
           <Stack spacing={2}>
             <FormControl>

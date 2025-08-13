@@ -5,11 +5,9 @@ import Popover from '@mui/material/Popover';
 import { CaretDownIcon } from '@phosphor-icons/react/dist/ssr/CaretDown';
 import { TrendUpIcon } from '@phosphor-icons/react';
 import ClamsSvg from './clamssvg';
-import { exit } from 'process';
-import CourierPartnerTable from './courierPartnerTable';
+import CourierPartnerTable from './courier-partner-table';
 
-function TabsReturn(): React.JSX.Element {
-  // Filter options for each section tab, with nested filter groups and options
+export default function TabsReturn(): React.JSX.Element {
   const sectionFilterOptions = [
     // 0: In transit
     [
@@ -263,12 +261,12 @@ function TabsReturn(): React.JSX.Element {
   }
   
   // For each section tab, for each group, get label of selected value or default
-  function getSectionFilterLabel(tabIdx: number, groupIdx: number) {
-    const group = sectionFilterOptions[tabIdx][groupIdx];
-    const selectedVal = sectionFilters[tabIdx][groupIdx];
-    const found = group.options.find(opt => opt.value === selectedVal);
-    return found ? found.label : group.options[0]?.label || 'Select';
-  }
+//  function getSectionFilterLabel(tabIdx: number, groupIdx: number) {
+//    const group = sectionFilterOptions[tabIdx][groupIdx];
+//    const selectedVal = sectionFilters[tabIdx][groupIdx];
+//    const found = group.options.find(opt => opt.value === selectedVal);
+//    return found ? found.label : group.options[0]?.label || 'Select';
+//  }
   // Handle filter change for a group in a section tab
   function handleSectionFilterChange(tabIdx: number, groupIdx: number, value: string) {
     setSectionFilters(prev => {
@@ -308,10 +306,6 @@ function TabsReturn(): React.JSX.Element {
 
   // Map selectedRange to label
   const rangeLabel = selectedRange === 'last1' ? 'Last 1 Month' : selectedRange === 'last3' ? 'Last 3 Months' : 'Last 6 Months';
-  function clamstab(){
-    window.location.href = '/dashboard/returns/claims'; // Redirect to Claims tab
-    return;
-  }
   return (
     <div>
         <Box sx={{ mt: 1  }}>
@@ -328,9 +322,7 @@ function TabsReturn(): React.JSX.Element {
           <Tab label="Claim Tracking" />
           <Tab label="Courier Partner" />
         </Tabs>
-
-
-      </Box>
+        </Box>
       {/* Filter bars for each tab */}
       {tab === 0 && (<>
         <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, backgroundColor: '#fff', pl: 2, pr:2, pt:2, mb: 0, ml: -3, mr: -3 }}>
@@ -541,16 +533,22 @@ function TabsReturn(): React.JSX.Element {
                </Box>
          
                {/* Texts */}
-               <Box>
-                 <Typography variant="h6" fontWeight="bold" display="inline">
-                 Looking for Claim Tracking?
-                 </Typography>
-                 </Box><Box>
-                 <Button variant="outlined" onClick={clamstab} size="small" sx={{ marginLeft: 'auto' }}>
-              Go to Claims Tabs
-            </Button>
-              
-               </Box>
+             <Box>
+               <Typography variant="h6" fontWeight="bold" display="inline">
+               Looking for Claim Tracking?
+               </Typography>
+               </Box><Box>
+               <Button
+                 variant="outlined"
+                 onClick={() => setTab(2)}
+                 size="small"
+                 sx={{ marginLeft: 'auto' }}
+               >
+                 Go to Claims Tabs
+               </Button>
+            
+          
+             </Box>
                    
                      </Box>
         
@@ -585,8 +583,4 @@ function TabsReturn(): React.JSX.Element {
 
 
     </div>
-
-  )
-}
-
-export default TabsReturn
+  )}

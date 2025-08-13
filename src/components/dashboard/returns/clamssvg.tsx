@@ -1,12 +1,12 @@
-import  react from 'react';
+import React from 'react';
  
-function ClamsSvg(): react.JSX.Element {
+function ClamsSvg(): React.JSX.Element {
     return (
         <svg width="70" height="70" viewBox="0 0 24 24" 
         fill="none" xmlns="http://www.w3.org/2000/svg" 
         color="#5A5E66" className="css-1fmevri">
             <path fillRule="evenodd" 
-            clip-rule="evenodd" 
+            clipRule="evenodd" 
             d="M17.965 17.026a5 5 0 111.06-1.06l2.505 2.504a.75.75 0 11-1.06 1.06l-2.505-2.504zM18.5 13a3.5 3.5 0 11-7 0 3.5 3.5 0 017 0z" 
             fill="#5A5E66">
                 </path>

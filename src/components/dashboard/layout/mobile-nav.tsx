@@ -1,7 +1,5 @@
 'use client';
-
 import * as React from 'react';
-import RouterLink from 'next/link';
 import { usePathname } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
@@ -9,8 +7,6 @@ import Divider from '@mui/material/Divider';
 import Drawer from '@mui/material/Drawer';
 import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
-import { ArrowSquareUpRightIcon } from '@phosphor-icons/react/dist/ssr/ArrowSquareUpRight';
-import { CaretUpDownIcon } from '@phosphor-icons/react/dist/ssr/CaretUpDown';
 import { StorefrontIcon } from '@phosphor-icons/react/dist/ssr/Storefront'; // Assuming you are using lucide-react for icons
 import type { NavItemConfig } from '@/types/nav';
 import { paths } from '@/paths';
@@ -18,7 +14,6 @@ import { isNavItemActive } from '@/lib/is-nav-item-active';
 import { Logo } from '@/components/core/logo';
 import { BellIcon } from '@phosphor-icons/react/dist/ssr/Bell'; 
 import { HeadsetIcon } from '@phosphor-icons/react/dist/ssr/Headset';// Assuming you are using lucide-react for icons
-
 import { navItems } from './config';
 import { navIcons } from './nav-icons';
 import { UserContext } from '@/contexts/user-context';
@@ -166,7 +161,7 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
       <Divider sx={{ borderColor: 'var(--mui-palette-neutral-700)' }} />
       <Stack spacing={2} sx={{ p: '12px' }}>
         
-      <Box component={RouterLink} href={paths.home} sx={{ display: 'inline-flex' }}>
+  <Box component={Link} href={paths.home} sx={{ display: 'inline-flex' }}>
           <Logo color="light" height={32} width={122} /><br/>
          
         </Box>
@@ -208,24 +203,21 @@ function renderNavItems({
         open={open}
         onToggle={hasChildren ? () => handleToggle(dropdownKey) : undefined}
         childActive={childActive}
-        children={
-          hasChildren
-            ? [
-                <Collapse in={open} timeout="auto" unmountOnExit key="collapse">
-                  <Box sx={{ pl: 3 /* Indent submenu */, borderLeft: '2px solid var(--mui-palette-neutral-800)', ml: 2 }}>
-                    {renderNavItems({
-                      items: childItems,
-                      pathname,
-                      openDropdowns,
-                      handleToggle,
-                      parentKey: dropdownKey,
-                    })}
-                  </Box>
-                </Collapse>
-              ]
-            : undefined
-        }
-      />
+      >
+        {hasChildren ? [
+          <Collapse in={open} timeout="auto" unmountOnExit key="collapse">
+            <Box sx={{ pl: 3 /* Indent submenu */, borderLeft: '2px solid var(--mui-palette-neutral-800)', ml: 2 }}>
+              {renderNavItems({
+                items: childItems,
+                pathname,
+                openDropdowns,
+                handleToggle,
+                parentKey: dropdownKey,
+              })}
+            </Box>
+          </Collapse>
+        ] : []}
+      </NavItem>
     );
     return acc;
   }, []);
@@ -268,7 +260,7 @@ function NavItem({
           ? { role: 'button', onClick: onToggle }
           : href
             ? {
-                component: external ? 'a' : RouterLink,
+                component: external ? 'a' : Link,
                 href,
                 target: external ? '_blank' : undefined,
                 rel: external ? 'noreferrer' : undefined,

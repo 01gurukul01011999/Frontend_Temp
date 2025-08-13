@@ -1,11 +1,10 @@
-'use client';
 import React from 'react';
 import {
-  Box,
+  Box
 } from '@mui/material';
-import CategorySelector from '@/components/dashboard/catalogUploads/bulk/categorySelector';
-import Header from '@/components/dashboard/catalogUploads/bulk/header';
-import Footer from '@/components/dashboard/catalogUploads/bulk/footer';
+import CategorySelector from '@/components/dashboard/catalog-uploads/bulk/category-selector';
+import Header from '@/components/dashboard/catalog-uploads/bulk/header';
+import Footer from '@/components/dashboard/catalog-uploads/bulk/footer';
 
 export default function page() : React.JSX.Element {
  
