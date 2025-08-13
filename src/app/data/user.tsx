@@ -1,4 +1,4 @@
-import axios from "axios";
+import axios, { isAxiosError } from "axios";
 
 export interface User {
   id: string;
@@ -15,8 +15,8 @@ export class UserClient {
       });
       return { data: response.data.user };
     } catch (error: unknown) {
-      if (axios.isAxiosError(error)) {
-        return { error: error.response?.data?.error || "Failed to fetch user" };
+  if (isAxiosError(error)) {
+        return { error: (error.response?.data as { error?: string })?.error || "Failed to fetch user" };
       }
       return { error: "Failed to fetch user" };
     }

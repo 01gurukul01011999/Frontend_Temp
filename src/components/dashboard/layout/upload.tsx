@@ -20,7 +20,6 @@ interface AvatarUploadModalProps {
 export default function AvatarUploadModal({
   open,
   onClose,
-  onUpload,
 }: AvatarUploadModalProps) {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -64,7 +63,7 @@ export default function AvatarUploadModal({
     if (res.ok) {
       toast.success(data.message || "Avatar uploaded!");
       // Optionally refresh after a short delay
-      setTimeout(() => window.location.reload(), 1200);
+      setTimeout(() => globalThis.location.reload(), 1200);
     } else {
       toast.error(data.message || "Upload failed");
     }

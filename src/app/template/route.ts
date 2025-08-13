@@ -1,6 +1,9 @@
 import { NextResponse } from 'next/server';
 import { Workbook } from 'exceljs';
 
+export const dynamic = "force-static";
+export const revalidate = 0;
+
 export async function GET() {
   const workbook = new Workbook();
 
@@ -359,6 +362,11 @@ const headers = [
   { title: "* Compulsory Field", color: "FFCCE5FF", textColor: "FF003366" },
   { title: "* Compulsory Field", color: "FFCCE5FF", textColor: "FF003366" },
   { title: "* Compulsory Field", color: "FFCCE5FF", textColor: "FF003366" },
+  { title: "* Compulsory Field", color: "FFCCE5FF", textColor: "FF003366" },
+  { title: "* Compulsory Field", color: "FFCCE5FF", textColor: "FF003366" },
+  { title: "* Compulsory Field", color: "FFCCE5FF", textColor: "FF003366" },
+  { title: "* Compulsory Field", color: "FFCCE5FF", textColor: "FF003366" },
+  { title: "Optional Field", color: "FFD9EAD3", textColor: "FF004400" },
   { title: "Optional Field", color: "FFD9EAD3", textColor: "FF004400" },
   { title: "Optional Field", color: "FFD9EAD3", textColor: "FF004400" },
   { title: "Optional Field", color: "FFD9EAD3", textColor: "FF004400" },
@@ -474,22 +482,23 @@ const tutorial = [
 
 
 // Set widths
-for (let i = 0; i < headers.length; i++) {
-  fillSheet.getColumn(i + 1).width = 30;
+let colIdx = 1;
+for (const _ of headers) {
+  fillSheet.getColumn(colIdx++).width = 30;
 }
 
 // Row 1 – Headers
 const headerRow = fillSheet.getRow(2);
-for (let i = 0; i < headers.length; i++) {
-  const h = headers[i];
-  const cell = headerRow.getCell(i + 1);
+colIdx = 1;
+for (const h of headers) {
+  const cell = headerRow.getCell(colIdx++);
   cell.value = h.title;
   cell.fill = {
     type: "pattern",
     pattern: "solid",
     fgColor: { argb: h.color }
   };
-   cell.border = {
+  cell.border = {
     top: { style: "thin", color: { argb: "000000" } },
     left: { style: "thin", color: { argb: "000000" } },
     bottom: { style: "thin", color: { argb: "000000" } },
@@ -502,9 +511,9 @@ headerRow.height = 30;
 
 // Row 2 – Field descriptions
 const descRow = fillSheet.getRow(3);
-for (let i = 0; i < descriptions.length; i++) {
-  const desc = descriptions[i];
-  const cell = descRow.getCell(i + 1);
+colIdx = 1;
+for (const desc of descriptions) {
+  const cell = descRow.getCell(colIdx++);
   cell.fill = {
     type: "pattern",
     pattern: "solid",
@@ -527,11 +536,12 @@ for (let i = 0; i < descriptions.length; i++) {
 descRow.height = 140;
 
 
+
 // Row 3 – Tutorial Links
 const tutorialRow = fillSheet.getRow(4);
-for (let i = 0; i < tutorial.length; i++) {
-  const text = tutorial[i];
-  const cell = tutorialRow.getCell(i + 1);
+colIdx = 1;
+for (const text of tutorial) {
+  const cell = tutorialRow.getCell(colIdx++);
   // Background
   cell.fill = {
     type: "pattern",
@@ -556,7 +566,6 @@ for (let i = 0; i < tutorial.length; i++) {
     cell.font = { bold: false, size: 12, color: { argb: "FF000000" } };
   }
 }
-
 tutorialRow.height = 40;
 
 
@@ -819,9 +828,9 @@ const row2 = [
 ]
 
 const field1 = validation.getRow(1);
-for (let i = 0; i < row1.length; i++) {
-  const text = row1[i];
-  const cell = field1.getCell(i + 1);
+colIdx = 1;
+for (const text of row1) {
+  const cell = field1.getCell(colIdx++);
   // Background
   cell.fill = {
     type: "pattern",
@@ -844,9 +853,9 @@ for (let i = 0; i < row1.length; i++) {
 field1.height = 40;
 
 const field2 = validation.getRow(2);
-for (let i = 0; i < row2.length; i++) {
-  const text = row2[i];
-  const cell = field2.getCell(i + 1);
+colIdx = 1;
+for (const text of row2) {
+  const cell = field2.getCell(colIdx++);
   // Background
   cell.fill = {
     type: "pattern",

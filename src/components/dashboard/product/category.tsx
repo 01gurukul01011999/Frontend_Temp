@@ -62,8 +62,8 @@ export function Category({ category = [], sx, onDelete }: categoryProps): React.
         if (aTime > bTime) return sortOrder === 'asc' ? 1 : -1;
         return 0;
       }
-      let aValue = a[sortBy];
-      let bValue = b[sortBy];
+      const aValue = a[sortBy];
+      const bValue = b[sortBy];
       if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
       return 0;

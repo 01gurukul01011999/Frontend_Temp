@@ -5,7 +5,7 @@ import Stack from '@mui/material/Stack';
 import { config } from '@/config';
 import { AccountDetailsForm } from '@/components/dashboard/account/account-details-form';
 import { AccountInfo } from '@/components/dashboard/account/account-info';
-import HeadAccount from '@/components/dashboard/account/headAccount';
+import HeadAccount from '@/components/dashboard/account/head-account';
 
 export const metadata = { title: `Account | Dashboard | ${config.site.name}` } satisfies Metadata;
 

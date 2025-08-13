@@ -1,9 +1,9 @@
 import * as React from 'react';
 import Box from '@mui/material/Box';
-import Button from '@mui/material/Button';
+// import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardActions from '@mui/material/CardActions';
-import CardHeader from '@mui/material/CardHeader';
+// import CardHeader from '@mui/material/CardHeader';
 import Chip from '@mui/material/Chip';
 import Divider from '@mui/material/Divider';
 import { SxProps } from '@mui/material/styles';
@@ -37,6 +37,9 @@ export interface order {
   amount: number;
   sta : 'On Hold' | 'pending' | 'Ready To Ship' | 'Shipped' | 'Cancelled' ;
   orderDate: Date;
+  dispatchDate: string;
+  slaStatus: string; // Add this line
+  labelDownloaded?: boolean;
 }
 
 export interface orderProps {
@@ -44,9 +47,7 @@ export interface orderProps {
   sx?: SxProps;
   onDelete?: (ordersId: string) => void;
 }
-const handleChipClick = () => {
-  console.log("Chip clicked!");
-};
+
 export function Order({ order = [], sx, onDelete }: orderProps): React.JSX.Element {
   const [sortBy, setSortBy] = React.useState<'ordersId' | 'descrip' | 'skuId' | 'sta' | 'orderDate'>('ordersId');
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
@@ -69,8 +70,8 @@ export function Order({ order = [], sx, onDelete }: orderProps): React.JSX.Eleme
         if (aTime > bTime) return sortOrder === 'asc' ? 1 : -1;
         return 0;
       }
-      let aValue = a[sortBy];
-      let bValue = b[sortBy];
+  const aValue = a[sortBy];
+  const bValue = b[sortBy];
       if (aValue < bValue) return sortOrder === 'asc' ? -1 : 1;
       if (aValue > bValue) return sortOrder === 'asc' ? 1 : -1;
       return 0;

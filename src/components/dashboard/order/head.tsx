@@ -3,33 +3,29 @@ import React from 'react'
 import { CaretDownIcon } from '@phosphor-icons/react/dist/ssr/CaretDown';
 import { MicrosoftExcelLogoIcon } from '@phosphor-icons/react/dist/ssr/MicrosoftExcelLogo';
 import {CalendarBlankIcon} from '@phosphor-icons/react/dist/ssr/CalendarBlank';
-import { Divider } from '@mui/material';
 import { ArrowLineDownIcon, ExclamationMarkIcon } from '@phosphor-icons/react';
 import Image from 'next/image';
-import { Box, Button, Popover, Typography } from '@mui/material';
+import { Box, Button, Popover, Typography, Divider, TextField, Dialog, IconButton } from '@mui/material';
 import { toast } from 'react-toastify';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
-import TextField from '@mui/material/TextField';
-import Dialog from '@mui/material/Dialog';
-import IconButton from '@mui/material/IconButton';
+
+
+function handleDownload(format: 'csv' | 'excel') {
+  // TODO: Implement actual download logic
+  // For now, just show a toast
+  toast.info(`Download as ${format.toUpperCase()} coming soon!`);
+}
 
 function Head(): React.JSX.Element {
- const [anchorE2, setAnchorE2] = React.useState<null | HTMLElement>(null);
-const [learnOpen, setLearnOpen] = React.useState(false);
-
-const [downloadAnchorEl, setDownloadAnchorEl] = React.useState<null | HTMLElement>(null);
- const [startDate, setStartDate] = React.useState<dayjs.Dayjs | null>(null);
+  const [anchorE2, setAnchorE2] = React.useState<null | HTMLElement>(null);
+  const [learnOpen, setLearnOpen] = React.useState(false);
+  const [downloadAnchorEl, setDownloadAnchorEl] = React.useState<null | HTMLElement>(null);
+  const [startDate, setStartDate] = React.useState<dayjs.Dayjs | null>(null);
   const [endDate, setEndDate] = React.useState<dayjs.Dayjs | null>(null);
- const open2 = Boolean(anchorE2);
-  // Download handler
-  const handleDownload = (format: 'csv' | 'excel') => {
-    // TODO: Implement actual download logic
-    // For now, just show a toast
-    toast.info(`Download as ${format.toUpperCase()} coming soon!`);
-  };
-    const handleDateClick = (event: React.MouseEvent<HTMLElement>) => {
+  const open2 = Boolean(anchorE2);
+  const handleDateClick = (event: React.MouseEvent<HTMLElement>) => {
     setAnchorE2(event.currentTarget);
   };
   const handleDateClose = () => {

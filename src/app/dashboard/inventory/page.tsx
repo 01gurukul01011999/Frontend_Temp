@@ -1,6 +1,6 @@
 import React from 'react'
-import HeadInventory from '@/components/dashboard/inventory/headInventory';
-import TabsInventory from '@/components/dashboard/inventory/tabsInventory';
+import HeadInventory from '@/components/dashboard/inventory/head-inventory';
+import TabsInventory from '@/components/dashboard/inventory/tabs-inventory';
 import { config } from '@/config';
 
 

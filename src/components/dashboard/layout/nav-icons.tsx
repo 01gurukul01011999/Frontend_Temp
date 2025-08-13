@@ -12,7 +12,6 @@ import { DiamondsFourIcon } from '@phosphor-icons/react/dist/ssr/DiamondsFour';
 import { TagSimpleIcon } from '@phosphor-icons/react/dist/ssr/TagSimple';
 import { BankIcon } from '@phosphor-icons/react/dist/ssr/Bank';
 import { BoxArrowUpIcon} from '@phosphor-icons/react/dist/ssr/BoxArrowUp';
-import { CardsThreeIcon } from '@phosphor-icons/react/dist/ssr/CardsThree';
 import { StackIcon } from '@phosphor-icons/react/dist/ssr/Stack';
 import { ShootingStarIcon } from '@phosphor-icons/react/dist/ssr/ShootingStar';
 import {HandWithdrawIcon} from '@phosphor-icons/react/dist/ssr/HandWithdraw';

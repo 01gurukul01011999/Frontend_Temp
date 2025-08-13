@@ -1,12 +1,12 @@
-import HeadBarcodedPacking from '@/components/dashboard/barcodedPacking/headBarcodedPacking'
 import React from 'react'
 import { config } from '@/config'
   export const metadata = { title: `Bulk Upload | Dashboard | ${config.site.name}` };
-   import Barcodecomp from '@/components/dashboard/barcodedPacking/barcodecomp';
-import BarcodedPackagingUI from '@/components/dashboard/barcodedPacking/barcodedPackagingUI';
-import WhatIsBarcodedPackaging from '@/components/dashboard/barcodedPacking/whatIsBarcodedPackaging';
-import WhyUseBarcodedPackaging from '@/components/dashboard/barcodedPacking/whyUseBarcodedPackaging';
-import Vendors from '@/components/dashboard/barcodedPacking/vendors';
+   import Barcodecomp from '@/components/dashboard/barcoded-packing/barcodecomp';
+import BarcodedPackagingUI from '@/components/dashboard/barcoded-packing/barcoded-packaging-ui';
+import WhatIsBarcodedPackaging from '@/components/dashboard/barcoded-packing/what-is-barcoded-packaging';
+import WhyUseBarcodedPackaging from '@/components/dashboard/barcoded-packing/why-use-barcoded-packaging';
+import Vendors from '@/components/dashboard/barcoded-packing/vendors';
+import HeadBarcodedPacking from '@/components/dashboard/barcoded-packing/head-barcoded-packing'
 
 
 function page(): React.JSX.Element {

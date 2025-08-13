@@ -69,12 +69,12 @@ export function AccountInfo(): React.JSX.Element {
       <Divider />
       <CardActions>
         <AvatarUploadModal
-             open={modalOpen}
-            onClose={() => setModalOpen(false)}
-               onUpload={file => {
-    // handle file upload here (e.g., send to API)
-                  //console.log('File uploaded:', file);
-                  }}
+         open={modalOpen}
+        onClose={() => setModalOpen(false)}
+          onUpload={_file => {
+   // handle file upload here (e.g., send to API)
+            //console.log('File uploaded:', _file);
+            }}
 />
 <Button fullWidth variant="text" onClick={() => setModalOpen(true)}>Change Avatar</Button>
         

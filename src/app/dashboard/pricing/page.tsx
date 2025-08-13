@@ -1,4 +1,4 @@
-import HeadPricing from '@/components/dashboard/pricing/headPricing'
+import HeadPricing from '@/components/dashboard/pricing/head-pricing'
 import React from 'react'
 import { config } from '@/config';
 export const metadata = { title: `Pricing | Dashboard | ${config.site.name}` };
