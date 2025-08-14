@@ -65,7 +65,7 @@ class AuthClient {
   
   async signUp(params: SignUpParams): Promise<{ error?: string }> {
     try {
-      const response = await axios.post('http://localhost:4000/user', params);
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user`, params);
       const { token } = response.data;
       if (token) {
         localStorage.setItem('custom-auth-token', token);
@@ -86,7 +86,7 @@ class AuthClient {
 
   async signInWithPassword(params: SignInWithPasswordParams): Promise<{ error?: string }> {
     try {
-      const response = await axios.post('http://localhost:4000/user-data', params);
+      const response = await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/user-data`, params);
       const {token} = response.data;
       if (token) {
         localStorage.setItem('custom-auth-token', token);
@@ -104,7 +104,7 @@ class AuthClient {
   async resetPassword(params: ResetPasswordParams): Promise<{ error?: string }> {
     try {
       //console.log('Resetting password with params:', params);
-      await axios.post('http://localhost:4000/reset', params);
+      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/reset`, params);
       return {};
     } catch (error: unknown) {
   if (isAxiosError(error)) {
@@ -117,7 +117,7 @@ class AuthClient {
  async verifyCode(params: VerifyCodeParams): Promise<{ error?: string }> {
     try {
       console.log('Resetting password code with params:', params);
-      await axios.post('http://localhost:4000/verify-code', params);
+      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/verify-code`, params);
       return {};
     } catch (error: unknown) {
   if (isAxiosError(error)) {
@@ -128,7 +128,7 @@ class AuthClient {
   }
  async newUpdatePassword(params: newPasswordParams): Promise<{ error?: string }> {
     try {
-      await axios.post('http://localhost:4000/newPassword', params);
+      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/newPassword`, params);
       return {};
     } catch (error: unknown) {
   if (isAxiosError(error)) {
@@ -142,7 +142,7 @@ class AuthClient {
 async profile(params: profileParams): Promise<{ error?: string }> {
   //console.log('Updating profile with params:', params);
     try {
-      await axios.post('http://localhost:4000/update_profile', params);
+      await axios.post(`${process.env.NEXT_PUBLIC_BACKEND_URL}/update_profile`, params);
       return {};
     } catch (error: unknown) {
   if (isAxiosError(error)) {
@@ -170,7 +170,7 @@ async profile(params: profileParams): Promise<{ error?: string }> {
       if (!token) {
         return { data: null };
       }
-      const response = await axios.get('http://localhost:4000/protected', {
+      const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/protected`, {
         headers: { Authorization: `Bearer ${token}` }
       });
       //console.log('Response from getUser:', response.data.user);
