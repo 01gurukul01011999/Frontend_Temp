@@ -197,5 +197,3 @@ async profile(params: profileParams): Promise<{ error?: string }> {
 }
 
 export const authClient = new AuthClient();
-
-
