@@ -16,8 +16,8 @@ export const paths = {
     quality: '/dashboard/quality',
     warehouse: '/dashboard/warehouse',
    barcodedPacketScan: '/dashboard/order/barcode-scan',
-   BulkCatalogUpload: '/dashboard/catalog-uploads/Bulk-Catalog-Upload',
-   SingleCatalogUpload: '/dashboard/catalog-uploads/Single-Catalog-Upload',
+   BulkCatalogUpload: '/dashboard/catalog-uploads/bulk-catalog-upload',
+   SingleCatalogUpload: '/dashboard/catalog-uploads/single-catalog-upload',
       
    
    

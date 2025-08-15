@@ -19,12 +19,12 @@ function UploadButton(): React.JSX.Element {
         <Button
           variant="contained"
           sx={{ backgroundColor: '#4d0aff' }}
-          onClick={() => { globalThis.location.href = '/dashboard/catalog-uploads/Bulk-Catalog-Upload'; }}
+          onClick={() => { globalThis.location.href = '/dashboard/catalog-uploads/bulk-catalog-upload'; }}
         >
           Add Catalog in Bulk
         </Button>
         <Button variant="outlined" sx={{ color: '#4d0aff', borderColor: '#4d0aff' }}
-        onClick={() => { globalThis.location.href = '/dashboard/catalog-uploads/Single-Catalog-Upload'; }}
+        onClick={() => { globalThis.location.href = '/dashboard/catalog-uploads/single-catalog-upload'; }}
         >
           Add Single Catalog
         </Button>
