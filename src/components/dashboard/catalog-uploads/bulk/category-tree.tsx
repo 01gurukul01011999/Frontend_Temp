@@ -1,5 +1,5 @@
 export type CategoryNode = {
-  [key: string]: CategoryNode | null;
+  [key: string]: CategoryNode | { [key: string]: any } | null;
 };
 
 const categoryTree: CategoryNode = {
@@ -621,7 +621,7 @@ const categoryTree: CategoryNode = {
                 'Kids Umbrella': null
             },
             'Watches' :{
-                'Sports Watches': null,
+                'Sports Watches': { "formId": "form_101", "value": null },
                 'Analog Watches': null,
                 'Chronograph Watches': null,
                 'Digital Watches': null,
