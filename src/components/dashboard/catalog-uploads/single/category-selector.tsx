@@ -106,7 +106,15 @@ export default function CategorySelector(): React.JSX.Element {
 	const handleContinue = () => {
 		setPopupOpen(false);
 		setActiveStep(1);
-		// Continue logic
+		// Map selected images to slots in order
+		setSlotImages(prev => {
+			const newSlots = { ...prev };
+			selectedImages.forEach((img, idx) => {
+				if (imageSlots[idx]) newSlots[imageSlots[idx].key] = img.url;
+			});
+			return newSlots;
+		});
+		setSelectedImages([]);
 	};
 	const handleClose = () => setPopupOpen(false);
 	
@@ -237,13 +245,15 @@ console.log('uploadimages', uploadedImages);
 
 	const columns = [];
 	let currentTree: CategoryNode | null = categoryTree;
+	//console.log('currentTree', currentTree);
 
-	for (let level = 0; ; level++) {
+	for (let level = 0; level < 4; level++) {
 		if (currentTree === undefined) break;
 		if (currentTree === null) break;
 		if (typeof currentTree !== 'object') break;
 		const options = Object.keys(currentTree);
 		if (options.length === 0) break;
+		console.log('currentTree', currentTree);
 		columns.push(
 			<Box key={level} sx={{ width: 200, mr: 2, overflowY: 'auto', maxHeight: '58vh' }}>
 				{options.map((opt) => (
@@ -293,7 +303,7 @@ console.log('uploadimages', uploadedImages);
 const url =getSiteURL();
 //console.log(url+'assets/woemns category.png');
 	// Show right panel ONLY if the selected path is a leaf in the original categoryTree
-	const showRightPanel = isLeaf(categoryTree, selectionPath);
+	const showRightPanel = selectionPath.length > 0;
 
 
 	const [imageGuidelinesPopupOpen, setImageGuidelinesPopupOpen] = useState(false);
@@ -327,6 +337,24 @@ const url =getSiteURL();
 			});
 		}
 	};
+
+	// Define the slots for product images
+	const imageSlots = [
+	  { key: 'front1', label: 'Front View *', desc: 'Upload Front View Image' },
+	  { key: 'front2', label: 'Front View *', desc: 'Upload Front View Image' },
+	  { key: 'back1', label: 'Back View *', desc: 'Upload Back View Image' },
+	  { key: 'back2', label: 'Back View *', desc: 'Upload Back View Image' },
+	  { key: 'size', label: 'Size Chart *', desc: 'Size chart size wise body measurements should be given.' },
+	];
+
+	// State to hold images for each slot
+	const [slotImages, setSlotImages] = useState<{ [key: string]: string | null }>({
+	  front1: null,
+	  front2: null,
+	  back1: null,
+	  back2: null,
+	  size: null,
+	});
 
 	return (<>
 		{/* Trigger for demo: open popup when clicking first image 
@@ -774,6 +802,57 @@ const url =getSiteURL();
 				<Button variant="contained" color="primary" onClick={handleContinue}>Continue</Button>
 			</DialogActions>
 		</Dialog>
+
+		{/* Step 2: Add Product Details - Image Slots */}
+		{activeStep === 1 && (
+  <Box sx={{ display: 'flex', flexDirection: 'row', mt: 2 }}>
+    <Box sx={{ flex: 1 }}>
+      <Typography variant="h6" sx={{ mb: 2 }}>
+        Add images with details listed here
+      </Typography>
+      {imageSlots.map((slot, idx) => (
+        <Box key={slot.key} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+          <Box sx={{ width: 60, height: 60, border: '1px solid #eee', borderRadius: 2, overflow: 'hidden', mr: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafafa' }}>
+            {slotImages[slot.key] ? (
+              <img src={slotImages[slot.key] as string} alt={slot.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+            ) : (
+              <Typography sx={{ color: '#bbb', fontSize: 12 }}>No Image</Typography>
+            )}
+          </Box>
+          <Box sx={{ flex: 1 }}>
+            <Typography sx={{ fontWeight: 600 }}>{slot.label}</Typography>
+            <Typography sx={{ color: '#888', fontSize: 13 }}>{slot.desc}</Typography>
+          </Box>
+          <Button
+            variant="outlined"
+            size="small"
+            component="label"
+            sx={{ ml: 2 }}
+          >
+            {slotImages[slot.key] ? 'Replace' : 'Upload'}
+            <input
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={e => {
+                const file = e.target.files?.[0];
+                if (file) {
+                  const reader = new FileReader();
+                  reader.onload = () => {
+                    if (typeof reader.result === 'string') {
+                      setSlotImages(prev => ({ ...prev, [slot.key]: reader.result as string }));
+                    }
+                  };
+                  reader.readAsDataURL(file);
+                }
+              }}
+            />
+          </Button>
+        </Box>
+      ))}
+    </Box>
+  </Box>
+		)}
 		</>
 	);
 }
