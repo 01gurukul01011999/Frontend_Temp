@@ -3,13 +3,11 @@ import React from "react";
 import {
   Box,
   Typography,
-  Button,
   Stack,
   IconButton,
   Dialog
 } from '@mui/material';
 import YouTubeIcon from '@mui/icons-material/YouTube';
-import HeadsetMicIcon from '@mui/icons-material/HeadsetMic';
 import { CaretLeftIcon } from '@phosphor-icons/react';
 
 
@@ -61,22 +59,7 @@ export default function Header(): React.JSX.Element {
 
 
       </Box>
-<Box sx={{ position: 'absolute', right: 0, marginRight: 8,  }}>
-          <Button
-            startIcon={<HeadsetMicIcon />}
-            variant="outlined"
-            size="small"
-            sx={{
-              textTransform: 'none',
-              borderColor: '#4d0aff',
-              color: '#4d0aff', 
-              fontWeight: 600,
-              backgroundColor: 'white',
-            }}
-          >
-            Need Help?
-          </Button>
-        </Box>
+
       
     </>
   );

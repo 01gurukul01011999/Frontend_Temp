@@ -1,11 +1,14 @@
 'use client';
 import React, { useState } from 'react';
 import Image from 'next/image';
+import { useRef } from "react";
 import { useUser } from '@/hooks/use-user';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import CloseIcon from '@mui/icons-material/Close';
+import HeadsetMicIcon from '@mui/icons-material/HeadsetMic';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import InfoIcon from '@mui/icons-material/Info';
 import {
 	Box,
 	Typography,
@@ -17,14 +20,51 @@ import {
 	DialogContent,
 	DialogActions,
 	IconButton,
+	Stepper, Step, StepLabel,
+	Link,
+	Divider
 } from '@mui/material';
+import { flex, styled } from "@mui/system";
 import categoryTree, { CategoryNode } from '../bulk/category-tree';
 import AddIcon from '@mui/icons-material/Add';
+import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { getSiteURL } from '@/lib/get-site-url';
 import Isvg from './isvg';
 import PlusSvg from './plus-svg';
 import DownloadSvg from './download-svg';
 import UploadSvg from './upload-svg';
+
+
+const steps = ["Select Category", "Add Product Details"];
+
+interface CustomStepIconRootProps {
+  active?: boolean;
+}
+
+const CustomStepIconRoot = styled("div")<CustomStepIconRootProps>(({ theme, active }) => ({
+  display: "flex",
+  alignItems: "center",
+  justifyContent: "center",
+  width: 28,
+  height: 28,
+  borderRadius: "50%",
+  backgroundColor: active ? "rgba(99, 102, 241, 0.1)" : "#f0f0f0",
+  color: active ? "#6366f1" : "#9e9e9e",
+  fontWeight: 600,
+  fontSize: 14,
+  border: `1px solid ${active ? "#6366f1" : "#ccc"}`
+}));
+
+interface CustomStepIconProps {
+  active?: boolean;
+  completed?: boolean;
+  icon?: React.ReactNode;
+}
+
+function CustomStepIcon(props: CustomStepIconProps) {
+  const { active, completed, icon } = props;
+  return <CustomStepIconRoot active={!!active}>{icon}</CustomStepIconRoot>;
+}
 
 // Helper to flatten category tree into array of full paths
 function getAllCategoryPaths(tree: Record<string, unknown>, prefix: string[] = []): string[][] {
@@ -40,7 +80,41 @@ function getAllCategoryPaths(tree: Record<string, unknown>, prefix: string[] = [
 }
 
 export default function CategorySelector(): React.JSX.Element {
+	const [popupOpen, setPopupOpen] = useState(false);
+	const [intropopupOpen, setIntroPopupOpen] = useState(false);
+	const [selectedImages, setSelectedImages] = useState<Array<{ url: string }>>([]);
+
+	const imageTypeList = [
+		{ label: 'Watermark image', icon: '/assets/invalid-image-1.png' },
+		{ label: 'Fake branded/1st copy', icon: '/assets/invalid-image-2.png' },
+		{ label: 'Image with price', icon: '/assets/invalid-image-3.png' },
+		{ label: 'Pixelated image', icon: '/assets/invalid-image-4.png' },
+		{ label: 'Inverted image', icon: '/assets/invalid-image-5.png' },
+		{ label: 'Blur/unclear image', icon: '/assets/invalid-image-6.png' },
+		{ label: 'Incomplete image', icon: '/assets/invalid-image-7.png' },
+		{ label: 'Stretched/shrunk image', icon: '/assets/invalid-image-8.png' },
+		{ label: 'Image with props', icon: '/assets/invalid-image-9.png' },
+		{ label: 'Image with text', icon: '/assets/invalid-image-10.png' },
+	];
+
+	const handleRemoveImage = (idx: number) => {
+		setSelectedImages(images => images.filter((_, i) => i !== idx));
+	};
+	const handleAddProduct = () => {
+		inputRef.current?.click();
+	};
+	const handleContinue = () => {
+		setPopupOpen(false);
+		setActiveStep(1);
+		// Continue logic
+	};
+	const handleClose = () => setPopupOpen(false);
+	
 	 const [uploadPopupOpen, setUploadPopupOpen] = useState(false);
+	 const [activeStep, setActiveStep] = React.useState(0);
+	// Removed duplicate inputRef declaration to fix redeclaration error.
+
+	// Removed duplicate handleImageChange function to fix redeclaration error.
 
 	// Inject loader CSS for the spinner animation
 	React.useEffect(() => {
@@ -60,7 +134,7 @@ export default function CategorySelector(): React.JSX.Element {
 	// For Autocomplete
 	const allCategoryPaths = React.useMemo(() => getAllCategoryPaths(categoryTree), []);
 	const [searchValue, setSearchValue] = useState<string>('');
-	const [popupOpen, setPopupOpen] = useState(true);
+	
 console.log('uploadimages', uploadedImages);
 	const { user } = useUser();
 	// Upload images to backend
@@ -221,66 +295,120 @@ const url =getSiteURL();
 	// Show right panel ONLY if the selected path is a leaf in the original categoryTree
 	const showRightPanel = isLeaf(categoryTree, selectionPath);
 
-	//const downloadExcel = () => {
-	//  const data = [
-	//    ['Product Name', 'Price', 'Category'], // headers
-	//    [form.ProductName, form.Price, form.Category], // data
-	//  ];
-//
-	//  const worksheet = XLSX.utils.aoa_to_sheet(data);
-	//  const workbook = XLSX.utils.book_new();
-	//  XLSX.utils.book_append_sheet(workbook, worksheet, 'Sheet1');
-//
-	//  // Export as .xlsx file
-	//  XLSX.writeFile(workbook, 'generated-template.xlsx');
-	//};
 
-	// Download the Excel template from the backend and trigger a download
-	const [downloading, setDownloading] = useState(false);
-	const handleDownload = async () => {
-		setDownloading(true);
-		try {
-			const res = await fetch('/template', { method: 'GET' });
-			if (!res.ok) {
-				alert('Failed to download template.');
-				setDownloading(false);
-				return;
-			}
-			const blob = await res.blob(); // Keep this line as is
-			// Optional: check if the blob is a valid Excel file by checking the first few bytes (magic number)
-			const reader = new FileReader();
-			reader.addEventListener('load', function(e) {
-				if (!e.target) {
-					alert('Error reading file.');
-					setDownloading(false);
-					return;
-				}
-				const arr = new Uint8Array(e.target.result as ArrayBuffer);
-				// XLSX files start with: 0x50 0x4B 0x03 0x04 (PK..)
-				if (arr[0] !== 0x50 || arr[1] !== 0x4B) {
-					alert('Downloaded file is not a valid Excel file.');
-					setDownloading(false);
-					return;
-				}
-				const url = globalThis.URL.createObjectURL(blob); // Keep this line as is
-				const a = globalThis.document?.createElement('a');
-				if (a) {
-					a.href = url;
-					a.download = 'meesho-template.xlsx';
-					a.click();
-				}
-				globalThis.URL.revokeObjectURL(url);
-				setDownloading(false);
+	const [imageGuidelinesPopupOpen, setImageGuidelinesPopupOpen] = useState(false);
+	
+
+	const inputRef = React.useRef<HTMLInputElement>(null);
+
+	// Handler for file input change
+	const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+		const files = event.target.files;
+		if (files && files.length > 0) {
+			const fileArray = Array.from(files);
+			Promise.all(
+				fileArray.map(file => {
+					return new Promise<{ url: string }>((resolve, reject) => {
+						const reader = new FileReader();
+						reader.onload = () => {
+							if (typeof reader.result === 'string') {
+								resolve({ url: reader.result });
+							} else {
+								reject('Failed to read file');
+							}
+						};
+						reader.onerror = reject;
+						reader.readAsDataURL(file);
+					});
+				})
+			).then((images) => {
+				setSelectedImages(prev => [...prev, ...images]);
+				setPopupOpen(true);
 			});
-			await blob.arrayBuffer(); // Use Blob#arrayBuffer, remove unused arrBuffer
-		} catch {
-			alert('Error downloading template.');
-			setDownloading(false);
 		}
 	};
 
-	return (
+	return (<>
+		{/* Trigger for demo: open popup when clicking first image 
+		<Button onClick={handleOpenPopup} sx={{ mb: 2 }}>Open Product Images Popup</Button>
+*/}
+		
+	<Box sx={{ px: 3, pt: 2, background: '#fff' , mt:-3, width:'100%' , mb:2, ml:0, mr:0 , pb:1 , display: 'flex' }}>
+
+			<Stepper
+				activeStep={activeStep}
+				alternativeLabel={false}
+				sx={{
+					background: 'transparent',
+					"& .MuiStepLabel-label": {
+						fontSize: "12px",
+						fontWeight: 500,
+						color: "#888",
+					},
+					"& .MuiStepLabel-label.Mui-active": {
+						color: "#4d0aff",
+						fontWeight: 700,
+					},
+					"& .MuiStepIcon-root": {
+						background: "#f5f6ff",
+						color: "#4d0aff",
+						borderRadius: "50%",
+						width: 25,
+						height: 25,
+						fontSize: "12px",
+						border: "none",
+						boxShadow: "none",
+					},
+					"& .MuiStepIcon-root.Mui-active": {
+						background: "rgba(99,102,241,0.1)",
+						color: "#4d0aff",
+						fontWeight: 700,
+						border: "none",
+					},
+					"& .MuiStepConnector-root": {
+						top: 16,
+					},
+					"& .MuiStepConnector-line": {
+						borderColor: "#e0e7ff",
+						borderTopWidth: 2,
+					},
+					"& .MuiStepper-root": {
+						borderBottom: "2px solid #4d0aff",
+						paddingBottom: "2px",
+						justifyContent: "flex-start",
+					},
+				}}
+			>
+				{steps.map((label, index) => (
+					<Step key={label}>
+						<StepLabel StepIconComponent={CustomStepIcon}>{label}</StepLabel>
+					</Step>
+				))}
+			</Stepper>
+			<Box sx={{ position: 'absolute', right: 0, marginRight:8, mt: -1 }}>
+          <Button
+            startIcon={<HeadsetMicIcon />}
+            variant="outlined"
+            size="small"
+            sx={{
+              textTransform: 'none',
+              borderColor: '#4d0aff',
+              color: '#4d0aff', 
+              fontWeight: 600,
+              backgroundColor: 'white',
+            }}
+          >
+            Need Help?
+          </Button>
+        </Box>
+		</Box>
+	
+	
 	<Box sx={{ display: 'flex', flexDirection: 'row', p:1 , maxheight:'500px', mb:10, overflowY: 'auto', overflowX: 'hidden' }}>
+			
+			
+			
+			
 			{/* Left: Search and category columns */}
 			<Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
 				<Autocomplete
@@ -358,308 +486,213 @@ const url =getSiteURL();
 								<Image src={url + 'assets/woemns category.png'} alt="woemns category" width={200} height={120} style={{ width: '200px', height: 'auto' }} />
 							</Box>
 						<Typography variant="body1" fontWeight="medium" gutterBottom>
-								Already have your {selectionPath[3]} template filled?
+								Please provide only front image for each product
 							</Typography>
-						<Box
-							sx={{
-							display: 'flex',
-							justifyContent: 'center',
-							alignItems: 'center',
-							width: '100%',
-							my: 2,
-							}}
-						>
-							<Box
-							sx={{
-								border: '2px dashed #ccc',
-								borderRadius: 2,
-								p: 3,
-								textAlign: 'center',
-								width: '300px',
-								display: 'flex',
-								flexDirection: 'column',
-								alignItems: 'center',
-							}}
-							>
-							<input
-								type="file"
-								accept=".xlsx,.xls"
-								id="excel-upload"
-								style={{ display: 'none' }}
-								onChange={(_e) => {
-								// handle file selection here if needed
-								}}
-							/>
-							<Button
-								variant="text"
-								color="inherit"
-								sx={{
-								alignItems: 'center',
-								'&:hover': {
-									backgroundColor: 'transparent',
-								},
-								}}
-								onClick={() => {
-								const input = globalThis.document?.querySelector('#excel-upload') as HTMLInputElement | null;
-								if (input) input.click();
-								}}
-							>
-								<AddIcon />
-								Upload Template File
-							</Button>
-							</Box>
-						</Box>
+						
 
-						<Box sx={{ mt: 3 }}>
-							<Typography variant="subtitle1" fontWeight="medium" sx={{ mb: 1 }}>
-									Dont have {selectionPath[3]} template?
-							</Typography>
-							<Box display="flex" flexDirection="column" gap={2}>
-									<Box display="flex" flexDirection="column" gap={1}>
-										<Button
-											variant="outlined"
-                      
-											onClick={() => setUploadPopupOpen(true)}
-											sx={{ justifyContent: 'flex-start', alignItems: 'flex-start', flexDirection: 'column', textAlign: 'left', p: 2 }}
-										>
-											<Typography variant="inherit" sx={{ fontWeight: 800 }}>
-												Generate Prefilled Template
-											</Typography>
-											<Typography variant="subtitle2" color="text.secondary">
-												Upload product front images and generate your prefilled template
-											</Typography>
-										</Button>
-									</Box>
-			{/* Upload Product Images Popup */}
-			<Dialog open={uploadPopupOpen} onClose={() => setUploadPopupOpen(false)} maxWidth="md" fullWidth>
-				<DialogTitle sx={{ pb: 0 }}>
-					<Typography variant="h6" fontWeight="normal" sx={{pb:2}}>Upload product front images to generate template</Typography>
-				</DialogTitle>
-				<DialogContent sx={{ display: 'flex', flexDirection: 'row', gap: 3, minHeight: 400 }}>
-					{/* Left: Tabs and Upload */}
-					<Box sx={{ flex: 1, minWidth: 320 }}>
-						<Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2, display: 'flex' }}>
-							<Button
-								variant="text"
-								sx={{ borderBottom: uploadTab === 'files' ? '2px solid #4d0aff' : 'none', borderRadius: 0, color: uploadTab === 'files' ? '#4d0aff' : '#888', fontWeight: 600 }}
-								onClick={() => setUploadTab('files')}
-							>
-								Upload Image files
-							</Button>
-							<Button
-								variant="text"
-								sx={{ color: uploadTab === 'links' ? '#4d0aff' : '#888', borderBottom: uploadTab === 'links' ? '2px solid #4d0aff' : 'none', fontWeight: 600, ml: 2, borderRadius: 0 }}
-								onClick={() => setUploadTab('links')}
-							>
-								Upload Image links
-							</Button>
-						</Box>
-						{uploadTab === 'files' ? (
-							<>
-								<Box sx={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 1, p: 1.5, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-									<Isvg style={{ color:'rgb(247, 190, 0)' }}/>
-									<Typography sx={{ fontSize: 13,  fontWeight: 300 }}>
-										Please provide only <b><span style={{ color: '#000' }}>front image</span></b> for each product. Additional images can be added while updating the bulk template
-									</Typography>
-								</Box>
-								<Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', minHeight: 100, justifyContent: 'flex-start', width: '100%' }}>
-									<Button
-										variant="outlined"
-										sx={{ border: '1.5px dashed #4d0aff', color: '#4d0aff', fontWeight: 'normal', borderRadius: 2, p: 0.5, width: 100, height: 100, display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1, background: '#fafbff', fontSize:'12px', textAlign:'center', mb: 2 }}
-										component="label" 
-									>
-										<PlusSvg />
-										Add Front Images
-										<input
-											type="file"
-											accept="image/*"
-											multiple
-											hidden
-											onChange={async e => {
-												const files = [...(e.target.files || [])];
-												// Compress each image using canvas
-												const compressImage = (file: File) => {
-													return new Promise<string>((resolve, reject) => {
-														const reader = new FileReader();
-														reader.addEventListener('load', ev => {
-															const img = new globalThis.Image();
-															img.addEventListener('load', () => {
-																const canvas = globalThis.document?.createElement('canvas');
-																if (!canvas) return reject('Canvas not supported');
-																// Resize logic: max width/height 1024px
-																let width = img.width;
-																let height = img.height;
-																const maxDim = 1024;
-																if (width > maxDim || height > maxDim) {
-																	if (width > height) {
-																		height = Math.round((height * maxDim) / width);
-																		width = maxDim;
-																	} else {
-																		width = Math.round((width * maxDim) / height);
-																		height = maxDim;
-																	}
-																}
-																canvas.width = width;
-																canvas.height = height;
-																const ctx = canvas.getContext('2d');
-																if (ctx) {
-																	ctx.drawImage(img, 0, 0, width, height);
-																} else {
-																	return reject('Canvas context error');
-																}
-																// Compress to JPEG, quality 0.7
-																canvas.toBlob(
-																	blob => {
-																		if (!blob) return reject('Compression failed');
-																		const reader2 = new FileReader();
-																		reader2.addEventListener('load', ev2 => resolve((ev2.target as FileReader)?.result as string));
-																		reader2.addEventListener('error', reject);
-																		reader2.readAsDataURL(blob);
-																	},
-																	'image/jpeg',
-																	0.7
-																);
-															});
-															img.addEventListener('error', reject);
-															img.src = (ev.target as FileReader)?.result as string;
-														});
-														reader.addEventListener('error', reject);
-														reader.readAsDataURL(file);
-													});
-												};
-												const compressedImgs = await Promise.all(files.map(file => compressImage(file)));
-												setUploadedImages(prev => [...prev, ...compressedImgs]);
-												e.target.value = '';
-											}}
-										/>
-									</Button>
-									{uploadedImages.length > 0 && (
-										<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1, width: '100%' }}>
-											{uploadedImages.map((img, idx) => (
-												<Box key={idx} sx={{ position: 'relative', width: 100, height: 100, borderRadius: 2, overflow: 'hidden', border: '1px solid #eee', background: '#fafbff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-													<Image src={img} alt={`uploaded-${idx}`} width={100} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-													<IconButton
-														size="small"
-														sx={{ position: 'absolute', top: 2, right: 2, background: '#fff', boxShadow: 1, zIndex: 2 }}
-														onClick={() => setUploadedImages(prev => prev.filter((_, i) => i !== idx))}
-													>
-														<CloseIcon fontSize="small" />
-													</IconButton>
-												</Box>
-											))}
-										</Box>
-									)}
-								</Box>
-							</>
-						) : (
-							<>
-								<Box sx={{ background: '#fffbe6', border: '1px solid #ffe58f', borderRadius: 1, p: 1, mb: 2, display: 'flex', alignItems: 'center', gap: 1 }}>
-									<Isvg style={{ color:'rgb(247, 190, 0)' }}/>
-									<Typography sx={{ fontSize: 13, fontWeight: 300 }}>
-										Use this only if you have your <b>product front image</b> links ready.
-									</Typography>
-								</Box>
-								<Typography variant="h6" fontWeight={700} sx={{ mb: 2, fontSize: 15 }}>
-									Follow steps to submit product front image links
-								</Typography>
-								<Box sx={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
-									<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', borderBottom: '1px dashed #ddd', pb: 2 }}>
-										<Box>
-											<Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: 16 }}>Step 1</Typography>
-											<Typography variant="body2">Download front image link template</Typography>
-										</Box>
-										<Button variant="outlined" sx={{ borderColor: '#4d0aff', color: '#4d0aff', fontWeight: 700, px: 3, borderRadius: 0.5, textTransform: 'none' }} startIcon={<DownloadSvg />}>
-											Download
-										</Button>
-									</Box>
-									<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', pt: 2 }}>
-										<Box>
-											<Typography variant="subtitle1" fontWeight={700} sx={{ fontSize: 16 }}>Step 2</Typography>
-											<Typography variant="body2">Update the file with image links and upload it back</Typography>
-										</Box>
-										<Button variant="outlined" sx={{ borderColor: '#4d0aff', color: '#4d0aff', fontWeight: 700, px: 3, borderRadius: 0.5, textTransform: 'none' }} startIcon={<UploadSvg />}>
-											Upload
-										</Button>
-									</Box>
-								</Box>
-							</>
-						)}
-					</Box>
-					{/* Right: Not Allowed List */}
-					<Box sx={{ minWidth: 260, maxWidth: 320, pl: 2, borderLeft: '1px solid #eee', display: 'flex', flexDirection: 'column', gap: 1 }}>
-						<Typography sx={{ color: '#ff2d2d', fontWeight: 700, mb: 1 }}>
-							<span style={{ fontSize: 20, verticalAlign: 'middle', marginRight: 6 }}>6ab</span> Image types which are not allowed:
-						</Typography>
-						<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-							{[
-								{ label: 'Watermark image', img: url + 'assets/invalid-image-1.png' },
-								{ label: 'Fake branded/1st copy', img: url + 'assets/invalid-image-2.png' },
-								{ label: 'Image with price', img: url + 'assets/invalid-image-3.png' },
-								{ label: 'Pixelated image', img: url + 'assets/invalid-image-4.png' },
-								{ label: 'Inverted image', img: url + 'assets/invalid-image-5.png' },
-								{ label: 'Blur/unclear image', img: url + 'assets/invalid-image-6.png' },
-								{ label: 'Incomplete image', img: url + 'assets/invalid-image-7.png' },
-								{ label: 'Stretched/shrunk image', img: url + 'assets/invalid-image-8.png' },
-								{ label: 'Image with props', img: url + 'assets/invalid-image-9.png' },
-								{ label: 'Image with text', img: url + 'assets/invalid-image-10.png' },
-                
-							].map(item => (
-								<Box key={item.label} sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
-									<Box sx={{ width: 50, height: 50, borderRadius: 1, overflow: 'hidden', background: '#f4f4f4', border: '1px solid #eee', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-										<Image src={item.img} alt={item.label} width={50} height={50} style={{ width: '100%', height:'100%', objectFit: 'contain', filter: 'grayscale(1)' }} />
-									</Box>
-									<Box>
-										<Typography sx={{ fontSize: 15, fontWeight: 500 }}>{item.label}</Typography>
-										<Typography sx={{ fontSize: 12, color: '#888' }}>  6ab NOT ALLOWED</Typography>
-									</Box>
-								</Box>
-							))}
-						</Box>
-					</Box>
-				</DialogContent>
-				<DialogActions sx={{ px: 3, pb: 2 }}>
-					<Button onClick={() => setUploadPopupOpen(false)} variant="outlined" sx={{ minWidth: 120 }}>Discard</Button>
-					<Button
-						variant="contained"
-						color={uploadedImages.length > 0 ? 'primary' : 'inherit'}
-						disabled={uploadedImages.length === 0}
-						sx={{
-							minWidth: 180,
-							fontWeight: 600,
-							background: uploadedImages.length > 0 ? '#4d0aff' : '#e0e0e0',
-							color: uploadedImages.length > 0 ? '#fff' : '#888',
-							'&:hover': {
-								background: uploadedImages.length > 0 ? '#3a08c7' : '#e0e0e0',
-							},
-						}}
-						onClick={handleGenerateTemplate}
-					>
-						Generate Template
-					</Button>
-				</DialogActions>
-			</Dialog>
-									<Typography variant="body2" align="center">or</Typography>
-									<Button variant="text" onClick={handleDownload} disabled={downloading}>
-										{downloading ? (
-											<span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-												<span className="loader" style={{ width: 16, height: 16, border: '2px solid #ccc', borderTop: '2px solid #4d0aff', borderRadius: '50%', animation: 'spin 1s linear infinite', display: 'inline-block' }} />
-												Downloading...
-											</span>
-										) : (
-											'Download Empty Template'
-										)}
-									</Button>
-  
+ {/* Add Product Button */}
+	<Box sx={{ display: "flex", justifyContent: "center", width: "100%", mb: 2, mt: 2 }}>
+	<Button
+		variant="contained"
+		startIcon={<AddPhotoAlternateIcon />}
+		sx={{
+			backgroundColor: "#6C63FF",
+			borderRadius: "8px",
+			textTransform: "none",
+			px: 3,
+			py: 1.2,
+			fontWeight: 600,
+			"&:hover": { backgroundColor: "#5a52d1" }
+		}}
+		onClick={handleAddProduct}
+	>
+		Add Product Images
+	</Button>
+		<input
+	type="file"
+	accept="image/*"
+	multiple
+	ref={inputRef}
+	style={{ display: 'none' }}
+	onChange={handleImageChange} // your handler for selected image
+/>
+	</Box>
 
-							</Box>
-						</Box>
-           
-					</Paper>
+      <Box
+        sx={{
+          backgroundColor: "#FFF8E1",
+          border: "1px solid #FFE082",
+          borderRadius: "8px",
+          p: 1,
+          
+          textAlign: "left"
+        }}
+      >
+        <Typography variant="subtitle2" sx={{ fontWeight: "bold",  display: "flex", alignItems: "center" }}>
+          <Box
+            component="span"
+            sx={{
+              display: "inline-block",
+              width: 8,
+              height: 8,
+              borderRadius: "50%",
+              backgroundColor: "#FFC107",
+              mr: 1
+            }}
+          />
+          Follow guidelines to reduce quality check failure
+        </Typography>
+</Box>
+<Box sx={{ mt: 2, mb: 2 }}>
+  {/* General Guidelines */}
+  <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
+    General Guidelines
+  </Typography>
+  <Box sx={{ mb: 2 }}>
+	{[
+	  "You can add minimum 1 and maximum 9 products to create a catalog",
+	  "Upload the products from the same category that you have chosen"
+	].map((text, idx) => (
+	  <Box key={idx} sx={{ display: "flex", alignItems: "flex-start", mb: 1 }}>
+		<Box
+		  sx={{
+			width: 24,
+			height: 24,
+			borderRadius: "50%",
+			background: "#f5f6ff",
+			color: "#4d0aff",
+			fontWeight: 700,
+			fontSize: 16,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			mr: 1,
+			mt: "2px"
+		  }}
+		>
+		  {idx + 1}
+		</Box>
+		<Typography variant="body2" sx={{ color: "#222", fontWeight: 500 }}>
+		  {text}
+		</Typography>
+	  </Box>
+	))}
+  </Box>
+
+  {/* Image Guidelines */}
+  <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
+    <Typography variant="body2" sx={{ fontWeight: 700 }}>
+      Image Guidelines
+    </Typography>
+	<Link
+	  href="#"
+	  underline="hover"
+	  sx={{ fontWeight: 700, color: "#3a08c7", fontSize: "14px", ml: 2 }}
+	  onClick={e => {
+		e.preventDefault();
+		setImageGuidelinesPopupOpen(true);
+	  }}
+	>
+	  View Full Image Guidelines
+	</Link>
+	<Dialog
+	  open={!!imageGuidelinesPopupOpen}
+	  onClose={() => setImageGuidelinesPopupOpen(false)}
+	  maxWidth="sm"
+	  fullWidth
+	>
+	  <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+    <Typography sx={{ fontWeight: 700, fontSize: 20 }}>
+      Image Guidelines
+    </Typography>
+    <IconButton
+      aria-label="close"
+      onClick={() => setImageGuidelinesPopupOpen(false)}
+      sx={{ color: '#222' }}
+      size="small"
+    >
+      <CloseIcon />
+    </IconButton>
+  </DialogTitle>
+  <DialogContent>
+    <Divider sx={{ mb: 2 }} />
+    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+      Image format
+    </Typography>
+    <ul style={{ marginLeft: 16, marginBottom: 16 }}>
+      <li>
+        We only accept <strong>.JPEG</strong> images. Any other format is not accepted.
+      </li>
+      <li>
+        We accept Images only in <strong>RGB color space</strong>. We don’t accept images in CMYK or any other color space.
+      </li>
+    </ul>
+    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+      Following Images will be rejected
+    </Typography>
+    <ul style={{ marginLeft: 16, marginBottom: 16 }}>
+      <li>Graphic/ Inverted/ Pixelated image are not accepted.</li>
+      <li>Images with text/Watermark are not acceptable in primary images.</li>
+      <li>Blur images and clutter images are not accepted.</li>
+      <li>Images should not contain price/brand logo for the product.</li>
+      <li>Product images must not be shrunk, elongated or stretched.</li>
+      <li>Partial product image is not allowed.</li>
+      <li>Offensive/Objectionable images/products are not acceptable.</li>
+    </ul>
+    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+      Image standards
+    </Typography>
+    <ul style={{ marginLeft: 16 }}>
+      <li>Solo product image without any props.</li>
+      <li>Product image should not have any text.</li>
+    </ul>
+  </DialogContent>
+</Dialog>
+  </Box>
+  <Box>
+	{[
+	  "Images with text/Watermark are not acceptable in primary images",
+	  "Product image should not have any text",
+	  "Please add solo product image without any props"
+	].map((text, idx) => (
+	  <Box key={idx} sx={{ display: "flex", alignItems: "flex-start", mb: 1 }}>
+		<Box
+		  sx={{
+			width: 24,
+			height: 24,
+			borderRadius: "50%",
+			background: "#f5f6ff",
+			color: "#4d0aff",
+			fontWeight: 700,
+			fontSize: 16,
+			display: "flex",
+			alignItems: "center",
+			justifyContent: "center",
+			mr: 1,
+			mt: "2px"
+		  }}
+		>
+		  {idx + 1}
+		</Box>
+		<Typography variant="body2" sx={{ color: "#222", fontWeight: 500 }}>
+		  {text}
+		</Typography>
+	  </Box>
+	))}
+  </Box>
+</Box>
+
+
+
+
+
+
+						</Paper>
 				</Box>
 			)}
 
 			{/* Popup */}
-			<Dialog open={popupOpen} onClose={() => setPopupOpen(false)} maxWidth="sm" fullWidth>
+			<Dialog open={intropopupOpen} onClose={() => setIntroPopupOpen(false)} maxWidth="sm" fullWidth>
 				<DialogTitle>
 					<Typography sx={{ fontSize: 14, fontWeight: 600, color: 'red' }}>
 						NEW
@@ -680,11 +713,67 @@ const url =getSiteURL();
 					</Typography>
 				</DialogContent>
 				<DialogActions>
-					<Button onClick={() => setPopupOpen(false)} variant="outlined">
+					<Button onClick={() => setIntroPopupOpen(false)} variant="outlined">
 						Got it
 					</Button>
 				</DialogActions>
 			</Dialog>
+		
 		</Box>
+
+
+
+
+
+
+		<Dialog open={popupOpen} onClose={handleClose} maxWidth="md" fullWidth>
+			<DialogTitle sx={{ fontWeight: 700, fontSize: 20 }}>
+				Selected Product Images
+			</DialogTitle>
+			<DialogContent>
+				<Typography sx={{ mb: 2 }}>
+					Please review the selected images. You can add only front images of your product.
+				</Typography>
+				<Box sx={{ display: 'flex', gap: 4 }}>
+					<Box sx={{ minWidth: 100 }}>
+						<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
+							{selectedImages.map((img, idx) => (
+								<Box key={idx} sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden' }}>
+									<img src={img.url} alt={`Product ${idx + 1}`} style={{ width:80 , height:80, objectFit: 'cover', borderRadius: 8 }} />
+									<IconButton
+										size="small"
+										sx={{ position: 'absolute', top: 4, right: 4, background: '#fff' }}
+										onClick={() => setSelectedImages(images => images.filter((_, i) => i !== idx))}
+									>
+										<CloseIcon />
+									</IconButton>
+								</Box>
+							))}
+						</Box>
+					</Box>
+					<Box sx={{ flex: 1 }}>
+						<Typography sx={{ color: '#F44336', fontWeight: 700, mb: 2 }}>
+							Image types which are not allowed
+						</Typography>
+						<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
+							{imageTypeList.map((type) => (
+								<Paper key={type.label} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+									<img src={type.icon} alt={type.label} style={{ width: 40, height: 40, objectFit: 'contain' }} />
+									<Box>
+										<Typography sx={{ fontWeight: 600 }}>{type.label}</Typography>
+										<Typography sx={{ color: '#888', fontSize: 13 }}>NOT ALLOWED</Typography>
+									</Box>
+								</Paper>
+							))}
+						</Box>
+					</Box>
+				</Box>
+			</DialogContent>
+			<DialogActions sx={{ justifyContent: 'space-between', px: 3, pb: 2 }}>
+				<Button variant="outlined" onClick={handleClose}>Cancel</Button>
+				<Button variant="contained" color="primary" onClick={handleContinue}>Continue</Button>
+			</DialogActions>
+		</Dialog>
+		</>
 	);
 }

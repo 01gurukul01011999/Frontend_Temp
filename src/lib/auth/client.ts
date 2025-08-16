@@ -173,20 +173,23 @@ async profile(params: profileParams): Promise<{ error?: string }> {
       const response = await axios.get(`${process.env.NEXT_PUBLIC_BACKEND_URL}/protected`, {
         headers: { Authorization: `Bearer ${token}` }
       });
-      //console.log('Response from getUser:', response.data.user);
-      if (!response.data.user) {
-        return { data: null, error: 'User not found' };
-      }
-      if (response.data.user == "Token expired") {
-        authClient.signOut();
-  if (globalThis.window !== undefined) {
-          globalThis.window.location.href = '/auth/sign-in';
+      if (!response.data.user || response.data.user === "Token expired") {
+        await this.signOut();
+        if (typeof window !== 'undefined') {
+          window.location.href = '/auth/sign-in';
         }
-        return { data: null, error: 'Token expired' };
+        return { data: null, error: 'Token expired or user not found' };
       }
       return { data: response.data.user };
     } catch (error: unknown) {
-  if (isAxiosError(error)) {
+      if (isAxiosError(error)) {
+        // If unauthorized or token error, remove token and redirect
+        if (error.response?.status === 401 || (error.response?.data && (error.response.data.error === 'Token expired' || error.response.data.error === 'Unauthorized'))) {
+          await this.signOut();
+          if (typeof window !== 'undefined') {
+            window.location.href = '/auth/sign-in';
+          }
+        }
         return { error: error.response?.data?.error || 'Failed to fetch user', data: null };
       }
       return { error: 'Failed to fetch user', data: null };
