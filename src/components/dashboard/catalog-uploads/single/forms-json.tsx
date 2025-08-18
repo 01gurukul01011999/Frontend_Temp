@@ -16,7 +16,9 @@ const formsJson = {
       { "label": "Importer Details", "type": "text" }
     ],
     "ProductDetails": [
-      { "label": "Case/Bezel Material", "type": "dropdown", "options": [] },
+      { "label": "Case/Bezel Material", "type": "dropdown", "options": [
+        
+      ] },
       { "label": "Color", "type": "dropdown", "options": [] },
       { "label": "Dial Color", "type": "dropdown", "options": [] },
       { "label": "Dial Design", "type": "dropdown", "options": [] },
@@ -45,11 +47,11 @@ const formsJson = {
       "copyInputDetailsToAllProducts": true,
       "ProductSizeInventory": [
         { "label": "GST %", "type": "dropdown", "options": ["0", "5", "12", "18", "28"] },
-        { "label": "HSN Code", "type": "dropdown", "options": [] },
+        { "label": "HSN Code", "type": "text", "placeholder": "Enter Product HSN Code" },
         { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)" },
         { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)" },
         { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name" },
-        { "label": "Size", "type": "dropdown", "options": [] }
+        { "label": "Size", "type": "dropdown", "options": ['Free Size'] }
       ]
     }
   }

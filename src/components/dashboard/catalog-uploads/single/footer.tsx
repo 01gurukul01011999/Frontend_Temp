@@ -15,8 +15,10 @@ export default function Footer(): React.JSX.Element {
           backgroundColor: '#ffffff',
           padding: '8px 16px',
           width: '100%',
+          zIndex: 1300, // Ensures it's on the top layer
+          boxShadow: '0 -2px 8px rgba(0,0,0,0.08)',
         }}
-      >
+            >
         <Button
           variant="outlined"
           sx={{
@@ -29,7 +31,7 @@ export default function Footer(): React.JSX.Element {
         >
           Discard Catalog
         </Button>
-      </Box>
+            </Box>
       
         </>
     );

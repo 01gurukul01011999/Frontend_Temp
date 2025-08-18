@@ -8,12 +8,17 @@ import TextField from '@mui/material/TextField';
 import CloseIcon from '@mui/icons-material/Close';
 import HeadsetMicIcon from '@mui/icons-material/HeadsetMic';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import InfoIcon from '@mui/icons-material/Info';
+import { Add, ArrowBack, ArrowForward, CheckCircle } from "@mui/icons-material";
 import {
-	Box,
-	Typography,
-	Button,
-	Paper,
+	Popover,
+	  Box,
+  Button,
+  Typography,
+  Paper,
+  MenuItem,
+  Select,
+  FormControl,
+  InputLabel,
 	ListItemButton,
 	Dialog,
 	DialogTitle,
@@ -22,48 +27,55 @@ import {
 	IconButton,
 	Stepper, Step, StepLabel,
 	Link,
-	Divider
+	Divider,
+	FormControlLabel,
 } from '@mui/material';
-import { flex, styled } from "@mui/system";
+import { styled } from "@mui/system";
 import categoryTree, { CategoryNode } from '../bulk/category-tree';
-import AddIcon from '@mui/icons-material/Add';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { getSiteURL } from '@/lib/get-site-url';
-import Isvg from './isvg';
-import PlusSvg from './plus-svg';
-import DownloadSvg from './download-svg';
-import UploadSvg from './upload-svg';
-
+import formsJson from "./forms-json"; 
 
 const steps = ["Select Category", "Add Product Details"];
 
 interface CustomStepIconRootProps {
   active?: boolean;
+  completed?: boolean;
 }
 
-const CustomStepIconRoot = styled("div")<CustomStepIconRootProps>(({ theme, active }) => ({
-  display: "flex",
-  alignItems: "center",
-  justifyContent: "center",
-  width: 28,
-  height: 28,
-  borderRadius: "50%",
-  backgroundColor: active ? "rgba(99, 102, 241, 0.1)" : "#f0f0f0",
-  color: active ? "#6366f1" : "#9e9e9e",
-  fontWeight: 600,
-  fontSize: 14,
-  border: `1px solid ${active ? "#6366f1" : "#ccc"}`
+const CustomStepIconRoot = styled("div")<CustomStepIconRootProps>(({ theme, active, completed }) => ({
+	display: "flex",
+	alignItems: "center",
+	justifyContent: "center",
+	width: 28,
+	height: 28,
+	borderRadius: "50%",
+	backgroundColor: completed ? "#43C15A1A" : (active ? "rgba(99, 102, 241, 0.1)" : "#f0f0f0"),
+	color: completed ? "#43C15A" : (active ? "#6366f1" : "#9e9e9e"),
+	fontWeight: 600,
+	fontSize: 14,
+	border: `1px solid ${completed ? "#43C15A" : (active ? "#6366f1" : "#ccc")}`
 }));
 
 interface CustomStepIconProps {
-  active?: boolean;
-  completed?: boolean;
-  icon?: React.ReactNode;
+	active?: boolean;
+	completed?: boolean;
+	icon?: React.ReactNode;
+	step?: number;
+	activeStep?: number;
 }
 
 function CustomStepIcon(props: CustomStepIconProps) {
-  const { active, completed, icon } = props;
-  return <CustomStepIconRoot active={!!active}>{icon}</CustomStepIconRoot>;
+	const { active, completed, icon, step, activeStep } = props;
+	// If step 0 and activeStep > 0, show green check
+	if (typeof step === 'number' && step === 0 && typeof activeStep === 'number' && activeStep > 0) {
+		return (
+			<CustomStepIconRoot active={false} completed={true}>
+				<CheckCircle sx={{ color: '#43C15A', fontSize: 22 }} />
+			</CustomStepIconRoot>
+		);
+	}
+	return <CustomStepIconRoot active={!!active} completed={!!completed}>{icon}</CustomStepIconRoot>;
 }
 
 // Helper to flatten category tree into array of full paths
@@ -80,10 +92,36 @@ function getAllCategoryPaths(tree: Record<string, unknown>, prefix: string[] = [
 }
 
 export default function CategorySelector(): React.JSX.Element {
+	// Size filter popover state
+	const [filterFreeSize, setFilterFreeSize] = useState(false);
+	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+	const handleSizeInputClick = (event: React.MouseEvent<HTMLElement>) => {
+		setAnchorEl(event.currentTarget);
+	};
+	const handlePopoverClose = () => {
+		setAnchorEl(null);
+	};
+	const handleApplyFilter = () => {
+		setAnchorEl(null);
+		// Implement filter logic as needed
+	};
+	const handleClearFilter = () => {
+		setFilterFreeSize(false);
+	};
+	const open = Boolean(anchorEl);
+	const [copyAll, setCopyAll] = useState(false);
 	const [popupOpen, setPopupOpen] = useState(false);
 	const [intropopupOpen, setIntroPopupOpen] = useState(false);
 	const [selectedImages, setSelectedImages] = useState<Array<{ url: string }>>([]);
-
+	// Track the active product tab (0-based index)
+	const [activeProductIndex, setActiveProductIndex] = useState(0);
+	// Store form data for each product
+	const initialFormData = () => ({
+		ProductSizeInventory: {},
+		ProductDetails: {},
+		OtherAttributes: {},
+	});
+	const [productForms, setProductForms] = useState<any[]>([]);
 	const imageTypeList = [
 		{ label: 'Watermark image', icon: '/assets/invalid-image-1.png' },
 		{ label: 'Fake branded/1st copy', icon: '/assets/invalid-image-2.png' },
@@ -98,7 +136,12 @@ export default function CategorySelector(): React.JSX.Element {
 	];
 
 	const handleRemoveImage = (idx: number) => {
-		setSelectedImages(images => images.filter((_, i) => i !== idx));
+		setSelectedImages(images => {
+			const newImages = images.filter((_, i) => i !== idx);
+			setProductForms(forms => forms.filter((_, i) => i !== idx));
+			setActiveProductIndex(prev => prev >= newImages.length ? 0 : prev);
+			return newImages;
+		});
 	};
 	const handleAddProduct = () => {
 		inputRef.current?.click();
@@ -106,15 +149,15 @@ export default function CategorySelector(): React.JSX.Element {
 	const handleContinue = () => {
 		setPopupOpen(false);
 		setActiveStep(1);
-		// Map selected images to slots in order
-		setSlotImages(prev => {
-			const newSlots = { ...prev };
-			selectedImages.forEach((img, idx) => {
-				if (imageSlots[idx]) newSlots[imageSlots[idx].key] = img.url;
-			});
-			return newSlots;
+		setActiveProductIndex(0); // Always start with first product tab
+		// Ensure productForms matches selectedImages
+		setProductForms(forms => {
+			const formsCopy = [...forms];
+			while (formsCopy.length < selectedImages.length) {
+				formsCopy.push(initialFormData());
+			}
+			return formsCopy.slice(0, selectedImages.length);
 		});
-		setSelectedImages([]);
 	};
 	const handleClose = () => setPopupOpen(false);
 	
@@ -254,6 +297,7 @@ console.log('uploadimages', uploadedImages);
 		const options = Object.keys(currentTree);
 		if (options.length === 0) break;
 		console.log('currentTree', currentTree);
+       
 		columns.push(
 			<Box key={level} sx={{ width: 200, mr: 2, overflowY: 'auto', maxHeight: '58vh' }}>
 				{options.map((opt) => (
@@ -302,41 +346,79 @@ console.log('uploadimages', uploadedImages);
 
 const url =getSiteURL();
 //console.log(url+'assets/woemns category.png');
-	// Show right panel ONLY if the selected path is a leaf in the original categoryTree
-	const showRightPanel = selectionPath.length > 0;
+	// Show right panel if the selected path is a leaf (null) or the value is the string 'null'
+// Show right panel if the user has selected 4 levels
+const showRightPanel = selectionPath.length === 4;
 
 
 	const [imageGuidelinesPopupOpen, setImageGuidelinesPopupOpen] = useState(false);
 	
 
 	const inputRef = React.useRef<HTMLInputElement>(null);
+	const addProductInputRef = React.useRef<HTMLInputElement>(null);
 
 	// Handler for file input change
-	const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-		const files = event.target.files;
-		if (files && files.length > 0) {
-			const fileArray = Array.from(files);
-			Promise.all(
-				fileArray.map(file => {
-					return new Promise<{ url: string }>((resolve, reject) => {
-						const reader = new FileReader();
-						reader.onload = () => {
-							if (typeof reader.result === 'string') {
-								resolve({ url: reader.result });
-							} else {
-								reject('Failed to read file');
-							}
-						};
-						reader.onerror = reject;
-						reader.readAsDataURL(file);
+	// For main multi-image input (step 1)
+const handleAddProductImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+	const files = event.target.files;
+	if (files && files.length > 0) {
+		const file = files[0];
+		const reader = new FileReader();
+		reader.onload = () => {
+			if (typeof reader.result === 'string') {
+				setSelectedImages(prev => {
+					const newImages = [...prev, { url: reader.result as string }];
+					setProductForms(forms => {
+						const formsCopy = [...forms];
+						while (formsCopy.length < newImages.length) {
+							formsCopy.push(initialFormData());
+						}
+						return formsCopy;
 					});
-				})
-			).then((images) => {
-				setSelectedImages(prev => [...prev, ...images]);
-				setPopupOpen(true);
+					setActiveProductIndex(newImages.length - 1);
+					return newImages;
+				});
+			}
+		};
+		reader.readAsDataURL(file);
+	}
+};
+
+const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+	const files = event.target.files;
+	if (files && files.length > 0) {
+		const fileArray = Array.from(files);
+		Promise.all(
+			fileArray.map(file => {
+				return new Promise<{ url: string }>((resolve, reject) => {
+					const reader = new FileReader();
+					reader.onload = () => {
+						if (typeof reader.result === 'string') {
+							resolve({ url: reader.result });
+						} else {
+							reject('Failed to read file');
+						}
+					};
+					reader.onerror = reject;
+					reader.readAsDataURL(file);
+				});
+			})
+		).then((images) => {
+			setSelectedImages(prev => {
+				const newImages = [...prev, ...images];
+				setProductForms(forms => {
+					const formsCopy = [...forms];
+					while (formsCopy.length < newImages.length) {
+						formsCopy.push(initialFormData());
+					}
+					return formsCopy;
+				});
+				return newImages;
 			});
-		}
-	};
+			setPopupOpen(true);
+		});
+	}
+};
 
 	// Define the slots for product images
 	const imageSlots = [
@@ -356,7 +438,139 @@ const url =getSiteURL();
 	  size: null,
 	});
 
-	return (<>
+
+
+
+	  const form = formsJson["form_101"] as {
+		AddProductDetails: {
+			ProductSizeInventory: FormField[];
+		};
+		ProductDetails: FormField[];
+		OtherAttributes: FormField[];
+	  };
+
+interface FormField {
+	type: "dropdown" | "text" | "textarea";
+	label: string;
+	placeholder?: string;
+	options?: string[];
+	maxlength?: number;
+}
+
+// Pass productIndex to renderField for per-product state
+const renderField = (field: FormField, index: number, section: string, productIndex: number) => {
+	const value = productForms[productIndex]?.[section]?.[field.label] || "";
+	const handleChange = (e: any) => {
+		const val = e.target.value;
+		setProductForms(forms => {
+			let updated = [...forms];
+			if (!updated[productIndex]) updated[productIndex] = initialFormData();
+			if (!updated[productIndex][section]) updated[productIndex][section] = {};
+			updated[productIndex][section][field.label] = val;
+			if (copyAll) {
+				// Copy this product's form to all others
+				updated = updated.map(() => JSON.parse(JSON.stringify(updated[productIndex])));
+			}
+			return updated;
+		});
+	};
+	if (field.type === "dropdown") {
+		return (
+			<FormControl
+				key={index}
+				fullWidth
+				sx={{ flex: "1 1 45%", minWidth: "200px" }}
+			>
+				<InputLabel>{field.label}</InputLabel>
+				<Select value={value} onChange={handleChange} label={field.label}>
+					<MenuItem value="">Select</MenuItem>
+					{field.options?.map((opt, i) => (
+						<MenuItem key={i} value={opt}>
+							{opt}
+						</MenuItem>
+					))}
+				</Select>
+			</FormControl>
+		);
+	}
+	if (field.type === "text") {
+		return (
+			<TextField
+				key={index}
+				label={field.label}
+				placeholder={field.placeholder || ""}
+				value={value}
+				onChange={handleChange}
+				sx={{ flex: "1 1 45%", minWidth: "200px" }}
+			/>
+		);
+	}
+	if (field.type === "textarea") {
+		return (
+			<TextField
+				key={index}
+				label={field.label}
+				placeholder={field.placeholder || ""}
+				multiline
+				rows={3}
+				value={value}
+				onChange={handleChange}
+				inputProps={{ maxLength: field.maxlength || 500 }}
+				sx={{ flex: "1 1 45%" }}
+			/>
+		);
+	}
+	return null;
+};
+
+		return (<>
+			{/* Size Filter Input with Popover */}
+			<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+				<TextField
+					label="Size"
+					value={filterFreeSize ? 'Free Size' : ''}
+					onClick={handleSizeInputClick}
+					sx={{ width: 180, background: '#fff' }}
+					InputProps={{ readOnly: true }}
+				/>
+				<Popover
+					open={open}
+					anchorEl={anchorEl}
+					onClose={handlePopoverClose}
+					anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+					transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+					PaperProps={{ sx: { p: 2, borderRadius: 2, boxShadow: 3, minWidth: 220 } }}
+				>
+					<FormControlLabel
+						control={
+							<input
+								type="checkbox"
+								checked={filterFreeSize}
+								onChange={e => setFilterFreeSize(e.target.checked)}
+								style={{ accentColor: '#3a08c7', width: 18, height: 18 }}
+							/>
+						}
+						label={<Typography sx={{ fontWeight: 500, color: '#222', fontSize: 16 }}>Free Size</Typography>}
+						sx={{ mb: 2, ml: 0 }}
+					/>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+						<Button
+							variant="text"
+							sx={{ color: '#3a08c7', fontWeight: 600, textTransform: 'none', pl: 0 }}
+							onClick={handleClearFilter}
+						>
+							Clear Filter
+						</Button>
+						<Button
+							variant="contained"
+							sx={{ background: '#3a08c7', color: '#fff', fontWeight: 700, borderRadius: 2, px: 4, ml: 'auto' }}
+							onClick={handleApplyFilter}
+						>
+							Apply
+						</Button>
+					</Box>
+				</Popover>
+			</Box>
 		{/* Trigger for demo: open popup when clicking first image 
 		<Button onClick={handleOpenPopup} sx={{ mb: 2 }}>Open Product Images Popup</Button>
 */}
@@ -372,6 +586,11 @@ const url =getSiteURL();
 						fontSize: "12px",
 						fontWeight: 500,
 						color: "#888",
+						// Green for completed step 0
+						'&.Mui-completed': {
+							color: '#43C15A',
+							fontWeight: 700,
+						},
 					},
 					"& .MuiStepLabel-label.Mui-active": {
 						color: "#4d0aff",
@@ -408,8 +627,8 @@ const url =getSiteURL();
 				}}
 			>
 				{steps.map((label, index) => (
-					<Step key={label}>
-						<StepLabel StepIconComponent={CustomStepIcon}>{label}</StepLabel>
+					<Step key={label} completed={index === 0 && activeStep > 0}>
+						<StepLabel StepIconComponent={(props) => <CustomStepIcon {...props} step={index} activeStep={activeStep} />}>{label}</StepLabel>
 					</Step>
 				))}
 			</Stepper>
@@ -431,12 +650,8 @@ const url =getSiteURL();
         </Box>
 		</Box>
 	
-	
-	<Box sx={{ display: 'flex', flexDirection: 'row', p:1 , maxheight:'500px', mb:10, overflowY: 'auto', overflowX: 'hidden' }}>
-			
-			
-			
-			
+	{activeStep === 0 && (<>
+	<Box sx={{ display: 'flex', flexDirection: 'row', p:1 , maxheight:'500px', mb:10, overflowY: 'auto', overflowX: 'hidden' }}>			
 			{/* Left: Search and category columns */}
 			<Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, minWidth: 0 }}>
 				<Autocomplete
@@ -537,13 +752,13 @@ const url =getSiteURL();
 		Add Product Images
 	</Button>
 		<input
-	type="file"
-	accept="image/*"
-	multiple
-	ref={inputRef}
-	style={{ display: 'none' }}
-	onChange={handleImageChange} // your handler for selected image
-/>
+			type="file"
+			accept="image/*"
+			multiple
+			ref={inputRef}
+			style={{ display: 'none' }}
+			onChange={handleImageChange} // your handler for selected image
+		/>
 	</Box>
 
       <Box
@@ -801,57 +1016,143 @@ const url =getSiteURL();
 				<Button variant="outlined" onClick={handleClose}>Cancel</Button>
 				<Button variant="contained" color="primary" onClick={handleContinue}>Continue</Button>
 			</DialogActions>
-		</Dialog>
-
+		</Dialog></>
+)}
 		{/* Step 2: Add Product Details - Image Slots */}
 		{activeStep === 1 && (
-  <Box sx={{ display: 'flex', flexDirection: 'row', mt: 2 }}>
-    <Box sx={{ flex: 1 }}>
-      <Typography variant="h6" sx={{ mb: 2 }}>
-        Add images with details listed here
-      </Typography>
-      {imageSlots.map((slot, idx) => (
-        <Box key={slot.key} sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-          <Box sx={{ width: 60, height: 60, border: '1px solid #eee', borderRadius: 2, overflow: 'hidden', mr: 2, display: 'flex', alignItems: 'center', justifyContent: 'center', background: '#fafafa' }}>
-            {slotImages[slot.key] ? (
-              <img src={slotImages[slot.key] as string} alt={slot.label} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-            ) : (
-              <Typography sx={{ color: '#bbb', fontSize: 12 }}>No Image</Typography>
-            )}
-          </Box>
-          <Box sx={{ flex: 1 }}>
-            <Typography sx={{ fontWeight: 600 }}>{slot.label}</Typography>
-            <Typography sx={{ color: '#888', fontSize: 13 }}>{slot.desc}</Typography>
-          </Box>
-          <Button
-            variant="outlined"
-            size="small"
-            component="label"
-            sx={{ ml: 2 }}
-          >
-            {slotImages[slot.key] ? 'Replace' : 'Upload'}
-            <input
-              type="file"
-              accept="image/*"
-              hidden
-              onChange={e => {
-                const file = e.target.files?.[0];
-                if (file) {
-                  const reader = new FileReader();
-                  reader.onload = () => {
-                    if (typeof reader.result === 'string') {
-                      setSlotImages(prev => ({ ...prev, [slot.key]: reader.result as string }));
-                    }
-                  };
-                  reader.readAsDataURL(file);
-                }
-              }}
-            />
-          </Button>
-        </Box>
-      ))}
-    </Box>
-  </Box>
+			<Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+				{/* Product Tabs */}
+				<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+					{selectedImages.map((img, idx) => (
+						<Button
+							key={idx}
+							variant={activeProductIndex === idx ? "contained" : "outlined"}
+							color={activeProductIndex === idx ? "primary" : "inherit"}
+							onClick={() => setActiveProductIndex(idx)}
+							sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
+						>
+							<img
+								src={img.url}
+								alt={`Product ${idx + 1}`}
+								style={{ width: 48, height: 48, borderRadius: 2, objectFit: 'cover', marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }}
+							/>
+							Product {idx + 1}
+						</Button>
+					))}
+					<Button
+						variant="outlined"
+						color="primary"
+						sx={{ minWidth: 120, height: 56, display: 'flex', alignItems: 'center', gap: 1, borderStyle: 'dashed', borderColor: '#6366f1' }}
+						onClick={() => {
+							if (addProductInputRef.current) addProductInputRef.current.value = '';
+							addProductInputRef.current?.click();
+						}}
+					>
+						<Add sx={{ fontSize: 28, color: '#6366f1' }} />
+						Add Product
+					</Button>
+					<input
+						type="file"
+						accept="image/*"
+						ref={addProductInputRef}
+						style={{ display: 'none' }}
+						onChange={handleAddProductImage}
+					/>
+				</Box>
+				{/* Main Content */}
+				<Box sx={{ display: "flex", gap: 2, mb: 10 }}>
+					{/* Left: Form */}
+					<Paper sx={{ flex: 2, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+						<Typography variant="h5" sx={{fontWeight:"1600px"}}>Add Product Details</Typography>
+						{activeProductIndex === 0 && (
+							<>
+							<Box sx={{  mx: 1 ,backgroundColor: "#f2f5fa" , p:2 , borderRadius: 1, }}>
+								<FormControlLabel
+									control={<input type="checkbox" checked={copyAll} onChange={e => {
+										const checked = e.target.checked;
+										setCopyAll(checked);
+										if (checked && productForms[activeProductIndex]) {
+											setProductForms(forms => forms.map(() => JSON.parse(JSON.stringify(forms[activeProductIndex]))));
+										}
+									}} />}
+									label="Copy input details to all product "
+								/>
+								<Typography variant="body2" sx={{ ml:1,mt: 0, color: "#555" }}>
+									If you want to change specific fields for particular product like Color, Fabric etc, you can change it by selecting that product.
+								</Typography>
+								</Box>
+							</>
+						)}
+						<Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+							{/* Product, Size and Inventory */}
+							<Box>
+								<Typography variant="h6" gutterBottom>
+									Product, Size and Inventory
+								</Typography>
+								<Divider sx={{ mt: 1, mb:2}} />
+								<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+								{form.AddProductDetails.ProductSizeInventory.map((field, idx) =>
+									renderField(field, idx, "ProductSizeInventory", activeProductIndex)
+								)}
+								</Box>
+							</Box>
+							{/* Product Details */}
+							<Box>
+								<Typography variant="h6" gutterBottom>
+									Product Details
+								</Typography>
+								<Divider sx={{ mt: 1, mb:2}} />
+								<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+									{form.ProductDetails.map((field, idx) => renderField(field, idx, "ProductDetails", activeProductIndex))}
+								</Box>
+							</Box>
+							{/* Other Attributes */}
+							<Box>
+								<Typography variant="h6" gutterBottom>
+									Other Attributes
+								</Typography>
+								<Divider sx={{ mt: 1, mb:2}} />
+								<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+									{form.OtherAttributes.map((field, idx) => renderField(field, idx, "OtherAttributes", activeProductIndex))}
+								</Box>
+							</Box>
+						</Box>
+					</Paper>
+					{/* Right Sidebar */}
+					<Paper sx={{ flex: 1, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+						<Typography variant="subtitle1">Follow guidelines to reduce quality check failure</Typography>
+						<Typography variant="body2" color="text.secondary">
+							- Images with text/watermark are not acceptable in primary images.
+							<br />- Product image should not have any text.
+							<br />- Add product image without props.
+						</Typography>
+						<Typography variant="subtitle2" sx={{ mt: 2 }}>
+							Add images with details listed here
+						</Typography>
+						<ul style={{ margin: 0, paddingLeft: "20px" }}>
+							<li>Front View Image *</li>
+							<li>Side View Image *</li>
+							<li>Back View Image *</li>
+							<li>Zoom View Image *</li>
+						</ul>
+						<Box sx={{ mt: 2 }}>
+							<Typography variant="subtitle2">Uploaded Images</Typography>
+							<Box
+								sx={{
+									border: "1px dashed gray",
+									borderRadius: 2,
+									p: 2,
+									textAlign: "center",
+									mt: 1,
+									cursor: "pointer",
+								}}
+							>
+								+ Add Images
+							</Box>
+						</Box>
+					</Paper>
+				</Box>
+			</Box>
 		)}
 		</>
 	);
