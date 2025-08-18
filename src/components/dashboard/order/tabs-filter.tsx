@@ -83,7 +83,7 @@ function TabsFilter() : React.JSX.Element {
       setLoading(true);
       setError(null);
       try {
-        const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + 'orderfetch';
+        const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + '/orderfetch';
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
