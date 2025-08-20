@@ -283,7 +283,7 @@ console.log('uploadimages', uploadedImages);
 		const options = Object.keys(currentTree);
 		if (options.length === 0) break;
 		console.log('currentTree', currentTree);
-       
+	   
 		columns.push(
 			<Box key={level} sx={{ width: 200, mr: 2, overflowY: 'auto', maxHeight: '58vh' }}>
 				{options.map((opt) => (
@@ -472,20 +472,20 @@ const handleSizePopoverClose = () => {
 
 const handleSizePopoverApply = () => {
   if (
-    sizePopoverProductIndex !== null &&
-    sizePopoverSection &&
-    sizePopoverLabel
+	sizePopoverProductIndex !== null &&
+	sizePopoverSection &&
+	sizePopoverLabel
   ) {
-    setProductForms((forms) => {
-      const updated = [...forms];
-      if (!updated[sizePopoverProductIndex]) updated[sizePopoverProductIndex] = initialFormData();
-      if (!updated[sizePopoverProductIndex][sizePopoverSection]) updated[sizePopoverProductIndex][sizePopoverSection] = {};
-      updated[sizePopoverProductIndex][sizePopoverSection][sizePopoverLabel] = sizePopoverValue;
-      if (copyAll) {
-        return updated.map(() => JSON.parse(JSON.stringify(updated[sizePopoverProductIndex])));
-      }
-      return updated;
-    });
+	setProductForms((forms) => {
+	  const updated = [...forms];
+	  if (!updated[sizePopoverProductIndex]) updated[sizePopoverProductIndex] = initialFormData();
+	  if (!updated[sizePopoverProductIndex][sizePopoverSection]) updated[sizePopoverProductIndex][sizePopoverSection] = {};
+	  updated[sizePopoverProductIndex][sizePopoverSection][sizePopoverLabel] = sizePopoverValue;
+	  if (copyAll) {
+		return updated.map(() => JSON.parse(JSON.stringify(updated[sizePopoverProductIndex])));
+	  }
+	  return updated;
+	});
   }
   setSizePopoverAnchor(null);
 };
@@ -734,21 +734,21 @@ const renderField = (
 				))}
 			</Stepper>
 			<Box sx={{ position: 'absolute', right: 0, marginRight:8, mt: -1 }}>
-          <Button
-            startIcon={<HeadsetMicIcon />}
-            variant="outlined"
-            size="small"
-            sx={{
-              textTransform: 'none',
-              borderColor: '#4d0aff',
-              color: '#4d0aff', 
-              fontWeight: 600,
-              backgroundColor: 'white',
-            }}
-          >
-            Need Help?
-          </Button>
-        </Box>
+		  <Button
+			startIcon={<HeadsetMicIcon />}
+			variant="outlined"
+			size="small"
+			sx={{
+			  textTransform: 'none',
+			  borderColor: '#4d0aff',
+			  color: '#4d0aff', 
+			  fontWeight: 600,
+			  backgroundColor: 'white',
+			}}
+		  >
+			Need Help?
+		  </Button>
+		</Box>
 		</Box>
 	
 	{activeStep === 0 && (<>
@@ -819,7 +819,7 @@ const renderField = (
 			{/* Right Panel */}
 			{showRightPanel && (
 			<Box sx={{ width: '30%',mt:8, minWidth: 300, ml: 2, display: 'flex', flexDirection: 'column', alignItems: 'flex-start' }}>
-          
+		  
 					<Paper sx={{ p: 2, mb: 2 }}>
 						<Box sx={{backgroundColor:'#C4C4C4' , padding:1, width:'auto', mt:-2, mr:-2, ml:-2 , mb:2}}>
 					<Typography variant="body2" sx={{ fontWeight: 600 }}>
@@ -862,35 +862,35 @@ const renderField = (
 		/>
 	</Box>
 
-      <Box
-        sx={{
-          backgroundColor: "#FFF8E1",
-          border: "1px solid #FFE082",
-          borderRadius: "8px",
-          p: 1,
-          
-          textAlign: "left"
-        }}
-      >
-        <Typography variant="subtitle2" sx={{ fontWeight: "bold",  display: "flex", alignItems: "center" }}>
-          <Box
-            component="span"
-            sx={{
-              display: "inline-block",
-              width: 8,
-              height: 8,
-              borderRadius: "50%",
-              backgroundColor: "#FFC107",
-              mr: 1
-            }}
-          />
-          Follow guidelines to reduce quality check failure
-        </Typography>
+	  <Box
+		sx={{
+		  backgroundColor: "#FFF8E1",
+		  border: "1px solid #FFE082",
+		  borderRadius: "8px",
+		  p: 1,
+		  
+		  textAlign: "left"
+		}}
+	  >
+		<Typography variant="subtitle2" sx={{ fontWeight: "bold",  display: "flex", alignItems: "center" }}>
+		  <Box
+			component="span"
+			sx={{
+			  display: "inline-block",
+			  width: 8,
+			  height: 8,
+			  borderRadius: "50%",
+			  backgroundColor: "#FFC107",
+			  mr: 1
+			}}
+		  />
+		  Follow guidelines to reduce quality check failure
+		</Typography>
 </Box>
 <Box sx={{ mt: 2, mb: 2 }}>
   {/* General Guidelines */}
   <Typography variant="body2" sx={{ fontWeight: 700, mb: 1 }}>
-    General Guidelines
+	General Guidelines
   </Typography>
   <Box sx={{ mb: 2 }}>
 	{[
@@ -925,9 +925,9 @@ const renderField = (
 
   {/* Image Guidelines */}
   <Box sx={{ display: "flex", alignItems: "center", mb: 1 }}>
-    <Typography variant="body2" sx={{ fontWeight: 700 }}>
-      Image Guidelines
-    </Typography>
+	<Typography variant="body2" sx={{ fontWeight: 700 }}>
+	  Image Guidelines
+	</Typography>
 	<Link
 	  href="#"
 	  underline="hover"
@@ -946,50 +946,50 @@ const renderField = (
 	  fullWidth
 	>
 	  <DialogTitle sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-    <Typography sx={{ fontWeight: 700, fontSize: 20 }}>
-      Image Guidelines
-    </Typography>
-    <IconButton
-      aria-label="close"
-      onClick={() => setImageGuidelinesPopupOpen(false)}
-      sx={{ color: '#222' }}
-      size="small"
-    >
-      <CloseIcon />
-    </IconButton>
+	<Typography sx={{ fontWeight: 700, fontSize: 20 }}>
+	  Image Guidelines
+	</Typography>
+	<IconButton
+	  aria-label="close"
+	  onClick={() => setImageGuidelinesPopupOpen(false)}
+	  sx={{ color: '#222' }}
+	  size="small"
+	>
+	  <CloseIcon />
+	</IconButton>
   </DialogTitle>
   <DialogContent>
-    <Divider sx={{ mb: 2 }} />
-    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-      Image format
-    </Typography>
-    <ul style={{ marginLeft: 16, marginBottom: 16 }}>
-      <li>
-        We only accept <strong>.JPEG</strong> images. Any other format is not accepted.
-      </li>
-      <li>
-        We accept Images only in <strong>RGB color space</strong>. We don’t accept images in CMYK or any other color space.
-      </li>
-    </ul>
-    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-      Following Images will be rejected
-    </Typography>
-    <ul style={{ marginLeft: 16, marginBottom: 16 }}>
-      <li>Graphic/ Inverted/ Pixelated image are not accepted.</li>
-      <li>Images with text/Watermark are not acceptable in primary images.</li>
-      <li>Blur images and clutter images are not accepted.</li>
-      <li>Images should not contain price/brand logo for the product.</li>
-      <li>Product images must not be shrunk, elongated or stretched.</li>
-      <li>Partial product image is not allowed.</li>
-      <li>Offensive/Objectionable images/products are not acceptable.</li>
-    </ul>
-    <Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
-      Image standards
-    </Typography>
-    <ul style={{ marginLeft: 16 }}>
-      <li>Solo product image without any props.</li>
-      <li>Product image should not have any text.</li>
-    </ul>
+	<Divider sx={{ mb: 2 }} />
+	<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+	  Image format
+	</Typography>
+	<ul style={{ marginLeft: 16, marginBottom: 16 }}>
+	  <li>
+		We only accept <strong>.JPEG</strong> images. Any other format is not accepted.
+	  </li>
+	  <li>
+		We accept Images only in <strong>RGB color space</strong>. We don’t accept images in CMYK or any other color space.
+	  </li>
+	</ul>
+	<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+	  Following Images will be rejected
+	</Typography>
+	<ul style={{ marginLeft: 16, marginBottom: 16 }}>
+	  <li>Graphic/ Inverted/ Pixelated image are not accepted.</li>
+	  <li>Images with text/Watermark are not acceptable in primary images.</li>
+	  <li>Blur images and clutter images are not accepted.</li>
+	  <li>Images should not contain price/brand logo for the product.</li>
+	  <li>Product images must not be shrunk, elongated or stretched.</li>
+	  <li>Partial product image is not allowed.</li>
+	  <li>Offensive/Objectionable images/products are not acceptable.</li>
+	</ul>
+	<Typography variant="subtitle1" sx={{ fontWeight: 600, mb: 1 }}>
+	  Image standards
+	</Typography>
+	<ul style={{ marginLeft: 16 }}>
+	  <li>Solo product image without any props.</li>
+	  <li>Product image should not have any text.</li>
+	</ul>
   </DialogContent>
 </Dialog>
   </Box>
@@ -1278,22 +1278,22 @@ const renderField = (
 																	enterTouchDelay={0}
 																	leaveTouchDelay={3000}
 																	slotProps={{
-                                                                    popper: {
-                                                                      sx: {
-                                                                        '& .MuiTooltip-tooltip': {
-                                                                          backgroundColor: '#2B2B2B', // Change background color
-                                                                          color: 'white', // Change text color
-                                                                          border: '1px solid #000000', // Add a border
-                                                                        },
-                                                                      },
-                                                                    },
-                                                                  }}
+																	popper: {
+																	  sx: {
+																		'& .MuiTooltip-tooltip': {
+																		  backgroundColor: '#2B2B2B', // Change background color
+																		  color: 'white', // Change text color
+																		  border: '1px solid #000000', // Add a border
+																		},
+																	  },
+																	},
+																  }}
 																>
 																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
 																</Tooltip>
 															</th>
 					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Wrong/Defective Returns Price&nbsp;<sup>*</sup>
-					                                              <Tooltip
+																  <Tooltip
 																	title={
 																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
 																			Customers buying at this price can only return wrong/defective delivered items
@@ -1304,16 +1304,16 @@ const renderField = (
 																	enterTouchDelay={0}
 																	leaveTouchDelay={3000}
 																	slotProps={{
-                                                                    popper: {
-                                                                      sx: {
-                                                                        '& .MuiTooltip-tooltip': {
-                                                                          backgroundColor: '#2B2B2B', // Change background color
-                                                                          color: 'white', // Change text color
-                                                                          border: '1px solid #000000', // Add a border
-                                                                        },
-                                                                      },
-                                                                    },
-                                                                  }}
+																	popper: {
+																	  sx: {
+																		'& .MuiTooltip-tooltip': {
+																		  backgroundColor: '#2B2B2B', // Change background color
+																		  color: 'white', // Change text color
+																		  border: '1px solid #000000', // Add a border
+																		},
+																	  },
+																	},
+																  }}
 																>
 																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
 																</Tooltip></th>
@@ -1328,16 +1328,16 @@ const renderField = (
 																	enterTouchDelay={0}
 																	leaveTouchDelay={3000}
 																	slotProps={{
-                                                                    popper: {
-                                                                      sx: {
-                                                                        '& .MuiTooltip-tooltip': {
-                                                                          backgroundColor: '#2B2B2B', // Change background color
-                                                                          color: 'white', // Change text color
-                                                                          border: '1px solid #000000', // Add a border
-                                                                        },
-                                                                      },
-                                                                    },
-                                                                  }}
+																	popper: {
+																	  sx: {
+																		'& .MuiTooltip-tooltip': {
+																		  backgroundColor: '#2B2B2B', // Change background color
+																		  color: 'white', // Change text color
+																		  border: '1px solid #000000', // Add a border
+																		},
+																	  },
+																	},
+																  }}
 																>
 																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
 																</Tooltip></th>
