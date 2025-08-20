@@ -1,7 +1,6 @@
 'use client';
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { useRef } from "react";
 import { useUser } from '@/hooks/use-user';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
@@ -9,6 +8,8 @@ import CloseIcon from '@mui/icons-material/Close';
 import HeadsetMicIcon from '@mui/icons-material/HeadsetMic';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { Add, ArrowBack, ArrowForward, CheckCircle } from "@mui/icons-material";
+import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
+import Tooltip from '@mui/material/Tooltip';
 import {
 	Popover,
 	  Box,
@@ -30,6 +31,7 @@ import {
 	Divider,
 	FormControlLabel,
 } from '@mui/material';
+import { SelectChangeEvent } from '@mui/material/Select';
 import { styled } from "@mui/system";
 import categoryTree, { CategoryNode } from '../bulk/category-tree';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
@@ -92,23 +94,8 @@ function getAllCategoryPaths(tree: Record<string, unknown>, prefix: string[] = [
 }
 
 export default function CategorySelector(): React.JSX.Element {
-	// Size filter popover state
-	const [filterFreeSize, setFilterFreeSize] = useState(false);
-	const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
-	const handleSizeInputClick = (event: React.MouseEvent<HTMLElement>) => {
-		setAnchorEl(event.currentTarget);
-	};
-	const handlePopoverClose = () => {
-		setAnchorEl(null);
-	};
-	const handleApplyFilter = () => {
-		setAnchorEl(null);
-		// Implement filter logic as needed
-	};
-	const handleClearFilter = () => {
-		setFilterFreeSize(false);
-	};
-	const open = Boolean(anchorEl);
+	// Removed: const [techpotliInfoAnchor, setTechpotliInfoAnchor] = useState<HTMLElement | null>(null);
+	// Info icon popover anchor for Techpotli Price
 	const [copyAll, setCopyAll] = useState(false);
 	const [popupOpen, setPopupOpen] = useState(false);
 	const [intropopupOpen, setIntroPopupOpen] = useState(false);
@@ -178,7 +165,6 @@ export default function CategorySelector(): React.JSX.Element {
 			}
 		}
 	}, []);
-	const [uploadTab, setUploadTab] = useState<'files' | 'links'>('files');
 	//const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 	const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 	const [selectionPath, setSelectionPath] = useState<string[]>([]);
@@ -458,9 +444,67 @@ interface FormField {
 }
 
 // Pass productIndex to renderField for per-product state
-const renderField = (field: FormField, index: number, section: string, productIndex: number) => {
+
+// --- Add these hooks and handlers before renderField ---
+const [sizePopoverAnchor, setSizePopoverAnchor] = useState<null | HTMLElement>(null);
+const [sizePopoverValue, setSizePopoverValue] = useState<string[]>([]);
+const [sizePopoverProductIndex, setSizePopoverProductIndex] = useState<number | null>(null);
+const [sizePopoverSection, setSizePopoverSection] = useState<string>("");
+const [sizePopoverLabel, setSizePopoverLabel] = useState<string>("");
+
+const handleSizeDropdownClick = (
+  e: React.MouseEvent<HTMLElement>,
+  value: string,
+  productIndex: number,
+  section: string,
+  label: string
+) => {
+  setSizePopoverAnchor(e.currentTarget);
+  setSizePopoverValue(Array.isArray(value) ? value : []);
+  setSizePopoverProductIndex(productIndex);
+  setSizePopoverSection(section);
+  setSizePopoverLabel(label);
+};
+
+const handleSizePopoverClose = () => {
+  setSizePopoverAnchor(null);
+};
+
+const handleSizePopoverApply = () => {
+  if (
+    sizePopoverProductIndex !== null &&
+    sizePopoverSection &&
+    sizePopoverLabel
+  ) {
+    setProductForms((forms) => {
+      const updated = [...forms];
+      if (!updated[sizePopoverProductIndex]) updated[sizePopoverProductIndex] = initialFormData();
+      if (!updated[sizePopoverProductIndex][sizePopoverSection]) updated[sizePopoverProductIndex][sizePopoverSection] = {};
+      updated[sizePopoverProductIndex][sizePopoverSection][sizePopoverLabel] = sizePopoverValue;
+      if (copyAll) {
+        return updated.map(() => JSON.parse(JSON.stringify(updated[sizePopoverProductIndex])));
+      }
+      return updated;
+    });
+  }
+  setSizePopoverAnchor(null);
+};
+
+const handleSizePopoverClear = () => {
+  setSizePopoverValue([]);
+};
+// --- End of added hooks and handlers ---
+
+
+// --- Modern two-column form field renderer with info icons and required asterisks ---
+const renderField = (
+	field: FormField,
+	index: number,
+	section: string,
+	productIndex: number
+) => {
 	const value = productForms[productIndex]?.[section]?.[field.label] || "";
-	const handleChange = (e: any) => {
+	const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
 		const val = e.target.value;
 		setProductForms(forms => {
 			let updated = [...forms];
@@ -468,56 +512,113 @@ const renderField = (field: FormField, index: number, section: string, productIn
 			if (!updated[productIndex][section]) updated[productIndex][section] = {};
 			updated[productIndex][section][field.label] = val;
 			if (copyAll) {
-				// Copy this product's form to all others
 				updated = updated.map(() => JSON.parse(JSON.stringify(updated[productIndex])));
 			}
 			return updated;
 		});
 	};
+
+	// Info icon tooltips and sublabels for specific fields
+	const infoMap: Record<string, string> = {
+		"Net Weight (gm)": "Enter the net weight of the product in grams.",
+		"Product Name": "Enter the product name as you want it to appear to customers.",
+		"Style Code / Product ID (optional)": "This is an optional field for your internal reference.",
+	};
+	const subLabelMap: Record<string, string> = {
+		"Net Weight (gm)": "(gms)",
+		"Style Code / Product ID": "(optional)",
+	};
+	const isRequired = ["Net Weight (gm)", "Product Name", "Size"].includes(field.label);
+	const showInfo = Object.prototype.hasOwnProperty.call(infoMap, field.label);
+	const subLabel = subLabelMap[field.label];
+
+	// Label and input inline (side by side)
+	const labelNode = (
+		<Box sx={{ display: 'flex', alignItems: 'center', minWidth: 160, pr: 2 }}>
+			<span style={{ fontWeight: 500, color: '#222', fontSize: 12 }}>{field.label.replace(' (gm)', '')}</span>
+			{isRequired && <span style={{ color: '#f44336', marginLeft: 2 }}>*</span>}
+			{showInfo && (
+				<Tooltip title={infoMap[field.label]} arrow placement="top">
+					<InfoOutlinedIcon sx={{ fontSize: 16, color: '#888', ml: 0.5, verticalAlign: 'middle', cursor: 'pointer' }} />
+				</Tooltip>
+			)}
+			{subLabel && (
+				<span style={{ fontSize: 12, color: '#888', marginLeft: 8 }}>{subLabel}</span>
+			)}
+		</Box>
+	);
+
+	if (field.type === "dropdown" && field.label.toLowerCase().includes("size")) {
+		const options = field.options && field.options.length > 0 ? field.options : ["Free Size"];
+		return (
+			<Box key={index} sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
+				{labelNode}
+				<FormControl fullWidth sx={{ minWidth: 200 }}>
+					<Select
+						value={value}
+						onChange={handleChange}
+						displayEmpty
+						inputProps={{ 'aria-label': field.label }}
+						sx={{ background: '#fff' }}
+					>
+						{options.map((opt: string) => (
+							<MenuItem key={opt} value={opt}>{opt}</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+			</Box>
+		);
+	}
 	if (field.type === "dropdown") {
 		return (
-			<FormControl
-				key={index}
-				fullWidth
-				sx={{ flex: "1 1 45%", minWidth: "200px" }}
-			>
-				<InputLabel>{field.label}</InputLabel>
-				<Select value={value} onChange={handleChange} label={field.label}>
-					<MenuItem value="">Select</MenuItem>
-					{field.options?.map((opt, i) => (
-						<MenuItem key={i} value={opt}>
-							{opt}
-						</MenuItem>
-					))}
-				</Select>
-			</FormControl>
+			<Box key={index} sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
+				{labelNode}
+				<FormControl fullWidth sx={{ minWidth: 200 }}>
+					<Select
+						value={value}
+						onChange={handleChange}
+						displayEmpty
+						inputProps={{ 'aria-label': field.label }}
+						sx={{ background: '#fff' }}
+					>
+						<MenuItem value="">Select</MenuItem>
+						{field.options?.map((opt: string, i: number) => (
+							<MenuItem key={i} value={opt}>{opt}</MenuItem>
+						))}
+					</Select>
+				</FormControl>
+			</Box>
 		);
 	}
 	if (field.type === "text") {
 		return (
-			<TextField
-				key={index}
-				label={field.label}
-				placeholder={field.placeholder || ""}
-				value={value}
-				onChange={handleChange}
-				sx={{ flex: "1 1 45%", minWidth: "200px" }}
-			/>
+			<Box key={index} sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
+				{labelNode}
+				<TextField
+					placeholder={field.placeholder || ""}
+					value={value}
+					onChange={handleChange}
+					fullWidth
+					sx={{ minWidth: 200, background: '#fff' }}
+				/>
+			</Box>
 		);
 	}
 	if (field.type === "textarea") {
 		return (
-			<TextField
-				key={index}
-				label={field.label}
-				placeholder={field.placeholder || ""}
-				multiline
-				rows={3}
-				value={value}
-				onChange={handleChange}
-				inputProps={{ maxLength: field.maxlength || 500 }}
-				sx={{ flex: "1 1 45%" }}
-			/>
+			<Box key={index} sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
+				{labelNode}
+				<TextField
+					placeholder={field.placeholder || ""}
+					multiline
+					rows={3}
+					value={value}
+					onChange={handleChange}
+					inputProps={{ maxLength: field.maxlength || 500 }}
+					fullWidth
+					sx={{ minWidth: 200, background: '#fff' }}
+				/>
+			</Box>
 		);
 	}
 	return null;
@@ -525,7 +626,7 @@ const renderField = (field: FormField, index: number, section: string, productIn
 
 		return (<>
 			{/* Size Filter Input with Popover */}
-			<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
+			{/*<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
 				<TextField
 					label="Size"
 					value={filterFreeSize ? 'Free Size' : ''}
@@ -1019,141 +1120,354 @@ const renderField = (field: FormField, index: number, section: string, productIn
 		</Dialog></>
 )}
 		{/* Step 2: Add Product Details - Image Slots */}
-		{activeStep === 1 && (
-			<Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-				{/* Product Tabs */}
-				<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-					{selectedImages.map((img, idx) => (
+{activeStep === 1 && (() => {
+	const selectedSizes = productForms[activeProductIndex]?.ProductSizeInventory?.["Size"] || [];
+	return (
+	<Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+		{/* Product Tabs */}
+		<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+			{selectedImages.map((img, idx) => (
+				<Button
+					key={idx}
+					variant={activeProductIndex === idx ? "contained" : "outlined"}
+					color={activeProductIndex === idx ? "primary" : "inherit"}
+					onClick={() => setActiveProductIndex(idx)}
+					sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
+				>
+					<img
+						src={img.url}
+						alt={`Product ${idx + 1}`}
+						style={{ width: 48, height: 48, borderRadius: 2, objectFit: 'cover', marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }}
+					/>
+					Product {idx + 1}
+				</Button>
+			))}
+			<Button
+				variant="outlined"
+				color="primary"
+				sx={{ minWidth: 120, height: 56, display: 'flex', alignItems: 'center', gap: 1, borderStyle: 'dashed', borderColor: '#6366f1' }}
+				onClick={() => {
+					if (addProductInputRef.current) addProductInputRef.current.value = '';
+					addProductInputRef.current?.click();
+				}}
+			>
+				<Add sx={{ fontSize: 28, color: '#6366f1' }} />
+				Add Product
+			</Button>
+			<input
+				type="file"
+				accept="image/*"
+				ref={addProductInputRef}
+				style={{ display: 'none' }}
+				onChange={handleAddProductImage}
+			/>
+		</Box>
+		{/* Main Content */}
+		<Box sx={{ display: "flex", gap: 2, mb: 10 }}>
+			{/* Left: Form */}
+			<Paper sx={{ flex: 2, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+				<Typography variant="h5" sx={{fontWeight:"1600px"}}>Add Product Details</Typography>
+				{activeProductIndex === 0 && (
+					<>
+					<Box sx={{  mx: 1 ,backgroundColor: "#f2f5fa" , p:2 , borderRadius: 1, }}>
+						<FormControlLabel
+							control={<input type="checkbox" checked={copyAll} onChange={e => {
+								const checked = e.target.checked;
+								setCopyAll(checked);
+								if (checked && productForms[activeProductIndex]) {
+									setProductForms(forms => forms.map(() => JSON.parse(JSON.stringify(forms[activeProductIndex]))));
+								}
+							}} />}
+							label="Copy input details to all product "
+						/>
+						<Typography variant="body2" sx={{ ml:1,mt: 0, color: "#555" }}>
+							If you want to change specific fields for particular product like Color, Fabric etc, you can change it by selecting that product.
+						</Typography>
+						</Box>
+					</>
+				)}
+				<Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
+					{/* Product, Size and Inventory */}
+										<Box>
+												<Typography variant="h6" gutterBottom>
+														Product, Size and Inventory
+												</Typography>
+												<Divider sx={{ mt: 1, mb:2}} />
+												<Box sx={{
+													display: 'grid',
+													gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+													gap: 3,
+													alignItems: 'center',
+												}}>
+													{form.AddProductDetails.ProductSizeInventory.map((field, idx) =>
+														renderField(field, idx, "ProductSizeInventory", activeProductIndex)
+													)}
+												</Box>
+										</Box>
+					{/* Get selected sizes for this product */}
+		{Array.isArray(selectedSizes) && selectedSizes.length > 0 && (
+		  <Box sx={{ mt: 2 }}>
+			<Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
+			  <FormControlLabel
+				control={
+				  <input
+					type="checkbox"
+					checked={productForms[activeProductIndex]?.ProductSizeInventory?.copyPriceAll || false}
+					onChange={e => {
+					  const checked = e.target.checked;
+					  setProductForms(forms => {
+						const updated = [...forms];
+						if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
+						if (!updated[activeProductIndex].ProductSizeInventory) updated[activeProductIndex].ProductSizeInventory = {};
+						updated[activeProductIndex].ProductSizeInventory.copyPriceAll = checked;
+						// If checked, copy first row's values to all
+						if (checked && selectedSizes.length > 1) {
+						  const first = selectedSizes[0];
+						  const fields = ["Techpotli Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU (Optional)","Actions"];
+						  fields.forEach(field => {
+							const val = updated[activeProductIndex].ProductSizeInventory[`${field}_${first}`] || "";
+							selectedSizes.forEach(size => {
+							  updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
+							});
+						  });
+						}
+						return updated;
+					  });
+					}}
+				  />
+				}
+				label="Copy price details to all sizes"
+				sx={{ mb: 0, ml:2 }}
+			  />
+			 {/* <Button
+				color="error"
+				variant="text"
+				sx={{ fontWeight: 600, textTransform: "none" }}
+				onClick={() => {
+				  setProductForms(forms => {
+					const updated = [...forms];
+					if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
+					// Remove all size-related fields
+					updated[activeProductIndex].ProductSizeInventory = {
+					  ...updated[activeProductIndex].ProductSizeInventory,
+					  Size: [],
+					  copyPriceAll: false
+					};
+					return updated;
+				  });
+				}}
+			  >
+				Delete all these rows
+			  </Button>*/}
+			</Box>
+			<Box sx={{ overflowX: "auto", borderRadius: 1, border: "1px solid #e0e0e0" }}>
+			  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+				<thead>
+				  <tr style={{ background: "#f5f6fa" }}>
+					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Size</th>
+															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>
+																Techpotli Price&nbsp;<sup>*</sup>
+																<Tooltip
+																	title={
+																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
+																			This is the normal/regular price at which you sell on Techpotli. This price shall be lower than the Maximum Retail Price (MRP) of the Product.
+																		</span>
+																	}
+																	arrow
+																	placement="bottom"
+																	enterTouchDelay={0}
+																	leaveTouchDelay={3000}
+																	slotProps={{
+                                                                    popper: {
+                                                                      sx: {
+                                                                        '& .MuiTooltip-tooltip': {
+                                                                          backgroundColor: '#2B2B2B', // Change background color
+                                                                          color: 'white', // Change text color
+                                                                          border: '1px solid #000000', // Add a border
+                                                                        },
+                                                                      },
+                                                                    },
+                                                                  }}
+																>
+																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
+																</Tooltip>
+															</th>
+					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Wrong/Defective Returns Price&nbsp;<sup>*</sup>
+					                                              <Tooltip
+																	title={
+																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
+																			Customers buying at this price can only return wrong/defective delivered items
+																		</span>
+																	}
+																	arrow
+																	placement="bottom"
+																	enterTouchDelay={0}
+																	leaveTouchDelay={3000}
+																	slotProps={{
+                                                                    popper: {
+                                                                      sx: {
+                                                                        '& .MuiTooltip-tooltip': {
+                                                                          backgroundColor: '#2B2B2B', // Change background color
+                                                                          color: 'white', // Change text color
+                                                                          border: '1px solid #000000', // Add a border
+                                                                        },
+                                                                      },
+                                                                    },
+                                                                  }}
+																>
+																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
+																</Tooltip></th>
+					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>MRP&nbsp;<sup>*</sup>
+					<Tooltip
+																	title={
+																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
+																			“MRP” stands for “Maximum Retail Price”. It's the highest price that a seller is allowed to sell a product for including taxes, charges added on the basic price of the product. No seller can sell a product for a price higher than MRP. Acceptable in INR ONLY. This information is generally available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please provide the MRP as per the explanation above.</span>
+																	}
+																	arrow
+																	placement="bottom"
+																	enterTouchDelay={0}
+																	leaveTouchDelay={3000}
+																	slotProps={{
+                                                                    popper: {
+                                                                      sx: {
+                                                                        '& .MuiTooltip-tooltip': {
+                                                                          backgroundColor: '#2B2B2B', // Change background color
+                                                                          color: 'white', // Change text color
+                                                                          border: '1px solid #000000', // Add a border
+                                                                        },
+                                                                      },
+                                                                    },
+                                                                  }}
+																>
+																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
+																</Tooltip></th>
+					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Inventory&nbsp;<sup>*</sup></th>
+					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>SKU (Optional)</th>
+					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Action</th> {/* New column */}
+				  </tr>
+				</thead>
+				<tbody>
+				  {selectedSizes.map((size: string, idx: number) => (
+					<tr key={size}>
+					  <td style={{ padding: 12 }}>{size}</td>
+					  {["Techpotli Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU"].map(field => (
+						<td style={{ padding: 12 }} key={field}>
+						  <TextField
+							size="small"
+							value={productForms[activeProductIndex]?.ProductSizeInventory?.[`${field}_${size}`] || ""}
+							onChange={e => {
+							  const val = e.target.value;
+							  setProductForms(forms => {
+								const updated = [...forms];
+								if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
+								if (!updated[activeProductIndex].ProductSizeInventory) updated[activeProductIndex].ProductSizeInventory = {};
+								updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
+								// If "copy all" is checked and editing first row, update all
+								if (
+								  productForms[activeProductIndex]?.ProductSizeInventory?.copyPriceAll &&
+								  idx === 0
+								) {
+								  selectedSizes.forEach(sz => {
+									updated[activeProductIndex].ProductSizeInventory[`${field}_${sz}`] = val;
+								  });
+								}
+								return updated;
+							  });
+							}}
+							placeholder={field}
+						  />
+						</td>
+					  ))}
+					  <td style={{ padding: 12 }}>
 						<Button
-							key={idx}
-							variant={activeProductIndex === idx ? "contained" : "outlined"}
-							color={activeProductIndex === idx ? "primary" : "inherit"}
-							onClick={() => setActiveProductIndex(idx)}
-							sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
+						  color="error"
+						  size="small"
+						  onClick={() => {
+							// Remove this size from selectedSizes and all related fields
+							setProductForms(forms => {
+							  const updated = [...forms];
+							  if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
+							  const inv = updated[activeProductIndex].ProductSizeInventory || {};
+							  const newSizes = selectedSizes.filter(sz => sz !== size);
+							  inv.Size = newSizes;
+							  ["Meesho Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU"].forEach(field => {
+								delete inv[`${field}_${size}`];
+							  });
+							  updated[activeProductIndex].ProductSizeInventory = inv;
+							  return updated;
+							});
+						  }}
 						>
-							<img
-								src={img.url}
-								alt={`Product ${idx + 1}`}
-								style={{ width: 48, height: 48, borderRadius: 2, objectFit: 'cover', marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }}
-							/>
-							Product {idx + 1}
+						  Delete
 						</Button>
-					))}
-					<Button
-						variant="outlined"
-						color="primary"
-						sx={{ minWidth: 120, height: 56, display: 'flex', alignItems: 'center', gap: 1, borderStyle: 'dashed', borderColor: '#6366f1' }}
-						onClick={() => {
-							if (addProductInputRef.current) addProductInputRef.current.value = '';
-							addProductInputRef.current?.click();
+					  </td>
+					</tr>
+				  ))}
+				</tbody>
+			  </table>
+			</Box>
+		  </Box>
+		)}
+					{/* Product Details */}
+					<Box>
+						<Typography variant="h6" gutterBottom>
+							Product Details
+						</Typography>
+						<Divider sx={{ mt: 1, mb:2}} />
+						<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+							{form.ProductDetails.map((field, idx) => renderField(field, idx, "ProductDetails", activeProductIndex))}
+						</Box>
+					</Box>
+					{/* Other Attributes */}
+					<Box>
+						<Typography variant="h6" gutterBottom>
+							Other Attributes
+						</Typography>
+						<Divider sx={{ mt: 1, mb:2}} />
+						<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+							{form.OtherAttributes.map((field, idx) => renderField(field, idx, "OtherAttributes", activeProductIndex))}
+						</Box>
+					</Box>
+				</Box>
+			</Paper>
+			{/* Right Sidebar */}
+			<Paper sx={{ flex: 1, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+				<Typography variant="subtitle1">Follow guidelines to reduce quality check failure</Typography>
+				<Typography variant="body2" color="text.secondary">
+					- Images with text/watermark are not acceptable in primary images.
+					<br />- Product image should not have any text.
+					<br />- Add product image without props.
+				</Typography>
+				<Typography variant="subtitle2" sx={{ mt: 2 }}>
+					Add images with details listed here
+				</Typography>
+				<ul style={{ margin: 0, paddingLeft: "20px" }}>
+					<li>Front View Image *</li>
+					<li>Side View Image *</li>
+					<li>Back View Image *</li>
+					<li>Zoom View Image *</li>
+				</ul>
+				<Box sx={{ mt: 2 }}>
+					<Typography variant="subtitle2">Uploaded Images</Typography>
+					<Box
+						sx={{
+							border: "1px dashed gray",
+							borderRadius: 2,
+							p: 2,
+							textAlign: "center",
+							mt: 1,
+							cursor: "pointer",
 						}}
 					>
-						<Add sx={{ fontSize: 28, color: '#6366f1' }} />
-						Add Product
-					</Button>
-					<input
-						type="file"
-						accept="image/*"
-						ref={addProductInputRef}
-						style={{ display: 'none' }}
-						onChange={handleAddProductImage}
-					/>
+						+ Add Images
+					</Box>
 				</Box>
-				{/* Main Content */}
-				<Box sx={{ display: "flex", gap: 2, mb: 10 }}>
-					{/* Left: Form */}
-					<Paper sx={{ flex: 2, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-						<Typography variant="h5" sx={{fontWeight:"1600px"}}>Add Product Details</Typography>
-						{activeProductIndex === 0 && (
-							<>
-							<Box sx={{  mx: 1 ,backgroundColor: "#f2f5fa" , p:2 , borderRadius: 1, }}>
-								<FormControlLabel
-									control={<input type="checkbox" checked={copyAll} onChange={e => {
-										const checked = e.target.checked;
-										setCopyAll(checked);
-										if (checked && productForms[activeProductIndex]) {
-											setProductForms(forms => forms.map(() => JSON.parse(JSON.stringify(forms[activeProductIndex]))));
-										}
-									}} />}
-									label="Copy input details to all product "
-								/>
-								<Typography variant="body2" sx={{ ml:1,mt: 0, color: "#555" }}>
-									If you want to change specific fields for particular product like Color, Fabric etc, you can change it by selecting that product.
-								</Typography>
-								</Box>
-							</>
-						)}
-						<Box sx={{ display: "flex", flexDirection: "column", gap: 4 }}>
-							{/* Product, Size and Inventory */}
-							<Box>
-								<Typography variant="h6" gutterBottom>
-									Product, Size and Inventory
-								</Typography>
-								<Divider sx={{ mt: 1, mb:2}} />
-								<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-								{form.AddProductDetails.ProductSizeInventory.map((field, idx) =>
-									renderField(field, idx, "ProductSizeInventory", activeProductIndex)
-								)}
-								</Box>
-							</Box>
-							{/* Product Details */}
-							<Box>
-								<Typography variant="h6" gutterBottom>
-									Product Details
-								</Typography>
-								<Divider sx={{ mt: 1, mb:2}} />
-								<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-									{form.ProductDetails.map((field, idx) => renderField(field, idx, "ProductDetails", activeProductIndex))}
-								</Box>
-							</Box>
-							{/* Other Attributes */}
-							<Box>
-								<Typography variant="h6" gutterBottom>
-									Other Attributes
-								</Typography>
-								<Divider sx={{ mt: 1, mb:2}} />
-								<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
-									{form.OtherAttributes.map((field, idx) => renderField(field, idx, "OtherAttributes", activeProductIndex))}
-								</Box>
-							</Box>
-						</Box>
-					</Paper>
-					{/* Right Sidebar */}
-					<Paper sx={{ flex: 1, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-						<Typography variant="subtitle1">Follow guidelines to reduce quality check failure</Typography>
-						<Typography variant="body2" color="text.secondary">
-							- Images with text/watermark are not acceptable in primary images.
-							<br />- Product image should not have any text.
-							<br />- Add product image without props.
-						</Typography>
-						<Typography variant="subtitle2" sx={{ mt: 2 }}>
-							Add images with details listed here
-						</Typography>
-						<ul style={{ margin: 0, paddingLeft: "20px" }}>
-							<li>Front View Image *</li>
-							<li>Side View Image *</li>
-							<li>Back View Image *</li>
-							<li>Zoom View Image *</li>
-						</ul>
-						<Box sx={{ mt: 2 }}>
-							<Typography variant="subtitle2">Uploaded Images</Typography>
-							<Box
-								sx={{
-									border: "1px dashed gray",
-									borderRadius: 2,
-									p: 2,
-									textAlign: "center",
-									mt: 1,
-									cursor: "pointer",
-								}}
-							>
-								+ Add Images
-							</Box>
-						</Box>
-					</Paper>
-				</Box>
-			</Box>
-		)}
+			</Paper>
+		</Box>
+		
+	</Box>
+	);
+})()}
 		</>
 	);
 }
