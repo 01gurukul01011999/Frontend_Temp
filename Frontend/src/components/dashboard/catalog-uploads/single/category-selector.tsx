@@ -28,6 +28,7 @@ import {
 	Link,
 	Divider,
 	FormControlLabel,
+	Popover,
 } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { styled } from "@mui/system";
@@ -522,6 +523,104 @@ const _handleSizePopoverClear = () => {
 };
 // --- End of added hooks and handlers ---
 
+// Local size options JSON (can be moved to external JSON file)
+// Use sizes from formsJson if available (search common locations), fallback to defaults
+const sizeOptionsJson: string[] = (() => {
+	const obj = formsJson as unknown as Record<string, unknown>;
+
+	// First, check the structured AddProductDetails.ProductSizeInventory in form_101
+	try {
+		const f101 = obj['form_101'];
+		if (f101 && typeof f101 === 'object') {
+			const f101Obj = f101 as Record<string, unknown>;
+			const add = f101Obj['AddProductDetails'];
+			if (add && typeof add === 'object') {
+				const addObj = add as Record<string, unknown>;
+				const psi = addObj['ProductSizeInventory'];
+				if (Array.isArray(psi)) {
+					for (const field of psi) {
+						if (field && typeof field === 'object') {
+							const fieldObj = field as Record<string, unknown>;
+							const label = String(fieldObj.label || '').toLowerCase();
+							const options = fieldObj.options;
+							if (label.includes('size') && Array.isArray(options)) {
+								const opts = options as unknown[];
+								if (opts.every((it): it is string => typeof it === 'string')) return opts as string[];
+							}
+						}
+					}
+				}
+			}
+		}
+	} catch {
+		// ignore and fall back
+	}
+
+	const candidatePaths: string[][] = [
+		['sizeOptions'],
+		['size_options'],
+		['sizes'],
+		['sizeOptionsJson'],
+		['common', 'sizeOptions'],
+		['common', 'sizes'],
+		['form_101', 'sizeOptions'],
+		['form_101', 'sizes'],
+		['form_101', 'common', 'sizeOptions'],
+		['form_101', 'common', 'sizes'],
+	];
+
+	for (const path of candidatePaths) {
+		// Use unknown and narrow before indexing to satisfy TS safely
+		let cur: unknown = obj;
+		for (const seg of path) {
+			if (cur && typeof cur === 'object' && seg in (cur as Record<string, unknown>)) {
+				cur = (cur as Record<string, unknown>)[seg];
+			} else {
+				cur = undefined;
+				break;
+			}
+		}
+		if (Array.isArray(cur) && cur.every((it: unknown) => typeof it === 'string')) return cur as string[];
+	}
+
+	return ['Free Size', 'XS', 'S', 'M', 'L', 'XL', 'XXL'];
+})();
+
+// Size filter popover-specific state & handlers (for the small standalone size filter UI)
+const [sizeFilterAnchor, setSizeFilterAnchor] = useState<HTMLElement | null>(null);
+const [filterFreeSize, setFilterFreeSize] = useState<boolean>(false);
+const [selectedSizeFilters, setSelectedSizeFilters] = useState<Record<string, boolean>>(() => {
+	const map: Record<string, boolean> = {};
+	for (const s of sizeOptionsJson) map[s] = false;
+	return map;
+});
+
+const _handleSizeInputClick = (e: React.MouseEvent<HTMLElement>) => {
+	setSizeFilterAnchor(e.currentTarget);
+};
+
+const handleClearFilter = () => {
+	setFilterFreeSize(false);
+	setSelectedSizeFilters(() => {
+		const map: Record<string, boolean> = {};
+		for (const s of sizeOptionsJson) map[s] = false;
+		return map;
+	});
+};
+
+const handleApplyFilter = () => {
+	// In this simplified implementation we set ProductSizeInventory on the first product when applied
+	const selected = Object.keys(selectedSizeFilters).filter(k => selectedSizeFilters[k]);
+	if (filterFreeSize) selected.push('Free Size');
+	setProductForms(forms => {
+		const updated = [...forms];
+		if (!updated[0]) updated[0] = initialFormData();
+		(updated[0].ProductSizeInventory as ProductSection)['Size'] = selected.length === 1 ? selected[0] : selected;
+		return updated;
+	});
+	setSizeFilterAnchor(null);
+};
+
 
 // --- Modern two-column form field renderer with info icons and required asterisks ---
 const renderField = (
@@ -589,23 +688,19 @@ const renderField = (
 	);
 
 	if (field.type === "dropdown" && field.label.toLowerCase().includes("size")) {
-		const options = field.options && field.options.length > 0 ? field.options : ["Free Size"];
+		// For size fields, open our custom popover driven by sizeOptionsJson
+		const displayVal = Array.isArray(value) ? (value as string[]).join(', ') : (value as string);
 		return (
 			<Box key={index} sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
 				{labelNode}
-				<FormControl fullWidth sx={{ minWidth: 200 }}>
-					<Select
-						value={value}
-						onChange={handleChange}
-						displayEmpty
-						inputProps={{ 'aria-label': field.label }}
-						sx={{ background: '#fff' }}
-					>
-						{options.map((opt: string) => (
-							<MenuItem key={opt} value={opt}>{opt}</MenuItem>
-						))}
-					</Select>
-				</FormControl>
+				<TextField
+					value={displayVal}
+					onClick={(e) => _handleSizeDropdownClick(e, value as string | string[], productIndex, section, field.label)}
+					placeholder="Select size"
+					fullWidth
+					sx={{ minWidth: 200, background: '#fff', cursor: 'pointer' }}
+					InputProps={{ readOnly: true }}
+				/>
 			</Box>
 		);
 	}
@@ -666,18 +761,12 @@ const renderField = (
 
 		return (<>
 			{/* Size Filter Input with Popover */}
-			{/*<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 2 }}>
-				<TextField
-					label="Size"
-					value={filterFreeSize ? 'Free Size' : ''}
-					onClick={handleSizeInputClick}
-					sx={{ width: 180, background: '#fff' }}
-					InputProps={{ readOnly: true }}
-				/>
+			
+				
 				<Popover
-					open={open}
-					anchorEl={anchorEl}
-					onClose={handlePopoverClose}
+					open={Boolean(sizeFilterAnchor)}
+					anchorEl={sizeFilterAnchor}
+					onClose={() => setSizeFilterAnchor(null)}
 					anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
 					transformOrigin={{ vertical: 'top', horizontal: 'left' }}
 					PaperProps={{ sx: { p: 2, borderRadius: 2, boxShadow: 3, minWidth: 220 } }}
@@ -688,34 +777,87 @@ const renderField = (
 								type="checkbox"
 								checked={filterFreeSize}
 								onChange={e => setFilterFreeSize(e.target.checked)}
-								style={{ accentColor: '#3a08c7', width: 18, height: 18 }}
+								style={{ accentColor: '#4d0aff', width: 18, height: 18 }}
 							/>
 						}
 						label={<Typography sx={{ fontWeight: 500, color: '#222', fontSize: 16 }}>Free Size</Typography>}
 						sx={{ mb: 2, ml: 0 }}
 					/>
-					<Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 220, overflowY: 'auto', pr: 1 }}>
+						{sizeOptionsJson.filter(s => s !== 'Free Size').map(opt => (
+							<label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+								<input
+									type="checkbox"
+									checked={!!selectedSizeFilters[opt]}
+									onChange={e => setSelectedSizeFilters(prev => ({ ...prev, [opt]: e.target.checked }))}
+									style={{ accentColor: '#4d0aff', width: 16, height: 16 }}
+								/>
+								<span style={{ fontSize: 14 }}>{opt}</span>
+							</label>
+						))}
+					</Box>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
 						<Button
 							variant="text"
-							sx={{ color: '#3a08c7', fontWeight: 600, textTransform: 'none', pl: 0 }}
+							sx={{ color: '#4d0aff', fontWeight: 600, textTransform: 'none', pl: 0 }}
 							onClick={handleClearFilter}
 						>
 							Clear Filter
 						</Button>
 						<Button
 							variant="contained"
-							sx={{ background: '#3a08c7', color: '#fff', fontWeight: 700, borderRadius: 2, px: 4, ml: 'auto' }}
+							sx={{ background: '#4d0aff', color: '#fff', fontWeight: 700, borderRadius: 2, px: 3, ml: 'auto' }}
 							onClick={handleApplyFilter}
 						>
 							Apply
 						</Button>
 					</Box>
 				</Popover>
-			</Box>
-		{/* Trigger for demo: open popup when clicking first image 
-		<Button onClick={handleOpenPopup} sx={{ mb: 2 }}>Open Product Images Popup</Button>
-*/}
-		
+				{/* Per-product size popover (opens when user clicks a Size field in the form) */}
+				<Popover
+					open={Boolean(_sizePopoverAnchor)}
+					anchorEl={_sizePopoverAnchor}
+					onClose={_handleSizePopoverClose}
+					anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+					transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+					PaperProps={{ sx: { p: 2, borderRadius: 2, boxShadow: 3, minWidth: 220 } }}
+				>
+					<Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, maxHeight: 260, overflowY: 'auto', pr: 1 }}>
+						{sizeOptionsJson.map(opt => (
+							<label key={opt} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+								<input
+									type="checkbox"
+									checked={sizePopoverValue.includes(opt)}
+									onChange={e => {
+										const checked = e.target.checked;
+										setSizePopoverValue(prev => checked ? [...new Set([...prev, opt])] : prev.filter(s => s !== opt));
+									}}
+									style={{ accentColor: '#4d0aff', width: 16, height: 16 }}
+								/>
+								<span style={{ fontSize: 14 }}>{opt}</span>
+							</label>
+						))}
+					</Box>
+					<Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mt: 1 }}>
+						<Button
+							variant="text"
+							sx={{ color: '#4d0aff', fontWeight: 600, textTransform: 'none', pl: 0 }}
+							onClick={() => setSizePopoverValue([])}
+						>
+							Clear
+						</Button>
+						<Button
+							variant="contained"
+							sx={{ background: '#4d0aff', color: '#fff', fontWeight: 700, borderRadius: 2, px: 3, ml: 'auto' }}
+							onClick={_handleSizePopoverApply}
+						>
+							Apply
+						</Button>
+					</Box>
+				</Popover>
+		{/* Trigger for demo: open popup when clicking first image */}
+		{/* <Button onClick={handleOpenPopup} sx={{ mb: 2 }}>Open Product Images Popup</Button> */}
+
 	<Box sx={{ px: 3, pt: 2, background: '#fff' , mt:-3, width:'100%' , mb:2, ml:0, mr:0 , pb:1 , display: 'flex' }}>
 
 			<Stepper
@@ -1157,8 +1299,8 @@ const renderField = (
 				<Button variant="outlined" onClick={handleClose}>Cancel</Button>
 				<Button variant="contained" color="primary" onClick={handleContinue}>Continue</Button>
 			</DialogActions>
-		</Dialog></>
-)}
+			</Dialog>
+			</>)}
 		{/* Step 2: Add Product Details - Image Slots */}
 {activeStep === 1 && (() => {
 	const selectedSizes = productForms[activeProductIndex]?.ProductSizeInventory?.["Size"] || [];
@@ -1259,13 +1401,13 @@ const renderField = (
 						// If checked, copy first row's values to all
 						if (checked && selectedSizes.length > 1) {
 						  const first = selectedSizes[0];
-													const fields = ["Techpotli Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU (Optional)","Actions"];
-													for (const field of fields) {
-														const val = updated[activeProductIndex].ProductSizeInventory[`${field}_${first}`] || "";
-														for (const size of selectedSizes) {
-															updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
-														}
-													}
+							const fields = ["Techpotli Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU (Optional)","Actions"];
+							for (const field of fields) {
+								const val = updated[activeProductIndex].ProductSizeInventory[`${field}_${first}`] || "";
+								for (const size of selectedSizes) {
+									updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
+								}
+							}
 						}
 						return updated;
 					  });
@@ -1275,26 +1417,7 @@ const renderField = (
 				label="Copy price details to all sizes"
 				sx={{ mb: 0, ml:2 }}
 			  />
-			 {/* <Button
-				color="error"
-				variant="text"
-				sx={{ fontWeight: 600, textTransform: "none" }}
-				onClick={() => {
-				  setProductForms(forms => {
-					const updated = [...forms];
-					if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
-					// Remove all size-related fields
-					updated[activeProductIndex].ProductSizeInventory = {
-					  ...updated[activeProductIndex].ProductSizeInventory,
-					  Size: [],
-					  copyPriceAll: false
-					};
-					return updated;
-				  });
-				}}
-			  >
-				Delete all these rows
-			  </Button>*/}
+			
 			</Box>
 			<Box sx={{ overflowX: "auto", borderRadius: 1, border: "1px solid #e0e0e0" }}>
 			  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
@@ -1450,7 +1573,12 @@ const renderField = (
 							Product Details
 						</Typography>
 						<Divider sx={{ mt: 1, mb:2}} />
-						<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+						<Box sx={{
+							display: 'grid',
+							gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+							gap: 3,
+							alignItems: 'center',
+						}}>
 							{form.ProductDetails.map((field, idx) => renderField(field, idx, "ProductDetails", activeProductIndex))}
 						</Box>
 					</Box>
@@ -1460,7 +1588,12 @@ const renderField = (
 							Other Attributes
 						</Typography>
 						<Divider sx={{ mt: 1, mb:2}} />
-						<Box sx={{ display: "flex", flexWrap: "wrap", gap: 2 }}>
+						<Box sx={{
+							display: 'grid',
+							gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr' },
+							gap: 3,
+							alignItems: 'center',
+						}}>
 							{form.OtherAttributes.map((field, idx) => renderField(field, idx, "OtherAttributes", activeProductIndex))}
 						</Box>
 					</Box>

@@ -17,7 +17,7 @@ import {
   Paper,
 } from "@mui/material";
 import InfoOutlinedIcon from "@mui/icons-material/InfoOutlined";
-import Image from "next/image";
+import EmptyBox from "./empty-box";
 
 export default function QualityScoreUI(): React.JSX.Element {
   return (
@@ -158,27 +158,26 @@ export default function QualityScoreUI(): React.JSX.Element {
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
-            <TableRow>
-              <TableCell>Product Details and Quality Score</TableCell>
-              <TableCell>Top Customer Feedback</TableCell>
-              <TableCell>Product Listing Improvements</TableCell>
-              <TableCell>Action</TableCell>
-            </TableRow>
+        <TableRow>
+          <TableCell>Product Details and Quality Score</TableCell>
+          <TableCell>Top Customer Feedback</TableCell>
+          <TableCell>Product Listing Improvements</TableCell>
+          <TableCell>Action</TableCell>
+        </TableRow>
           </TableHead>
         </Table>
 
-        <Box textAlign="center" py={5}>
-          <Image
-            src="https://www.svgrepo.com/show/401832/box-empty.svg"
-            alt="Empty"
-            width={80}
-            style={{ marginBottom: 8 }}
-          />
-          <Typography fontWeight="bold">No products as of now</Typography>
+        <Box textAlign="center" py={6}>
+          <EmptyBox />
+          <Typography fontSize={14} fontWeight="medium" mt={2}>
+        No items to display
+          </Typography>
           <Typography fontSize={13} color="text.secondary">
-            Products that have poor quality or listing issues will appear here.
+        Once products require attention they will appear here.
           </Typography>
         </Box>
+
+        
       </TableContainer>
     </Box>
   );
