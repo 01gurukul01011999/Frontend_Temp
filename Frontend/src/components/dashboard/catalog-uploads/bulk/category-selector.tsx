@@ -18,7 +18,7 @@ import {
 	DialogActions,
 	IconButton,
 } from '@mui/material';
-import categoryTree, { CategoryNode } from './category-tree';
+import categoryTree from './category-tree';
 import AddIcon from '@mui/icons-material/Add';
 import { getSiteURL } from '@/lib/get-site-url';
 import Isvg from './isvg';
@@ -27,13 +27,13 @@ import DownloadSvg from './download-svg';
 import UploadSvg from './upload-svg';
 
 // Helper to flatten category tree into array of full paths
-function getAllCategoryPaths(tree: CategoryNode, prefix: string[] = []): string[][] {
+function getAllCategoryPaths(tree: Record<string, unknown>, prefix: string[] = []): string[][] {
 	let paths: string[][] = [];
 	for (const key in tree) {
-		if (tree[key] === null) {
+		if ((tree as Record<string, unknown>)[key] === null) {
 			paths.push([...prefix, key]);
-		} else if (typeof tree[key] === 'object') {
-			paths = [...paths, ...getAllCategoryPaths(tree[key] as CategoryNode, [...prefix, key])];
+		} else if (typeof (tree as Record<string, unknown>)[key] === 'object') {
+			paths = [...paths, ...getAllCategoryPaths((tree as Record<string, unknown>)[key] as Record<string, unknown>, [...prefix, key])];
 		}
 	}
 	return paths;
@@ -165,7 +165,7 @@ console.log('uploadimages', uploadedImages);
 	};
 
 	const columns = [];
-	let currentTree: CategoryNode | null = categoryTree;
+	let currentTree: Record<string, unknown> | null = categoryTree as Record<string, unknown> | null;
 
 	for (let level = 0; ; level++) {
 		if (currentTree === undefined) break;
@@ -206,15 +206,15 @@ console.log('uploadimages', uploadedImages);
 				))}
 			</Box>
 		);
-		currentTree = currentTree?.[selectionPath[level]] ?? null;
+		currentTree = ((currentTree as Record<string, unknown>)[selectionPath[level] as string] as Record<string, unknown> | null) ?? null;
 	}
 
 	// Helper to check if the current selection is a leaf (null) in the original tree
-	function isLeaf(tree: CategoryNode, path: string[]): boolean {
-		let node: CategoryNode | null = tree;
+	function isLeaf(tree: Record<string, unknown>, path: string[]): boolean {
+		let node: Record<string, unknown> | null = tree as Record<string, unknown> | null;
 		for (const p of path) {
 			if (!node || typeof node !== 'object') return false;
-			node = node[p] ?? null;
+			node = (node as Record<string, unknown>)[p] as Record<string, unknown> | null;
 		}
 		return node === null && path.length > 0;
 	}

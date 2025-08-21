@@ -1,763 +1,763 @@
 export type CategoryNode = {
-  [key: string]: CategoryNode | { [key: string]: any } | null;
+      [key: string]: CategoryNode | null;
 };
 
-const categoryTree: CategoryNode = {
-  'Men Fashion': {
-    'Mens Clothing': { 
-        'Men Top Wear': {
-            'Tshirts': null,
-            'Shirts': null,
-            'Top & Bottom Set': null,
-            'Personalized Tshirts': null,
-            'Dad & Daughter Tshirts': null,
-            'Dad & Son Tshirts': null,
-            'Active Tshirts': null,
-            'Brother & Sister T-Shirts': null,
-            'Jumpsuits' : null,
-            'Plus Size T-Shirts': null,
-            'Swim Suits': null,
-         },
-         'Men Sports Wear': {
-             'Active Shorts' : null,
-             'Gym Shorts': null,
-             'Tracksuits': null,
-         },
-         'Men Ethnic Wear': {
-             'Dhotis, Mundus & Lungis': null,
-             'Ethnic Jackets': null,
-             'Kurta Sets': null,
-             'Kurtas': null,
-             'Sherwanis': null,
-         },
-         'Men Bottom Wear': {
-              'Jeans' : null,
-              'Shorts': null,
-              'Track Pants': null,
-              'Trousers': null,
-              'Three Fourths': null,
-              'Dungarees': null,
-              'Swimming Shorts': null,
-          },
-         'Top & Bottom Set': {
-              'Suit Sets': null,
-         },
-         'Men Inner & Sleepwear': {
-              'Boxers': null,
-              'Briefs': null,
-              'Lounge Pants': null,
-              'Trunks': null,
-              'Vests': null,
-              'Nightsuits': null,
-         },
-         'Men Unstitched Fabric': {
-              'Shirt Fabric': null,
-              'Pant Fabric': null,
-              'Top & Bottom Fabric': null,
-              'Suit Fabric': null,
-         },
-         'Men Raincoat': {
-              'Raincoat': null,
-         },
-         'Men Winter Wear': {
-            'Blazers': null,
-            'Jackets': null,
-            'Sweaters': null,
-            'Sweatshirts': null,
-            'Shrugs': null,
-            'Thermal Topwear': null,
-            'Thermal Bottomwear': null,
-            'Thermal Set': null,
-            'Men Shawls': null,
-         },
-        },
-    'Accessories': {
-      'Belts': {
-        'Belts': null,
-      },
-      'Caps & Hats': {
-         'Caps & Hats' : null,
-         'Caps' : null,
-         'Hats' : null,
-      },
-      'Mufflers, Scarves & Gloves': {
-        'Mufflers': null,
-        'Scarves': null,
-        'Gloves': null,
-        'Bandana': null,
-      },
-       'Hankerchiefs': {
-         'Hankerchiefs': null,
-       },
-      'Jewellery':{
-         'Jewellery' : null,
-         'Chains' : null,
-          'Bracelets' : null,
-          'Finger Rings' : null,
-          'Other Men Jewellery' : null,
-          'Necklace' : null,
-          'Men Earrings' : null,
-      },
-      'Socks': {
-        'Socks': null,
-      },
-      'Sunglasses' : {
-         'Sunglasses' : null,
-         'Spectacle Frames' : null,
-      },
-      'Wallets': {
-        'Wallets': null,
-      },
-      'Watches': {
-        'Analog Watches':null,
-        'Chronograph Watches': null,
-        'Sports Watches': null,
-        'Watch Boxes': null,
-        'Digital Watches': null,
-        'Watchboxes': null,
-        'Watchbands': null,
-        'Stop Watch': null,
-      },
-      'Earmuffs': {
-        'Earmuffs': null,
-      },
-      'Headbands': {
-        'Headbands': null,
-      },
-      'Wrist Bands': {
-        'Wrist Bands': null,
-      },
-      'Helmet': {
-        'Helmet': null,
-      },
-      'Men Apparel Accessories': {
-        'Cufflinks': null,
-        'Ties': null,
-        'Brooches': null,
-        'Tie Clips': null,
-        'Pocket Squares': null,
-        'Shirt Studs': null,
-        'Suspenders': null,
-        'Cummerbunds': null,
-      },
-      'Keychains': {
-        'Keychains': null,
-      },
-      'Friendship Bands': {
-        'Friendship Bands': null,
-      },
-      'Men Hair Extensions/Wigs': {
-        'Men Hair Extensions/Wigs': null,
-      },
-    },
-    'Footwear': {
-      'Shoes': {
-        'Casual Shoes': null,
-        'Formal Shoes': null,
-        'Sports Shoes': null,
-        'Loafers': null,
-        'Floaters': null,
-        'Boots': null,
-        'Sneakers': null,
-        'Safety Shoes': null,
-      },
-      'Flipflops & Slippers':{
-        'Flip Flops': null,
-        'Slippers': null,
-        'Clogs': null,
-      },
-      'Sandals & Floaters' : {
-        'Sandals': null,
-        'Floaters': null,
-      },
-      'Ethnic Footwear':{
-        'Other Ethnic Flats': null,
-        'Mojaris and Juttis': null,
-      },
-      'Shoe Accessories' : {
-        'Shoe Accessories': null,
-      },
-    },
-    },
-  
-    'Women Fashion': {
-        'Ethnic Wear':{
-              'Kurtis, Sets & Fabrics':{
-                    'Kurti With Bottomwear': null,
-                    'Kurtis': null,
-                    'Kurti Fabrics': null,
-                    'Kurti With Dupatta & Bottomwear': null,
-                    'Kurti With Dupatta': null,
-              },
-              'Sarees Blouses & Petticoats': {
-                    'Sarees': null,
-                    'Saree Shapewear & Petticoats': null,
-                    'Blouses': null,
-                    'Blouse Piece': null,
-                    'Ready To Wear Sarees': null,
-                    'Sarees With Stitched Blouse': null,
-              },
-              'Suits & Dress Material' : {
-                    'Suits': null,
-                    'Semi-Stitched Suits': null,
-              },
-              'Ethnic Bottomwear':{
-                    'Churidars' : null,
-                    'Patialas': null,
-                    'Salwars': null,
-                    'Sharara': null,
-              },
-              'Dupattas & Shawls': {
-                     'Dupattas': null,
-                     'Shawls': null,
-              },
-              'Ethnic Jackets': {
-                      'Ethnic Jackets': null,
-              },
-              'Gowns & Kaftans': {
-                    'Gowns - Ethnic': null,
-              },
-              'Lehenga Choli': {
-                      'Lehenga': null,
-                      'Ready To Wear Lehenga': null,
-              },
-              'Ethnic Skirts': {
-                       'Skirts': null,
-              },
-              'Islamic wear': {
-                     'Jaali': null,
-                     'Niqab': null,
-                     'Hijab': null,
-                     'Abayas': null,
-                     'Other Islamic Wear': null,
-                     'Burqa': null,
-              },
-        },
-        'Western Wear' : {
-              'Tops, Tshirts & Shirts':{
-                    'Shirts' : null,
-                    'Tshirts': null,
-                    'Top & Bottom Sets': null,
-                    'Tops & Tunics': null,
-                    'Women Formal Shirt & Bottom Fabric': null,
-              },
-              'Dresses, Gowns & Jumpsuits': {
-                      'Dresses' : null,
-                      'Western Gowns': null,
-                      'Jumpsuits': null,
-              },
-              'Jeans & Jeggings': {
-                       'Jeans': null,
-                       'Jeggings': null,
-              },
-              'Capes, Shrugs & Ponchos': {
-                        'Capes, Shrugs & Ponchos': null,
-              },
-              'Capris & Trousers & Pants': {
-                        'Capris': null,
-                        'Trousers & Pants': null,
-              },
-              'Sweaters & Cardigans': {
-                        'Sweaters': null,
-                        'Cardigans': null,
-              },
-              'Jackets': {
-                        'Coats & Jackets' : null,
-                        'Blazers & Coats': null,
-                        'Jackets': null,
-              },
-              'Maternity Wear': {
-                         'Dresses': null,
-              },
-              'Palazzos, Leggings & Tights': {
-                        'Palazzos': null,
-                        'Leggings': null,
-              },
-              'Skirts & Shorts': {
-                        'Skirts': null,
-                        'Shorts': null,
-              },
-              'Hoodies & Sweatshirts': {
-                        'Sweatshirts': null,
-              },
-              'Tops Tshirts & Shirts': {
-                          'Top & Bottom Sets': null,
-              },
-              'Raincoats': {
-                         'Raincoat' : null,
-              },
-        },
-        'Accessories':{
-               'Jewellery': { 
-                   'Anklets & Toe Rings': null,
-                   'Pendants & Lockets': null,
-                    'Necklaces & Chains': null,
-                    'Rings': null,
-                    'Bracelet & Bangles': null,
-                    'Jewellery Set': null,
-                    'Earrings & Studs': null,
-                    'Maangtika': null,
-                    'Mangalsutras': null,
-                    'Nosepins': null,
-                    'Kamarband': null,
-                    'Jewellery Organizer Box': null,
-                    'Bajuband & Armlets': null,
-                    'Customised Jewellery': null,
-                    'Real Silver Rings': null,
-                    'Real Silver Jewellery': null,
-               },
-               'Belts': {
-                     'Belts': null,
-                     'Belts Accessories': null,
-               },
-               'Fashion Accessories': {
-                       'Bindis': null,
-                       'Hijab Pin': null,
-                       'Saree Pin': null,
-               },
-               'Caps & Hats': {
-                      'Caps': null,
-                      'Hats': null,
-               },
-               'Hair Accessories': {
-                      'Hair Accessories': null,
-                      'Hair Bands': null,
-                      'Hair Buns': null,
-                      'Gajra/Floral Hair Accessories': null,
-                      'Hair Extensions & Wigs': null,
-                      'Hair Clips & Hair Pins': null,
-               },
-               'Scarves, Stoles & Gloves': {
-                      'Gloves': null,
-                      'Scarves': null,
-                      'Stoles': null,
-                      'Shawls': null,
-               },
-               'Socks': {
-                      'Socks': null,
-               },
-                'Sunglasses': {
-                      'Sunglasses': null,
-                      'Spectacle Frames': null,
-                      'Sunglasses & Spectacle Cases': null,
-                },
-                'Umbrellas': {
-                      'Umbrellas': null,
-                },
-                'Watches': {
-                      'Analog Watches': null,
-                      'Chronograph Watches': null,
-                      'Couple watches': null,
-                      'Sports watches': null,
-                      'Watch Bands': null,
-                      'Watchboxes': null,
-                      'Digital Watches': null,
-                },
-                'Handkerchiefs' : {
-                      'Handkerchiefs': null,
-                },
-                'Earmuffs': {
-                      'Earmuffs': null,
-                },
-                'Hijabs': {
-                      'Hijabs': null,
-                },
-                'Pins' : {
-                      'Saree Pin': null,
-                },
-                'Keychains': {
-                      'Keychains': null,
-                },
-                'Friendship Bands': {
-                      'Friendship Bands': null,
-                },
-        },
-        'Footwear'  : {
-              'Flats': {
-                       'Flats': null,
-                       'Platforms': null,
-              },
-              'Boots': {
-                        'Boots': null,
-              },
-              'Heels': {
-                        'Heels': null,
-                        'Stilettos': null,
-                        'Pumps': null,
-              },
-              'Flipflops & Slippers': {
-                        'Flipflops & Slippers': null,
-                        'Sliders': null,
-                        'Clogs': null,
-              },
-              'Shoes': {
-                        'Formal Shoes': null,
+const categoryTree = {
+      'Men Fashion': {
+            'Mens Clothing': { 
+                        'Men Top Wear': {
+                                    'Tshirts': null,
+                                    'Shirts': null,
+                                    'Top & Bottom Set': null,
+                                    'Personalized Tshirts': null,
+                                    'Dad & Daughter Tshirts': null,
+                                    'Dad & Son Tshirts': null,
+                                    'Active Tshirts': null,
+                                    'Brother & Sister T-Shirts': null,
+                                    'Jumpsuits' : null,
+                                    'Plus Size T-Shirts': null,
+                                    'Swim Suits': null,
+                         },
+                         'Men Sports Wear': {
+                                     'Active Shorts' : null,
+                                     'Gym Shorts': null,
+                                     'Tracksuits': null,
+                         },
+                         'Men Ethnic Wear': {
+                                     'Dhotis, Mundus & Lungis': null,
+                                     'Ethnic Jackets': null,
+                                     'Kurta Sets': null,
+                                     'Kurtas': null,
+                                     'Sherwanis': null,
+                         },
+                         'Men Bottom Wear': {
+                                          'Jeans' : null,
+                                          'Shorts': null,
+                                          'Track Pants': null,
+                                          'Trousers': null,
+                                          'Three Fourths': null,
+                                          'Dungarees': null,
+                                          'Swimming Shorts': null,
+                              },
+                         'Top & Bottom Set': {
+                                          'Suit Sets': null,
+                         },
+                         'Men Inner & Sleepwear': {
+                                          'Boxers': null,
+                                          'Briefs': null,
+                                          'Lounge Pants': null,
+                                          'Trunks': null,
+                                          'Vests': null,
+                                          'Nightsuits': null,
+                         },
+                         'Men Unstitched Fabric': {
+                                          'Shirt Fabric': null,
+                                          'Pant Fabric': null,
+                                          'Top & Bottom Fabric': null,
+                                          'Suit Fabric': null,
+                         },
+                         'Men Raincoat': {
+                                          'Raincoat': null,
+                         },
+                         'Men Winter Wear': {
+                                    'Blazers': null,
+                                    'Jackets': null,
+                                    'Sweaters': null,
+                                    'Sweatshirts': null,
+                                    'Shrugs': null,
+                                    'Thermal Topwear': null,
+                                    'Thermal Bottomwear': null,
+                                    'Thermal Set': null,
+                                    'Men Shawls': null,
+                         },
+                        },
+            'Accessories': {
+                  'Belts': {
+                        'Belts': null,
+                  },
+                  'Caps & Hats': {
+                         'Caps & Hats' : null,
+                         'Caps' : null,
+                         'Hats' : null,
+                  },
+                  'Mufflers, Scarves & Gloves': {
+                        'Mufflers': null,
+                        'Scarves': null,
+                        'Gloves': null,
+                        'Bandana': null,
+                  },
+                   'Hankerchiefs': {
+                         'Hankerchiefs': null,
+                   },
+                  'Jewellery':{
+                         'Jewellery' : null,
+                         'Chains' : null,
+                              'Bracelets' : null,
+                              'Finger Rings' : null,
+                              'Other Men Jewellery' : null,
+                              'Necklace' : null,
+                              'Men Earrings' : null,
+                  },
+                  'Socks': {
+                        'Socks': null,
+                  },
+                  'Sunglasses' : {
+                         'Sunglasses' : null,
+                         'Spectacle Frames' : null,
+                  },
+                  'Wallets': {
+                        'Wallets': null,
+                  },
+                  'Watches': {
+                        'Analog Watches':null,
+                        'Chronograph Watches': null,
+                        'Sports Watches': null,
+                        'Watch Boxes': null,
+                        'Digital Watches': null,
+                        'Watchboxes': null,
+                        'Watchbands': null,
+                        'Stop Watch': null,
+                  },
+                  'Earmuffs': {
+                        'Earmuffs': null,
+                  },
+                  'Headbands': {
+                        'Headbands': null,
+                  },
+                  'Wrist Bands': {
+                        'Wrist Bands': null,
+                  },
+                  'Helmet': {
+                        'Helmet': null,
+                  },
+                  'Men Apparel Accessories': {
+                        'Cufflinks': null,
+                        'Ties': null,
+                        'Brooches': null,
+                        'Tie Clips': null,
+                        'Pocket Squares': null,
+                        'Shirt Studs': null,
+                        'Suspenders': null,
+                        'Cummerbunds': null,
+                  },
+                  'Keychains': {
+                        'Keychains': null,
+                  },
+                  'Friendship Bands': {
+                        'Friendship Bands': null,
+                  },
+                  'Men Hair Extensions/Wigs': {
+                        'Men Hair Extensions/Wigs': null,
+                  },
+            },
+            'Footwear': {
+                  'Shoes': {
                         'Casual Shoes': null,
-                        'Sneakers': null,
+                        'Formal Shoes': null,
                         'Sports Shoes': null,
-                        'Loafers & Moccasins': null,
-              },
-              'Sandals': {
-                        'Floaters' : null,
-                        'Flat Sandals' : null,
-                        'Wedge Sandals': null,
-                        'Platform Sandals': null,
-                        'Heel Sandals': null,
-              },
-              'Bellies & Juttis': {
-                         'Bellies': null,
-                         'Juttis & Mojaris': null,
-              },
-              'Wedges': {
-                        'Wedges': null,
-              },
-        },
-        'Inner & Sleepwear' : {
-              'Nightsuits & Nightdresses': {
-                        'Babydolls' : null,
-                        'Nightdresses': null,
-                        'Nightsuits': null,
-                        'Pyjamas': null,
-                        'Women Sleepwear With In-built Cups': null,
-                        'Couple Nightsuits': null,
-              },
-              'Camisoles & Thermals': {
-                        'Camisoles': null,
-                        'Thermal Tops': null,
-                        'Thermal Bottoms': null,
-                        'Thermal Sets': null,
-              },
-              'Bras & Lingerie Sets': {
-                         'Bra' : null,
-                         'Lingerie Sets': null,
-                         'Stockings': null,
-                         'Lingerie Accessories': null,
-              },
-              'Briefs': {
-                        'Briefs': null,
-              },
-              'Shapewear' : {
-                        'Shapewear': null,
-              },
-              'Bathrobes': {
-                        'Bathrobes': null,
-              },
-              'Period Panty': {
-                        'Period Panty' : null,
-              },
-        },
-        'Sports & Activewear' : {
-              'Sportswear': {
-                        'Swimwear' : null,
-                        'Active Tank Top': null,
-                        'Tracksuits': null,
-                        'Gym Shorts': null,
-                        'Tenniswear': null,
-              },
-              'Innerwear': {
-                        'Sports Bra': null,
-              },
-              'Activewear': {
-                          'Active Bottomwear': null,
-                          'Active Topwear': null,
-                          'Active Clothing Set': null,
-                          'Active Jackets & Sweatshirts': null,
-                          'Active Shorts': null,
-              },
-        },
-        'Women Ethnic Wear' : {
-               'Ethnic Skirt' : {
-                            'Ethnic Skirt and Top': null,
-               },
-        },
-        'Maternity' : {
-               'Feeding Topwear': {
-                           'Feeding Kurtis & Kurta Sets': null,
-               },
-               'Maternity Bottomwear': {
-                            'Maternity Kurtis & Kurta Sets': null,
-               },
-        },
-     },
-    'Home & Living':{
-        'Bed Linen & Furnishing': {
-                'Bean Bags': {
-                    'Bean Bags': null,
-                },
-                'Bed Covers': {
-                    'Bed Covers': null,
-                },
-                'Bedding Set': {
-                    'Bedding Set': null,
-                },
-                'Blankets, Quilts & Dohars': {
-                    'Blankets': null,
-                },
-                'Cushions & Cushion Covers': {
-                    'Cushions': null,
-                },
-                'Diwan Sets': {
-                    'Diwan Sets': null,
-                },
-                'Pillows': {
-                    'Pillows': null,
-                },
-        },
-        'Towels & Bath Accessories': {
-                'Bath Rugs': {
-                      'Bath Rugs': null,
-                },
-                'Bath Towels': {
-                      'Bath Towels': null,
-                },
-                'Bathroom Accessories': {
-                      'Bathroom Accessories': null,
-                },
-                'Hand Towels': {
-                      'Hand Towels': null,
-                },
-        },
-        'Home Utility': {
-                 'Covers': {
-                      'Covers': null,
-                 },
-                 'Electronic Utility': {
-                      'Electronic Utility': null,
-                 },
-                 'Gifts': {
-                      'Gifts': null,
-                 },
-                 'Laundry Bags': {
-                      'Laundry Bags': null,
-                 },
-                 'Other Home Utility': {
-                      'Other Home Utility': null,
-                 },
-        },
-        'Curtains': {
-              'Curtains & Sheers': {'Curtains & Sheers': null,},
-              'Shower Curtains': {'Shower Curtains': null,},
-        },
-        'Festive & Decor': {
-             'Festive': { 'Rakhi': null, },
-        },
-        'Floor Mats & Dhurries': {
-              'Doormats': {'Doormats': null,},
-              'Floormats & Dhurries': { 'Floormats & Dhurries': null,},
-        },
-        'Bedding & Linen': {
-              'Bed Runners & Scarves' : {
-                'Bed Runners & Scarves': null,
-              },
-              'Duvet Cover': {
-                'Duvet Cover': null,
-              },
-        },
-        'Baby Care': {
-              'Baby Mats & Bed Protector': {
-                    'Baby Mats & Bed Protector': null,
-              },
-              'Baby Blankets': {
-                    'Baby Blankets': null,
-              },
-              'Baby Mosquito Nets': {
-                    'Baby Mosquito Nets': null,
-              },
-              'Baby Pillows': {
-                    'Baby Pillows': null,
-              },
-              'Baby Sleeping Bag': {
-                    'Baby Sleeping Bag': null,
-              },
-              'Baby Towels': {
-                    'Baby Towels': null,
-              },
-              'Baby Hanging Cradle': {
-                    'Baby Hanging Cradle': null,
-              },
-        },
-        'Pet Care': {
-              'Dog Mats': {
-                'Dog Mats': null,
-              },
-        },
-        'Carpets & Doormats': {
-              'Medium Weight Carpets': {
-                'Medium Weight Carpets': null,
-              },
-        },
-        'Soft Furnishing': {
-              'Pet Furnishings': {
-                    'Pet Bedding' : null,
-                    'Pet Blankets': null,
-                    'Pet Mats': null,
-                    'Pet Cushions': null,
-                },
-        },
-        'Furniture': {
-              'Storage Furniture': {
-                   'Showcases': null,
-              },
-              'Living Room Furniture': {
-                    'Outdoor Tables': null,
-              },
-        },
-    },
-    'Kids & Toys': {
-        'Accessories': {
-            'Unisex' :{
-                'Bags & Backpacks': null,
-                'Towels, Bathrobes & Showercaps':null,
-                'Bedsheets': null,
-                'Blankets': null,
-                'Bottles & Lunchboxes': null,
-                'Caps': null,
-                'Other Kids Accessories': null,
-                'Caps, Ties, Belts & Socks': null,
-                'Sunglasses': null,
-                'Suspenders': null,
-                'Handkerchiefs': null,
-                'Balaclavas': null,
-                'Kids Umbrella': null
+                        'Loafers': null,
+                        'Floaters': null,
+                        'Boots': null,
+                        'Sneakers': null,
+                        'Safety Shoes': null,
+                  },
+                  'Flipflops & Slippers':{
+                        'Flip Flops': null,
+                        'Slippers': null,
+                        'Clogs': null,
+                  },
+                  'Sandals & Floaters' : {
+                        'Sandals': null,
+                        'Floaters': null,
+                  },
+                  'Ethnic Footwear':{
+                        'Other Ethnic Flats': null,
+                        'Mojaris and Juttis': null,
+                  },
+                  'Shoe Accessories' : {
+                        'Shoe Accessories': null,
+                  },
             },
-            'Watches' :{
-                'Sports Watches': { "formId": "form_101", "value": null },
-                'Analog Watches': null,
-                'Chronograph Watches': null,
-                'Digital Watches': null,
-                'Watchbands': null
             },
-            'Badges' :{
-                 'Badges': null,
+      
+            'Women Fashion': {
+                        'Ethnic Wear':{
+                                          'Kurtis, Sets & Fabrics':{
+                                                            'Kurti With Bottomwear': null,
+                                                            'Kurtis': null,
+                                                            'Kurti Fabrics': null,
+                                                            'Kurti With Dupatta & Bottomwear': null,
+                                                            'Kurti With Dupatta': null,
+                                          },
+                                          'Sarees Blouses & Petticoats': {
+                                                            'Sarees': null,
+                                                            'Saree Shapewear & Petticoats': null,
+                                                            'Blouses': null,
+                                                            'Blouse Piece': null,
+                                                            'Ready To Wear Sarees': null,
+                                                            'Sarees With Stitched Blouse': null,
+                                          },
+                                          'Suits & Dress Material' : {
+                                                            'Suits': null,
+                                                            'Semi-Stitched Suits': null,
+                                          },
+                                          'Ethnic Bottomwear':{
+                                                            'Churidars' : null,
+                                                            'Patialas': null,
+                                                            'Salwars': null,
+                                                            'Sharara': null,
+                                          },
+                                          'Dupattas & Shawls': {
+                                                             'Dupattas': null,
+                                                             'Shawls': null,
+                                          },
+                                          'Ethnic Jackets': {
+                                                                  'Ethnic Jackets': null,
+                                          },
+                                          'Gowns & Kaftans': {
+                                                            'Gowns - Ethnic': null,
+                                          },
+                                          'Lehenga Choli': {
+                                                                  'Lehenga': null,
+                                                                  'Ready To Wear Lehenga': null,
+                                          },
+                                          'Ethnic Skirts': {
+                                                                   'Skirts': null,
+                                          },
+                                          'Islamic wear': {
+                                                             'Jaali': null,
+                                                             'Niqab': null,
+                                                             'Hijab': null,
+                                                             'Abayas': null,
+                                                             'Other Islamic Wear': null,
+                                                             'Burqa': null,
+                                          },
+                        },
+                        'Western Wear' : {
+                                          'Tops, Tshirts & Shirts':{
+                                                            'Shirts' : null,
+                                                            'Tshirts': null,
+                                                            'Top & Bottom Sets': null,
+                                                            'Tops & Tunics': null,
+                                                            'Women Formal Shirt & Bottom Fabric': null,
+                                          },
+                                          'Dresses, Gowns & Jumpsuits': {
+                                                                  'Dresses' : null,
+                                                                  'Western Gowns': null,
+                                                                  'Jumpsuits': null,
+                                          },
+                                          'Jeans & Jeggings': {
+                                                                   'Jeans': null,
+                                                                   'Jeggings': null,
+                                          },
+                                          'Capes, Shrugs & Ponchos': {
+                                                                        'Capes, Shrugs & Ponchos': null,
+                                          },
+                                          'Capris & Trousers & Pants': {
+                                                                        'Capris': null,
+                                                                        'Trousers & Pants': null,
+                                          },
+                                          'Sweaters & Cardigans': {
+                                                                        'Sweaters': null,
+                                                                        'Cardigans': null,
+                                          },
+                                          'Jackets': {
+                                                                        'Coats & Jackets' : null,
+                                                                        'Blazers & Coats': null,
+                                                                        'Jackets': null,
+                                          },
+                                          'Maternity Wear': {
+                                                                         'Dresses': null,
+                                          },
+                                          'Palazzos, Leggings & Tights': {
+                                                                        'Palazzos': null,
+                                                                        'Leggings': null,
+                                          },
+                                          'Skirts & Shorts': {
+                                                                        'Skirts': null,
+                                                                        'Shorts': null,
+                                          },
+                                          'Hoodies & Sweatshirts': {
+                                                                        'Sweatshirts': null,
+                                          },
+                                          'Tops Tshirts & Shirts': {
+                                                                              'Top & Bottom Sets': null,
+                                          },
+                                          'Raincoats': {
+                                                                         'Raincoat' : null,
+                                          },
+                        },
+                        'Accessories':{
+                                           'Jewellery': { 
+                                                       'Anklets & Toe Rings': null,
+                                                       'Pendants & Lockets': null,
+                                                            'Necklaces & Chains': null,
+                                                            'Rings': null,
+                                                            'Bracelet & Bangles': null,
+                                                            'Jewellery Set': null,
+                                                            'Earrings & Studs': null,
+                                                            'Maangtika': null,
+                                                            'Mangalsutras': null,
+                                                            'Nosepins': null,
+                                                            'Kamarband': null,
+                                                            'Jewellery Organizer Box': null,
+                                                            'Bajuband & Armlets': null,
+                                                            'Customised Jewellery': null,
+                                                            'Real Silver Rings': null,
+                                                            'Real Silver Jewellery': null,
+                                           },
+                                           'Belts': {
+                                                             'Belts': null,
+                                                             'Belts Accessories': null,
+                                           },
+                                           'Fashion Accessories': {
+                                                                   'Bindis': null,
+                                                                   'Hijab Pin': null,
+                                                                   'Saree Pin': null,
+                                           },
+                                           'Caps & Hats': {
+                                                                  'Caps': null,
+                                                                  'Hats': null,
+                                           },
+                                           'Hair Accessories': {
+                                                                  'Hair Accessories': null,
+                                                                  'Hair Bands': null,
+                                                                  'Hair Buns': null,
+                                                                  'Gajra/Floral Hair Accessories': null,
+                                                                  'Hair Extensions & Wigs': null,
+                                                                  'Hair Clips & Hair Pins': null,
+                                           },
+                                           'Scarves, Stoles & Gloves': {
+                                                                  'Gloves': null,
+                                                                  'Scarves': null,
+                                                                  'Stoles': null,
+                                                                  'Shawls': null,
+                                           },
+                                           'Socks': {
+                                                                  'Socks': null,
+                                           },
+                                                'Sunglasses': {
+                                                                  'Sunglasses': null,
+                                                                  'Spectacle Frames': null,
+                                                                  'Sunglasses & Spectacle Cases': null,
+                                                },
+                                                'Umbrellas': {
+                                                                  'Umbrellas': null,
+                                                },
+                                                'Watches': {
+                                                                  'Analog Watches': null,
+                                                                  'Chronograph Watches': null,
+                                                                  'Couple watches': null,
+                                                                  'Sports watches': null,
+                                                                  'Watch Bands': null,
+                                                                  'Watchboxes': null,
+                                                                  'Digital Watches': null,
+                                                },
+                                                'Handkerchiefs' : {
+                                                                  'Handkerchiefs': null,
+                                                },
+                                                'Earmuffs': {
+                                                                  'Earmuffs': null,
+                                                },
+                                                'Hijabs': {
+                                                                  'Hijabs': null,
+                                                },
+                                                'Pins' : {
+                                                                  'Saree Pin': null,
+                                                },
+                                                'Keychains': {
+                                                                  'Keychains': null,
+                                                },
+                                                'Friendship Bands': {
+                                                                  'Friendship Bands': null,
+                                                },
+                        },
+                        'Footwear'  : {
+                                          'Flats': {
+                                                                   'Flats': null,
+                                                                   'Platforms': null,
+                                          },
+                                          'Boots': {
+                                                                        'Boots': null,
+                                          },
+                                          'Heels': {
+                                                                        'Heels': null,
+                                                                        'Stilettos': null,
+                                                                        'Pumps': null,
+                                          },
+                                          'Flipflops & Slippers': {
+                                                                        'Flipflops & Slippers': null,
+                                                                        'Sliders': null,
+                                                                        'Clogs': null,
+                                          },
+                                          'Shoes': {
+                                                                        'Formal Shoes': null,
+                                                                        'Casual Shoes': null,
+                                                                        'Sneakers': null,
+                                                                        'Sports Shoes': null,
+                                                                        'Loafers & Moccasins': null,
+                                          },
+                                          'Sandals': {
+                                                                        'Floaters' : null,
+                                                                        'Flat Sandals' : null,
+                                                                        'Wedge Sandals': null,
+                                                                        'Platform Sandals': null,
+                                                                        'Heel Sandals': null,
+                                          },
+                                          'Bellies & Juttis': {
+                                                                         'Bellies': null,
+                                                                         'Juttis & Mojaris': null,
+                                          },
+                                          'Wedges': {
+                                                                        'Wedges': null,
+                                          },
+                        },
+                        'Inner & Sleepwear' : {
+                                          'Nightsuits & Nightdresses': {
+                                                                        'Babydolls' : null,
+                                                                        'Nightdresses': null,
+                                                                        'Nightsuits': null,
+                                                                        'Pyjamas': null,
+                                                                        'Women Sleepwear With In-built Cups': null,
+                                                                        'Couple Nightsuits': null,
+                                          },
+                                          'Camisoles & Thermals': {
+                                                                        'Camisoles': null,
+                                                                        'Thermal Tops': null,
+                                                                        'Thermal Bottoms': null,
+                                                                        'Thermal Sets': null,
+                                          },
+                                          'Bras & Lingerie Sets': {
+                                                                         'Bra' : null,
+                                                                         'Lingerie Sets': null,
+                                                                         'Stockings': null,
+                                                                         'Lingerie Accessories': null,
+                                          },
+                                          'Briefs': {
+                                                                        'Briefs': null,
+                                          },
+                                          'Shapewear' : {
+                                                                        'Shapewear': null,
+                                          },
+                                          'Bathrobes': {
+                                                                        'Bathrobes': null,
+                                          },
+                                          'Period Panty': {
+                                                                        'Period Panty' : null,
+                                          },
+                        },
+                        'Sports & Activewear' : {
+                                          'Sportswear': {
+                                                                        'Swimwear' : null,
+                                                                        'Active Tank Top': null,
+                                                                        'Tracksuits': null,
+                                                                        'Gym Shorts': null,
+                                                                        'Tenniswear': null,
+                                          },
+                                          'Innerwear': {
+                                                                        'Sports Bra': null,
+                                          },
+                                          'Activewear': {
+                                                                              'Active Bottomwear': null,
+                                                                              'Active Topwear': null,
+                                                                              'Active Clothing Set': null,
+                                                                              'Active Jackets & Sweatshirts': null,
+                                                                              'Active Shorts': null,
+                                          },
+                        },
+                        'Women Ethnic Wear' : {
+                                           'Ethnic Skirt' : {
+                                                                                    'Ethnic Skirt and Top': null,
+                                           },
+                        },
+                        'Maternity' : {
+                                           'Feeding Topwear': {
+                                                                               'Feeding Kurtis & Kurta Sets': null,
+                                           },
+                                           'Maternity Bottomwear': {
+                                                                                    'Maternity Kurtis & Kurta Sets': null,
+                                           },
+                        },
+             },
+            'Home & Living':{
+                        'Bed Linen & Furnishing': {
+                                                'Bean Bags': {
+                                                            'Bean Bags': null,
+                                                },
+                                                'Bed Covers': {
+                                                            'Bed Covers': null,
+                                                },
+                                                'Bedding Set': {
+                                                            'Bedding Set': null,
+                                                },
+                                                'Blankets, Quilts & Dohars': {
+                                                            'Blankets': null,
+                                                },
+                                                'Cushions & Cushion Covers': {
+                                                            'Cushions': null,
+                                                },
+                                                'Diwan Sets': {
+                                                            'Diwan Sets': null,
+                                                },
+                                                'Pillows': {
+                                                            'Pillows': null,
+                                                },
+                        },
+                        'Towels & Bath Accessories': {
+                                                'Bath Rugs': {
+                                                                  'Bath Rugs': null,
+                                                },
+                                                'Bath Towels': {
+                                                                  'Bath Towels': null,
+                                                },
+                                                'Bathroom Accessories': {
+                                                                  'Bathroom Accessories': null,
+                                                },
+                                                'Hand Towels': {
+                                                                  'Hand Towels': null,
+                                                },
+                        },
+                        'Home Utility': {
+                                                 'Covers': {
+                                                                  'Covers': null,
+                                                 },
+                                                 'Electronic Utility': {
+                                                                  'Electronic Utility': null,
+                                                 },
+                                                 'Gifts': {
+                                                                  'Gifts': null,
+                                                 },
+                                                 'Laundry Bags': {
+                                                                  'Laundry Bags': null,
+                                                 },
+                                                 'Other Home Utility': {
+                                                                  'Other Home Utility': null,
+                                                 },
+                        },
+                        'Curtains': {
+                                          'Curtains & Sheers': {'Curtains & Sheers': null,},
+                                          'Shower Curtains': {'Shower Curtains': null,},
+                        },
+                        'Festive & Decor': {
+                                     'Festive': { 'Rakhi': null, },
+                        },
+                        'Floor Mats & Dhurries': {
+                                          'Doormats': {'Doormats': null,},
+                                          'Floormats & Dhurries': { 'Floormats & Dhurries': null,},
+                        },
+                        'Bedding & Linen': {
+                                          'Bed Runners & Scarves' : {
+                                                'Bed Runners & Scarves': null,
+                                          },
+                                          'Duvet Cover': {
+                                                'Duvet Cover': null,
+                                          },
+                        },
+                        'Baby Care': {
+                                          'Baby Mats & Bed Protector': {
+                                                            'Baby Mats & Bed Protector': null,
+                                          },
+                                          'Baby Blankets': {
+                                                            'Baby Blankets': null,
+                                          },
+                                          'Baby Mosquito Nets': {
+                                                            'Baby Mosquito Nets': null,
+                                          },
+                                          'Baby Pillows': {
+                                                            'Baby Pillows': null,
+                                          },
+                                          'Baby Sleeping Bag': {
+                                                            'Baby Sleeping Bag': null,
+                                          },
+                                          'Baby Towels': {
+                                                            'Baby Towels': null,
+                                          },
+                                          'Baby Hanging Cradle': {
+                                                            'Baby Hanging Cradle': null,
+                                          },
+                        },
+                        'Pet Care': {
+                                          'Dog Mats': {
+                                                'Dog Mats': null,
+                                          },
+                        },
+                        'Carpets & Doormats': {
+                                          'Medium Weight Carpets': {
+                                                'Medium Weight Carpets': null,
+                                          },
+                        },
+                        'Soft Furnishing': {
+                                          'Pet Furnishings': {
+                                                            'Pet Bedding' : null,
+                                                            'Pet Blankets': null,
+                                                            'Pet Mats': null,
+                                                            'Pet Cushions': null,
+                                                },
+                        },
+                        'Furniture': {
+                                          'Storage Furniture': {
+                                                       'Showcases': null,
+                                          },
+                                          'Living Room Furniture': {
+                                                            'Outdoor Tables': null,
+                                          },
+                        },
             },
-            'School Supplies' :{
-                 'Lunch Boxes & Water Bottles': null,
-                  'Travel Items': null,
-                  'School Bags': null,
-            },
-            'Hats & Caps' :{
-                  'Hats & Caps': null,
-            },
-            'jewellery' :{
-                  'Bracelets': null,
-                  'Bangles': null,
-                  'Rings': null,
-            },
-            'Soft Toys' :{
-                  'Teddy Bears' : null,
-            },
-            'Baby Safety & Training' :{
-                  'Baby Stroller': null,
-                  'Baby Safety Guards & Locks'  : null,
-                  'Baby Hearing Protection Earmuffs': null,
-                  'Baby & Toddler Carriers': null,
-                  'Potty Seats & Chairs': null,
-                  'Potty Step Stools': null,
-                  'Safety Harnesses': null,
-                  'Baby Walker': null,
-            },
-          },
-        'Apparel': {
-             'Girls': {
-                   'Kurta Suit Sets': null,
-                   'Dungarees & Jumpsuits': null,
-             }
-        },
-        'Toys': {
-              'Unisex': {
-                    'Educational Toys': null,
-              },
-              'Electronic Toys': {
-                    'Remote Control Toys': null,
-                    'Electronic Toys & games' : null,
-                    'Musical toys': null,
-                    'Walkie Talkies': null,
-                    'Plug & Play Video Games': null,
-                    'Electronic Pets': null,
-                    'Handheld Games': null,
-              },
-              'Soft Toys': {
-                    'Stuffed Toys' : null,
-                    'Clip-On Toys for Baby Gear': null,
-                    'Stuffed animals': null,
-                    'Cartoon Characters': null,
-              },
-              'Sport & Outdoor': {            
-                    'Play Tents': null,
-                    'Slumber Bags': null,
-                    'Balance Boards': null,
-                    'Beanbags & Foot Bags': null,
-                    'Garden Tools': null,
-                    'Table Soccer & Billiards': null,
-                    'Racket Games': null,
-                    'Pogo Sticks': null,
-                    'Marbles': null,
-                    'Badminton': null,
-                    'Volleyballs & Set': null,
-                    'Cricket Set': null,
-                    'Foosball': null,
-                    'Basketballs & Set': null,
-                    'Baseball': null,
-                    'Yoga Mats & Gym Accessories': null,
-                    'Cricket': null,
-                    'Balls': null,
-                    'Boxing Set': null,
-                    'Lawn Tennis': null,
-                    'Table Tennis': null,
-              },
-              'Pretend Play': {
-                    'Pretend Play Sets': null,
-                     'Dress ups & costumes' : null,
-              },
-              'Games': {
-                    'Board Games': null,
-                    'Playing Cards': null,
-                    'Travel games': null,
-                    'Indoor Climbers & Play': null,
-                    'Travel & Pocket Games': null,
-                    'Games Collections': null,
-                    'Stacking & Balancing Games': null,
-                    'Floor Games': null,
-                    'Magic Supplies': null,
-                    'Dice & Dice Games': null,
-                    'Chess': null,
-                    'Domino & Tile Games': null,
-                    'Carrom Board': null
-              },
-              'Novelty & Gag Toys': {
-                    'Money Banks': null,
-              },
-              'Baby & Toddler Toys': {
-                    'Bath Toys': null,
-                    'Toddler Toys': null,
-                    'Rattle Sets': null,
-                    'Spinning & Battling Tops': null,
-                    'Animal Shaped Rattles': null,
-                    'Baby Rattles': null
-              },
-              'Dolls': {
-                    'Dolls & Doll houses': null,
-                    'Candy Dolls': null,
-                    'Dolls Accessories': null,
-                    'Fashion dolls': null
-              },
-              'Learning & Education':{
-                    'Reading & Writing Toys': null,
-                    'Magnets & Magnetic Toys': null,
-                    'Early Development & Activity Toys': null,
-                    'Toy Tablets & Computers': null,
-                    'Math Toys': null
-              },
-              'Puzzles': {
-                    'Wooden Puzzle': null,
-                    'Jigsaw Puzzle': null,
-                    'Floor Puzzles': null,
-                    '3-D Puzzles': null,
-                    'Sudoku Puzzles': null,
-                    'Puzzle Mats': null,
-                    'Framed Puzzles': null,
-                    'Board Puzzle': null,
-                    'Rubik Cubes': null,
+            'Kids & Toys': {
+                        'Accessories': {
+                                    'Unisex' :{
+                                                'Bags & Backpacks': null,
+                                                'Towels, Bathrobes & Showercaps':null,
+                                                'Bedsheets': null,
+                                                'Blankets': null,
+                                                'Bottles & Lunchboxes': null,
+                                                'Caps': null,
+                                                'Other Kids Accessories': null,
+                                                'Caps, Ties, Belts & Socks': null,
+                                                'Sunglasses': null,
+                                                'Suspenders': null,
+                                                'Handkerchiefs': null,
+                                                'Balaclavas': null,
+                                                'Kids Umbrella': null
+                                    },
+                                    'Watches' :{
+                                                'Sports Watches': { formId: "form_101", "value": null },
+                                                'Analog Watches': null,
+                                                'Chronograph Watches': null,
+                                                'Digital Watches': null,
+                                                'Watchbands': null
+                                    },
+                                    'Badges' :{
+                                                 'Badges': null,
+                                    },
+                                    'School Supplies' :{
+                                                 'Lunch Boxes & Water Bottles': null,
+                                                      'Travel Items': null,
+                                                      'School Bags': null,
+                                    },
+                                    'Hats & Caps' :{
+                                                      'Hats & Caps': null,
+                                    },
+                                    'jewellery' :{
+                                                      'Bracelets': null,
+                                                      'Bangles': null,
+                                                      'Rings': null,
+                                    },
+                                    'Soft Toys' :{
+                                                      'Teddy Bears' : null,
+                                    },
+                                    'Baby Safety & Training' :{
+                                                      'Baby Stroller': null,
+                                                      'Baby Safety Guards & Locks'  : null,
+                                                      'Baby Hearing Protection Earmuffs': null,
+                                                      'Baby & Toddler Carriers': null,
+                                                      'Potty Seats & Chairs': null,
+                                                      'Potty Step Stools': null,
+                                                      'Safety Harnesses': null,
+                                                      'Baby Walker': null,
+                                    },
+                              },
+                        'Apparel': {
+                                     'Girls': {
+                                                       'Kurta Suit Sets': null,
+                                                       'Dungarees & Jumpsuits': null,
+                                     }
+                        },
+                        'Toys': {
+                                          'Unisex': {
+                                                            'Educational Toys': null,
+                                          },
+                                          'Electronic Toys': {
+                                                            'Remote Control Toys': null,
+                                                            'Electronic Toys & games' : null,
+                                                            'Musical toys': null,
+                                                            'Walkie Talkies': null,
+                                                            'Plug & Play Video Games': null,
+                                                            'Electronic Pets': null,
+                                                            'Handheld Games': null,
+                                          },
+                                          'Soft Toys': {
+                                                            'Stuffed Toys' : null,
+                                                            'Clip-On Toys for Baby Gear': null,
+                                                            'Stuffed animals': null,
+                                                            'Cartoon Characters': null,
+                                          },
+                                          'Sport & Outdoor': {            
+                                                            'Play Tents': null,
+                                                            'Slumber Bags': null,
+                                                            'Balance Boards': null,
+                                                            'Beanbags & Foot Bags': null,
+                                                            'Garden Tools': null,
+                                                            'Table Soccer & Billiards': null,
+                                                            'Racket Games': null,
+                                                            'Pogo Sticks': null,
+                                                            'Marbles': null,
+                                                            'Badminton': null,
+                                                            'Volleyballs & Set': null,
+                                                            'Cricket Set': null,
+                                                            'Foosball': null,
+                                                            'Basketballs & Set': null,
+                                                            'Baseball': null,
+                                                            'Yoga Mats & Gym Accessories': null,
+                                                            'Cricket': null,
+                                                            'Balls': null,
+                                                            'Boxing Set': null,
+                                                            'Lawn Tennis': null,
+                                                            'Table Tennis': null,
+                                          },
+                                          'Pretend Play': {
+                                                            'Pretend Play Sets': null,
+                                                             'Dress ups & costumes' : null,
+                                          },
+                                          'Games': {
+                                                            'Board Games': null,
+                                                            'Playing Cards': null,
+                                                            'Travel games': null,
+                                                            'Indoor Climbers & Play': null,
+                                                            'Travel & Pocket Games': null,
+                                                            'Games Collections': null,
+                                                            'Stacking & Balancing Games': null,
+                                                            'Floor Games': null,
+                                                            'Magic Supplies': null,
+                                                            'Dice & Dice Games': null,
+                                                            'Chess': null,
+                                                            'Domino & Tile Games': null,
+                                                            'Carrom Board': null
+                                          },
+                                          'Novelty & Gag Toys': {
+                                                            'Money Banks': null,
+                                          },
+                                          'Baby & Toddler Toys': {
+                                                            'Bath Toys': null,
+                                                            'Toddler Toys': null,
+                                                            'Rattle Sets': null,
+                                                            'Spinning & Battling Tops': null,
+                                                            'Animal Shaped Rattles': null,
+                                                            'Baby Rattles': null
+                                          },
+                                          'Dolls': {
+                                                            'Dolls & Doll houses': null,
+                                                            'Candy Dolls': null,
+                                                            'Dolls Accessories': null,
+                                                            'Fashion dolls': null
+                                          },
+                                          'Learning & Education':{
+                                                            'Reading & Writing Toys': null,
+                                                            'Magnets & Magnetic Toys': null,
+                                                            'Early Development & Activity Toys': null,
+                                                            'Toy Tablets & Computers': null,
+                                                            'Math Toys': null
+                                          },
+                                          'Puzzles': {
+                                                            'Wooden Puzzle': null,
+                                                            'Jigsaw Puzzle': null,
+                                                            'Floor Puzzles': null,
+                                                            '3-D Puzzles': null,
+                                                            'Sudoku Puzzles': null,
+                                                            'Puzzle Mats': null,
+                                                            'Framed Puzzles': null,
+                                                            'Board Puzzle': null,
+                                                            'Rubik Cubes': null,
                     'Knob & Peg Puzzles': null
               },
               'Outdoor Games': {

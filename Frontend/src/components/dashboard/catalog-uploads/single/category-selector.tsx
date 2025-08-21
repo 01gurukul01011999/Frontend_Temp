@@ -7,19 +7,17 @@ import TextField from '@mui/material/TextField';
 import CloseIcon from '@mui/icons-material/Close';
 import HeadsetMicIcon from '@mui/icons-material/HeadsetMic';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import { Add, ArrowBack, ArrowForward, CheckCircle } from "@mui/icons-material";
+import { Add, CheckCircle } from "@mui/icons-material";
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
 import {
-	Popover,
-	  Box,
+	Box,
   Button,
   Typography,
   Paper,
   MenuItem,
   Select,
-  FormControl,
-  InputLabel,
+	FormControl,
 	ListItemButton,
 	Dialog,
 	DialogTitle,
@@ -40,24 +38,52 @@ import formsJson from "./forms-json";
 
 const steps = ["Select Category", "Add Product Details"];
 
+// Types for product form state
+type ProductSection = { [key: string]: string | string[] | number | boolean | Record<string, unknown> };
+type ProductForm = {
+	ProductSizeInventory: ProductSection;
+	ProductDetails: ProductSection;
+	OtherAttributes: ProductSection;
+};
+
+// Hoisted factory to avoid function-in-render linter rule
+function initialFormData(): ProductForm {
+	return {
+		ProductSizeInventory: {},
+		ProductDetails: {},
+		OtherAttributes: {},
+	};
+}
+
+// Small deep clone helper to replace JSON.parse(JSON.stringify(...))
+function deepClone<T>(v: T): T {
+	// Use structuredClone if available
+	if (typeof structuredClone === 'function') return structuredClone(v);
+	// eslint-disable-next-line unicorn/prefer-structured-clone -- structuredClone may not exist in older environments
+	return JSON.parse(JSON.stringify(v)) as T;
+}
+
 interface CustomStepIconRootProps {
   active?: boolean;
   completed?: boolean;
 }
 
-const CustomStepIconRoot = styled("div")<CustomStepIconRootProps>(({ theme, active, completed }) => ({
-	display: "flex",
-	alignItems: "center",
-	justifyContent: "center",
-	width: 28,
-	height: 28,
-	borderRadius: "50%",
-	backgroundColor: completed ? "#43C15A1A" : (active ? "rgba(99, 102, 241, 0.1)" : "#f0f0f0"),
-	color: completed ? "#43C15A" : (active ? "#6366f1" : "#9e9e9e"),
-	fontWeight: 600,
-	fontSize: 14,
-	border: `1px solid ${completed ? "#43C15A" : (active ? "#6366f1" : "#ccc")}`
-}));
+const CustomStepIconRoot = styled("div")<CustomStepIconRootProps>(({ theme, active, completed }) => {
+	void theme;
+	return {
+		display: "flex",
+		alignItems: "center",
+		justifyContent: "center",
+		width: 28,
+		height: 28,
+		borderRadius: "50%",
+		backgroundColor: completed ? "#43C15A1A" : (active ? "rgba(99, 102, 241, 0.1)" : "#f0f0f0"),
+		color: completed ? "#43C15A" : (active ? "#6366f1" : "#9e9e9e"),
+		fontWeight: 600,
+		fontSize: 14,
+		border: `1px solid ${completed ? "#43C15A" : (active ? "#6366f1" : "#ccc")}`
+	};
+});
 
 interface CustomStepIconProps {
 	active?: boolean;
@@ -93,6 +119,16 @@ function getAllCategoryPaths(tree: Record<string, unknown>, prefix: string[] = [
 	return paths;
 }
 
+// Helper to check if the given path is a leaf in the category tree
+function _isLeaf(tree: CategoryNode, path: string[]): boolean {
+	let node: CategoryNode | null = tree;
+	for (const p of path) {
+		if (!node || typeof node !== 'object') return false;
+		node = (node as Record<string, CategoryNode | null>)[p] ?? null;
+	}
+	return node === null && path.length > 0;
+}
+
 export default function CategorySelector(): React.JSX.Element {
 	// Removed: const [techpotliInfoAnchor, setTechpotliInfoAnchor] = useState<HTMLElement | null>(null);
 	// Info icon popover anchor for Techpotli Price
@@ -103,12 +139,7 @@ export default function CategorySelector(): React.JSX.Element {
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
 	// Store form data for each product
-	const initialFormData = () => ({
-		ProductSizeInventory: {},
-		ProductDetails: {},
-		OtherAttributes: {},
-	});
-	const [productForms, setProductForms] = useState<any[]>([]);
+	const [productForms, setProductForms] = useState<ProductForm[]>([]);
 	const imageTypeList = [
 		{ label: 'Watermark image', icon: '/assets/invalid-image-1.png' },
 		{ label: 'Fake branded/1st copy', icon: '/assets/invalid-image-2.png' },
@@ -122,7 +153,7 @@ export default function CategorySelector(): React.JSX.Element {
 		{ label: 'Image with text', icon: '/assets/invalid-image-10.png' },
 	];
 
-	const handleRemoveImage = (idx: number) => {
+	const _handleRemoveImage = (idx: number) => {
 		setSelectedImages(images => {
 			const newImages = images.filter((_, i) => i !== idx);
 			setProductForms(forms => forms.filter((_, i) => i !== idx));
@@ -148,7 +179,7 @@ export default function CategorySelector(): React.JSX.Element {
 	};
 	const handleClose = () => setPopupOpen(false);
 	
-	 const [uploadPopupOpen, setUploadPopupOpen] = useState(false);
+	 const [_uploadPopupOpen, setUploadPopupOpen] = useState(false);
 	 const [activeStep, setActiveStep] = React.useState(0);
 	// Removed duplicate inputRef declaration to fix redeclaration error.
 
@@ -176,7 +207,7 @@ console.log('uploadimages', uploadedImages);
 	const { user } = useUser();
 	// Upload images to backend
 	const MAX_TOTAL_SIZE = 5 * 1024 * 1024; // 5MB
-	const handleGenerateTemplate = async () => {
+	const _handleGenerateTemplate = async () => {
 		if (uploadedImages.length === 0) return;
 		// Helper to compress a base64 image string and return a File with the original name
 		// We'll keep a mapping of uploadedImages to their original file names
@@ -273,7 +304,7 @@ console.log('uploadimages', uploadedImages);
 	};
 
 	const columns = [];
-	let currentTree: CategoryNode | null = categoryTree;
+	let currentTree: Record<string, unknown> | null = categoryTree as unknown as Record<string, unknown>;
 	//console.log('currentTree', currentTree);
 
 	for (let level = 0; level < 4; level++) {
@@ -317,19 +348,12 @@ console.log('uploadimages', uploadedImages);
 				))}
 			</Box>
 		);
-		currentTree = currentTree?.[selectionPath[level]] ?? null;
+		// Safely read the next node and cast to the expected Record type so TypeScript knows the index signature exists
+		const nextNode: Record<string, unknown> | null | undefined = (currentTree as Record<string, unknown>)[selectionPath[level] as string] as Record<string, unknown> | null | undefined;
+		currentTree = nextNode === undefined ? null : (nextNode as Record<string, unknown> | null);
 	}
 
-	// Helper to check if the current selection is a leaf (null) in the original tree
-	function isLeaf(tree: CategoryNode, path: string[]): boolean {
-		let node: CategoryNode | null = tree;
-		for (const p of path) {
-			if (!node || typeof node !== 'object') return false;
-			node = node[p] ?? null;
-		}
-		return node === null && path.length > 0;
-	}
-
+	// Use module-scoped _isLeaf helper
 const url =getSiteURL();
 //console.log(url+'assets/woemns category.png');
 	// Show right panel if the selected path is a leaf (null) or the value is the string 'null'
@@ -345,14 +369,14 @@ const showRightPanel = selectionPath.length === 4;
 
 	// Handler for file input change
 	// For main multi-image input (step 1)
-const handleAddProductImage = (event: React.ChangeEvent<HTMLInputElement>) => {
+	const handleAddProductImage = (event: React.ChangeEvent<HTMLInputElement>) => {
 	const files = event.target.files;
 	if (files && files.length > 0) {
 		const file = files[0];
 		const reader = new FileReader();
-		reader.onload = () => {
+		reader.addEventListener('load', () => {
 			if (typeof reader.result === 'string') {
-				setSelectedImages(prev => {
+					setSelectedImages(prev => {
 					const newImages = [...prev, { url: reader.result as string }];
 					setProductForms(forms => {
 						const formsCopy = [...forms];
@@ -363,29 +387,30 @@ const handleAddProductImage = (event: React.ChangeEvent<HTMLInputElement>) => {
 					});
 					setActiveProductIndex(newImages.length - 1);
 					return newImages;
-				});
-			}
-		};
+					});
+				}
+		});
+		reader.addEventListener('error', () => {});
 		reader.readAsDataURL(file);
 	}
 };
 
-const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+	const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 	const files = event.target.files;
 	if (files && files.length > 0) {
-		const fileArray = Array.from(files);
+		const fileArray = [...files];
 		Promise.all(
 			fileArray.map(file => {
 				return new Promise<{ url: string }>((resolve, reject) => {
 					const reader = new FileReader();
-					reader.onload = () => {
+					reader.addEventListener('load', () => {
 						if (typeof reader.result === 'string') {
 							resolve({ url: reader.result });
 						} else {
 							reject('Failed to read file');
 						}
-					};
-					reader.onerror = reject;
+					});
+					reader.addEventListener('error', () => reject('Failed'));
 					reader.readAsDataURL(file);
 				});
 			})
@@ -407,7 +432,7 @@ const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 };
 
 	// Define the slots for product images
-	const imageSlots = [
+	const _imageSlots = [
 	  { key: 'front1', label: 'Front View *', desc: 'Upload Front View Image' },
 	  { key: 'front2', label: 'Front View *', desc: 'Upload Front View Image' },
 	  { key: 'back1', label: 'Back View *', desc: 'Upload Back View Image' },
@@ -416,7 +441,7 @@ const handleImageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 	];
 
 	// State to hold images for each slot
-	const [slotImages, setSlotImages] = useState<{ [key: string]: string | null }>({
+	const [_slotImages, _setSlotImages] = useState<{ [key: string]: string | null }>({
 	  front1: null,
 	  front2: null,
 	  back1: null,
@@ -446,52 +471,54 @@ interface FormField {
 // Pass productIndex to renderField for per-product state
 
 // --- Add these hooks and handlers before renderField ---
-const [sizePopoverAnchor, setSizePopoverAnchor] = useState<null | HTMLElement>(null);
+const [_sizePopoverAnchor, setSizePopoverAnchor] = useState<null | HTMLElement>(null);
 const [sizePopoverValue, setSizePopoverValue] = useState<string[]>([]);
 const [sizePopoverProductIndex, setSizePopoverProductIndex] = useState<number | null>(null);
-const [sizePopoverSection, setSizePopoverSection] = useState<string>("");
+const [sizePopoverSection, setSizePopoverSection] = useState<keyof ProductForm | "">("");
 const [sizePopoverLabel, setSizePopoverLabel] = useState<string>("");
 
-const handleSizeDropdownClick = (
+const _handleSizeDropdownClick = (
   e: React.MouseEvent<HTMLElement>,
-  value: string,
+  value: string | string[],
   productIndex: number,
-  section: string,
+  section: keyof ProductForm | "",
   label: string
 ) => {
   setSizePopoverAnchor(e.currentTarget);
-  setSizePopoverValue(Array.isArray(value) ? value : []);
+  // Normalize to string[] (if a single string is passed, convert to a single-item array)
+  setSizePopoverValue(Array.isArray(value) ? value : (value ? [value] : []));
   setSizePopoverProductIndex(productIndex);
   setSizePopoverSection(section);
   setSizePopoverLabel(label);
 };
 
-const handleSizePopoverClose = () => {
-  setSizePopoverAnchor(null);
+const _handleSizePopoverClose = () => {
+	setSizePopoverAnchor(null);
 };
 
-const handleSizePopoverApply = () => {
+const _handleSizePopoverApply = () => {
   if (
 	sizePopoverProductIndex !== null &&
 	sizePopoverSection &&
 	sizePopoverLabel
   ) {
+	const sectionKey = sizePopoverSection as keyof ProductForm;
 	setProductForms((forms) => {
 	  const updated = [...forms];
 	  if (!updated[sizePopoverProductIndex]) updated[sizePopoverProductIndex] = initialFormData();
-	  if (!updated[sizePopoverProductIndex][sizePopoverSection]) updated[sizePopoverProductIndex][sizePopoverSection] = {};
-	  updated[sizePopoverProductIndex][sizePopoverSection][sizePopoverLabel] = sizePopoverValue;
-	  if (copyAll) {
-		return updated.map(() => JSON.parse(JSON.stringify(updated[sizePopoverProductIndex])));
-	  }
+	  if (!updated[sizePopoverProductIndex][sectionKey]) (updated[sizePopoverProductIndex][sectionKey] as ProductSection) = {};
+	  (updated[sizePopoverProductIndex][sectionKey] as ProductSection)[sizePopoverLabel] = sizePopoverValue;
+			if (copyAll) {
+				return updated.map(() => deepClone(updated[sizePopoverProductIndex]));
+			}
 	  return updated;
 	});
   }
   setSizePopoverAnchor(null);
 };
 
-const handleSizePopoverClear = () => {
-  setSizePopoverValue([]);
+const _handleSizePopoverClear = () => {
+	setSizePopoverValue([]);
 };
 // --- End of added hooks and handlers ---
 
@@ -500,20 +527,33 @@ const handleSizePopoverClear = () => {
 const renderField = (
 	field: FormField,
 	index: number,
-	section: string,
+	section: keyof ProductForm,
 	productIndex: number
 ) => {
-	const value = productForms[productIndex]?.[section]?.[field.label] || "";
-	const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement> | SelectChangeEvent<string>) => {
-		const val = e.target.value;
+	// Narrow the section to ProductSection before indexing to satisfy TS
+	const sectionObj = (productForms[productIndex]?.[section]) as ProductSection | undefined;
+	const value = (sectionObj?.[field.label] ?? "") as string | string[] | number;
+
+	const handleChange = (
+		e: SelectChangeEvent<string | number | string[]> | React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+		_child?: React.ReactNode
+	) => {
+		// Normalize value from different event shapes (SelectChangeEvent or input change)
+		const selectEvent = e as SelectChangeEvent<string | number | string[]>;
+		const inputEvent = e as React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>;
+		const rawVal = selectEvent.target?.value ?? inputEvent.target?.value ?? "";
+		// Narrow the value to the allowed ProductSection value types
+		const val = rawVal as string | number | string[] | boolean | Record<string, unknown>;
 		setProductForms(forms => {
 			let updated = [...forms];
 			if (!updated[productIndex]) updated[productIndex] = initialFormData();
 			if (!updated[productIndex][section]) updated[productIndex][section] = {};
-			updated[productIndex][section][field.label] = val;
-			if (copyAll) {
-				updated = updated.map(() => JSON.parse(JSON.stringify(updated[productIndex])));
-			}
+			// Ensure the section object is treated as ProductSection before assignment
+			const sectionObj = updated[productIndex][section] as ProductSection;
+			sectionObj[field.label] = val;
+					if (copyAll) {
+						updated = updated.map(() => deepClone(updated[productIndex]));
+					}
 			return updated;
 		});
 	};
@@ -1083,7 +1123,7 @@ const renderField = (
 						<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
 							{selectedImages.map((img, idx) => (
 								<Box key={idx} sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden' }}>
-									<img src={img.url} alt={`Product ${idx + 1}`} style={{ width:80 , height:80, objectFit: 'cover', borderRadius: 8 }} />
+									<Image src={img.url} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', borderRadius: 8 }} />
 									<IconButton
 										size="small"
 										sx={{ position: 'absolute', top: 4, right: 4, background: '#fff' }}
@@ -1102,7 +1142,7 @@ const renderField = (
 						<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: 1 }}>
 							{imageTypeList.map((type) => (
 								<Paper key={type.label} sx={{ p: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
-									<img src={type.icon} alt={type.label} style={{ width: 40, height: 40, objectFit: 'contain' }} />
+									<Image src={type.icon} alt={type.label} width={40} height={40} style={{ objectFit: 'contain' }} />
 									<Box>
 										<Typography sx={{ fontWeight: 600 }}>{type.label}</Typography>
 										<Typography sx={{ color: '#888', fontSize: 13 }}>NOT ALLOWED</Typography>
@@ -1134,11 +1174,7 @@ const renderField = (
 					onClick={() => setActiveProductIndex(idx)}
 					sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
 				>
-					<img
-						src={img.url}
-						alt={`Product ${idx + 1}`}
-						style={{ width: 48, height: 48, borderRadius: 2, objectFit: 'cover', marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }}
-					/>
+					<Image src={img.url} alt={`Product ${idx + 1}`} width={48} height={48} style={{ borderRadius: 2, objectFit: 'cover', marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
 					Product {idx + 1}
 				</Button>
 			))}
@@ -1174,9 +1210,9 @@ const renderField = (
 							control={<input type="checkbox" checked={copyAll} onChange={e => {
 								const checked = e.target.checked;
 								setCopyAll(checked);
-								if (checked && productForms[activeProductIndex]) {
-									setProductForms(forms => forms.map(() => JSON.parse(JSON.stringify(forms[activeProductIndex]))));
-								}
+											if (checked && productForms[activeProductIndex]) {
+												setProductForms(forms => forms.map(() => deepClone(forms[activeProductIndex])));
+											}
 							}} />}
 							label="Copy input details to all product "
 						/>
@@ -1212,7 +1248,7 @@ const renderField = (
 				control={
 				  <input
 					type="checkbox"
-					checked={productForms[activeProductIndex]?.ProductSizeInventory?.copyPriceAll || false}
+					checked={Boolean(productForms[activeProductIndex]?.ProductSizeInventory?.copyPriceAll)}
 					onChange={e => {
 					  const checked = e.target.checked;
 					  setProductForms(forms => {
@@ -1223,13 +1259,13 @@ const renderField = (
 						// If checked, copy first row's values to all
 						if (checked && selectedSizes.length > 1) {
 						  const first = selectedSizes[0];
-						  const fields = ["Techpotli Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU (Optional)","Actions"];
-						  fields.forEach(field => {
-							const val = updated[activeProductIndex].ProductSizeInventory[`${field}_${first}`] || "";
-							selectedSizes.forEach(size => {
-							  updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
-							});
-						  });
+													const fields = ["Techpotli Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU (Optional)","Actions"];
+													for (const field of fields) {
+														const val = updated[activeProductIndex].ProductSizeInventory[`${field}_${first}`] || "";
+														for (const size of selectedSizes) {
+															updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
+														}
+													}
 						}
 						return updated;
 					  });
@@ -1321,7 +1357,7 @@ const renderField = (
 					<Tooltip
 																	title={
 																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
-																			“MRP” stands for “Maximum Retail Price”. It's the highest price that a seller is allowed to sell a product for including taxes, charges added on the basic price of the product. No seller can sell a product for a price higher than MRP. Acceptable in INR ONLY. This information is generally available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please provide the MRP as per the explanation above.</span>
+																			“MRP” stands for “Maximum Retail Price”. It&apos;s the highest price that a seller is allowed to sell a product for including taxes, charges added on the basic price of the product. No seller can sell a product for a price higher than MRP. Acceptable in INR ONLY. This information is generally available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please provide the MRP as per the explanation above.</span>
 																	}
 																	arrow
 																	placement="bottom"
@@ -1363,14 +1399,14 @@ const renderField = (
 								if (!updated[activeProductIndex].ProductSizeInventory) updated[activeProductIndex].ProductSizeInventory = {};
 								updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
 								// If "copy all" is checked and editing first row, update all
-								if (
-								  productForms[activeProductIndex]?.ProductSizeInventory?.copyPriceAll &&
-								  idx === 0
-								) {
-								  selectedSizes.forEach(sz => {
-									updated[activeProductIndex].ProductSizeInventory[`${field}_${sz}`] = val;
-								  });
-								}
+																if (
+																	productForms[activeProductIndex]?.ProductSizeInventory?.copyPriceAll &&
+																	idx === 0
+																) {
+																	for (const sz of selectedSizes) {
+																		updated[activeProductIndex].ProductSizeInventory[`${field}_${sz}`] = val;
+																	}
+																}
 								return updated;
 							  });
 							}}
@@ -1390,9 +1426,9 @@ const renderField = (
 							  const inv = updated[activeProductIndex].ProductSizeInventory || {};
 							  const newSizes = selectedSizes.filter(sz => sz !== size);
 							  inv.Size = newSizes;
-							  ["Meesho Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU"].forEach(field => {
-								delete inv[`${field}_${size}`];
-							  });
+								for (const field of ["Meesho Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU"]) {
+									delete inv[`${field}_${size}`];
+								}
 							  updated[activeProductIndex].ProductSizeInventory = inv;
 							  return updated;
 							});

@@ -175,8 +175,8 @@ async profile(params: profileParams): Promise<{ error?: string }> {
       });
       if (!response.data.user || response.data.user === "Token expired") {
         await this.signOut();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/auth/sign-in';
+        if (globalThis.window) {
+          globalThis.window.location.href = '/auth/sign-in';
         }
         return { data: null, error: 'Token expired or user not found' };
       }
@@ -186,8 +186,8 @@ async profile(params: profileParams): Promise<{ error?: string }> {
         // If unauthorized or token error, remove token and redirect
         if (error.response?.status === 401 || (error.response?.data && (error.response.data.error === 'Token expired' || error.response.data.error === 'Unauthorized'))) {
           await this.signOut();
-          if (typeof window !== 'undefined') {
-            window.location.href = '/auth/sign-in';
+          if (globalThis.window) {
+            globalThis.window.location.href = '/auth/sign-in';
           }
         }
         return { error: error.response?.data?.error || 'Failed to fetch user', data: null };
