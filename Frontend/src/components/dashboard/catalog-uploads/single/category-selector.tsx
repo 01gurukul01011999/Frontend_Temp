@@ -10,6 +10,7 @@ import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { Add, CheckCircle } from "@mui/icons-material";
 import InfoOutlinedIcon from '@mui/icons-material/InfoOutlined';
 import Tooltip from '@mui/material/Tooltip';
+import {ToastContainer, toast} from 'react-toastify';
 import {
 	Box,
   Button,
@@ -29,6 +30,7 @@ import {
 	Divider,
 	FormControlLabel,
 	Popover,
+	Snackbar,
 } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { styled } from "@mui/system";
@@ -200,11 +202,17 @@ export default function CategorySelector(): React.JSX.Element {
 	//const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 	const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 	const [selectionPath, setSelectionPath] = useState<string[]>([]);
+	// currently selected form id derived from category tree when user picks a leaf
+	const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
+	//console.log('selectedFormId', selectedFormId);
+	// Active form object loaded from formsJson when a formId is found
+	const [activeForm, setActiveForm] = useState<any | null>(null);
+
 	// For Autocomplete
 	const allCategoryPaths = React.useMemo(() => getAllCategoryPaths(categoryTree), []);
 	const [searchValue, setSearchValue] = useState<string>('');
 	
-console.log('uploadimages', uploadedImages);
+//console.log('uploadimages', uploadedImages);
 	const { user } = useUser();
 	// Upload images to backend
 	const MAX_TOTAL_SIZE = 5 * 1024 * 1024; // 5MB
@@ -301,7 +309,27 @@ console.log('uploadimages', uploadedImages);
 	const handleSelect = (level: number, value: string) => {
 		const newPath = [...selectionPath.slice(0, level), value];
 		setSelectionPath(newPath);
-		//console.log('Path', newPath[3]);
+		console.log('Path', newPath);
+
+		if (newPath.length === 4) {
+			const fid = getFormIdFromCategoryTree(categoryTree, newPath);
+			
+			setSelectedFormId(fid);
+			if (fid) {
+				const formDef = (formsJson as any)[fid];
+				if (formDef) {
+					// Load form definition into state but do NOT automatically open the form UI.
+					// The UI will remain on the category selection step until the user continues.
+					setActiveForm(formDef);
+				} else {
+					setActiveForm(null);
+					toast.info("Form available but definition not found.");
+				}
+			} else {
+				setActiveForm(null);
+				toast.info("Form not available for selected category");
+			}
+		}
 	};
 
 	const columns = [];
@@ -314,7 +342,7 @@ console.log('uploadimages', uploadedImages);
 		if (typeof currentTree !== 'object') break;
 		const options = Object.keys(currentTree);
 		if (options.length === 0) break;
-		console.log('currentTree', currentTree);
+		//console.log('currentTree', currentTree);
 	   
 		columns.push(
 			<Box key={level} sx={{ width: 200, mr: 2, overflowY: 'auto', maxHeight: '58vh' }}>
@@ -354,12 +382,35 @@ console.log('uploadimages', uploadedImages);
 		currentTree = nextNode === undefined ? null : (nextNode as Record<string, unknown> | null);
 	}
 
+// Helper: traverse category tree by path and read a formId if present on the leaf
+function getFormIdFromCategoryTree(tree: Record<string, unknown> | string | null, path: string[]): string | null {
+	let node: unknown = tree;
+	for (const seg of path) {
+		// Ensure node is an object with string keys (not an array)
+		if (!node || typeof node !== 'object' || Array.isArray(node)) return null;
+		const obj = node as Record<string, unknown>;
+		if (!(seg in obj)) return null;
+		node = obj[seg];
+	}
+	if (node === null || node === undefined) return null;
+	if (typeof node === 'string') return node; // leaf could be a string form id
+	// If node is an object, try to read a formId property
+	if (typeof node === 'object' && !Array.isArray(node) && node !== null) {
+		const obj = node as Record<string, unknown>;
+		const formId = obj['formId'];
+		if (typeof formId === 'string') return formId;
+		
+	}
+	return null;
+}
+
 	// Use module-scoped _isLeaf helper
 const url =getSiteURL();
 //console.log(url+'assets/woemns category.png');
 	// Show right panel if the selected path is a leaf (null) or the value is the string 'null'
-// Show right panel if the user has selected 4 levels
-const showRightPanel = selectionPath.length === 4;
+// Show right panel only if the user has selected 4 levels AND there is an active form
+// Also prevent opening the panel when a snackbar is being displayed for missing form
+const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 
 
 	const [imageGuidelinesPopupOpen, setImageGuidelinesPopupOpen] = useState(false);
@@ -453,13 +504,44 @@ const showRightPanel = selectionPath.length === 4;
 
 
 
-	  const form = formsJson["form_101"] as {
-		AddProductDetails: {
-			ProductSizeInventory: FormField[];
-		};
+	type FormDef = {
+		AddProductDetails: { ProductSizeInventory: FormField[] };
 		ProductDetails: FormField[];
 		OtherAttributes: FormField[];
-	  };
+	};
+
+	function isFormDef(obj: unknown): obj is FormDef {
+		if (!obj || typeof obj !== "object" || Array.isArray(obj)) return false;
+		const o = obj as Record<string, unknown>;
+
+		const add = o["AddProductDetails"];
+		if (!add || typeof add !== "object" || Array.isArray(add)) return false;
+		const addRec = add as Record<string, unknown>;
+		if (!Array.isArray(addRec["ProductSizeInventory"])) return false;
+		const psi = addRec["ProductSizeInventory"] as unknown[];
+		if (!psi.every(el => el && typeof el === "object" && !Array.isArray(el) && typeof (el as Record<string, unknown>)["type"] === "string" && typeof (el as Record<string, unknown>)["label"] === "string")) return false;
+
+		const pd = o["ProductDetails"];
+		if (!Array.isArray(pd) || !pd.every(el => el && typeof el === "object" && !Array.isArray(el) && typeof (el as Record<string, unknown>)["type"] === "string" && typeof (el as Record<string, unknown>)["label"] === "string")) return false;
+
+		const oa = o["OtherAttributes"];
+		if (!Array.isArray(oa) || !oa.every(el => el && typeof el === "object" && !Array.isArray(el) && typeof (el as Record<string, unknown>)["type"] === "string" && typeof (el as Record<string, unknown>)["label"] === "string")) return false;
+
+		return true;
+	}
+
+	const form: FormDef = (() => {
+		const root = formsJson as unknown;
+		if (selectedFormId && root && typeof root === "object" && !Array.isArray(root)) {
+			const candidate = (root as Record<string, unknown>)[selectedFormId];
+			if (isFormDef(candidate)) return candidate;
+		}
+		return {
+			AddProductDetails: { ProductSizeInventory: [] },
+			ProductDetails: [],
+			OtherAttributes: [],
+		};
+	})();
 
 interface FormField {
 	type: "dropdown" | "text" | "textarea";
@@ -527,10 +609,10 @@ const _handleSizePopoverClear = () => {
 // Use sizes from formsJson if available (search common locations), fallback to defaults
 const sizeOptionsJson: string[] = (() => {
 	const obj = formsJson as unknown as Record<string, unknown>;
-
+//console.log('new', obj);
 	// First, check the structured AddProductDetails.ProductSizeInventory in form_101
 	try {
-		const f101 = obj['form_101'];
+		const f101 = typeof selectedFormId === 'string' ? obj[selectedFormId] : undefined;
 		if (f101 && typeof f101 === 'object') {
 			const f101Obj = f101 as Record<string, unknown>;
 			const add = f101Obj['AddProductDetails'];
@@ -563,10 +645,7 @@ const sizeOptionsJson: string[] = (() => {
 		['sizeOptionsJson'],
 		['common', 'sizeOptions'],
 		['common', 'sizes'],
-		['form_101', 'sizeOptions'],
-		['form_101', 'sizes'],
-		['form_101', 'common', 'sizeOptions'],
-		['form_101', 'common', 'sizes'],
+		
 	];
 
 	for (const path of candidatePaths) {
@@ -1636,7 +1715,19 @@ const renderField = (
 		
 	</Box>
 	);
-})()}
+	})()}
+		<ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop={false}
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="colored"
+      />
 		</>
 	);
 }

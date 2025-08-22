@@ -107,7 +107,7 @@ const formsJson = {
         { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)" },
         { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)" },
         { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name" },
-        { "label": "Size", "type": "dropdown", "options": ['Free Size',"l"] }
+        { "label": "Size", "type": "dropdown", "options": ['Free Size',"S" ,"M"] }
       ]
     }
   },
