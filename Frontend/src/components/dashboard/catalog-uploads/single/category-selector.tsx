@@ -30,7 +30,6 @@ import {
 	Divider,
 	FormControlLabel,
 	Popover,
-	Snackbar,
 } from '@mui/material';
 import { SelectChangeEvent } from '@mui/material/Select';
 import { styled } from "@mui/system";
@@ -38,6 +37,7 @@ import categoryTree, { CategoryNode } from '../bulk/category-tree';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { getSiteURL } from '@/lib/get-site-url';
 import formsJson from "./forms-json"; 
+
 
 const steps = ["Select Category", "Add Product Details"];
 
@@ -207,6 +207,9 @@ export default function CategorySelector(): React.JSX.Element {
 	//console.log('selectedFormId', selectedFormId);
 	// Active form object loaded from formsJson when a formId is found
 	const [activeForm, setActiveForm] = useState<any | null>(null);
+	// Snackbar for messages
+	const [snackbarOpen, setSnackbarOpen] = useState(false);
+	const [snackbarMessage, setSnackbarMessage] = useState('');
 
 	// For Autocomplete
 	const allCategoryPaths = React.useMemo(() => getAllCategoryPaths(categoryTree), []);
@@ -549,6 +552,7 @@ interface FormField {
 	placeholder?: string;
 	options?: string[];
 	maxlength?: number;
+	info?: string;
 }
 
 // Pass productIndex to renderField for per-product state
@@ -747,7 +751,9 @@ const renderField = (
 		"Style Code / Product ID": "(optional)",
 	};
 	const isRequired = ["Net Weight (gm)", "Product Name", "Size"].includes(field.label);
-	const showInfo = Object.prototype.hasOwnProperty.call(infoMap, field.label);
+	// Prefer info supplied in forms JSON; fall back to hard-coded map
+	const infoText = (field as any).info ?? infoMap[field.label];
+	const showInfo = typeof infoText === 'string' && infoText.length > 0;
 	const subLabel = subLabelMap[field.label];
 
 	// Label and input inline (side by side)
@@ -756,7 +762,7 @@ const renderField = (
 			<span style={{ fontWeight: 500, color: '#222', fontSize: 12 }}>{field.label.replace(' (gm)', '')}</span>
 			{isRequired && <span style={{ color: '#f44336', marginLeft: 2 }}>*</span>}
 			{showInfo && (
-				<Tooltip title={infoMap[field.label]} arrow placement="top">
+				<Tooltip title={infoText} arrow placement="top">
 					<InfoOutlinedIcon sx={{ fontSize: 16, color: '#888', ml: 0.5, verticalAlign: 'middle', cursor: 'pointer' }} />
 				</Tooltip>
 			)}
@@ -1463,7 +1469,7 @@ const renderField = (
 										</Box>
 					{/* Get selected sizes for this product */}
 		{Array.isArray(selectedSizes) && selectedSizes.length > 0 && (
-		  <Box sx={{ mt: 2 }}>
+		  <Box sx={{ mt: -2, mb: 2 }}>
 			<Box sx={{ display: "flex", alignItems: "center", justifyContent: "space-between", mb: 1 }}>
 			  <FormControlLabel
 				control={
@@ -1499,9 +1505,9 @@ const renderField = (
 			
 			</Box>
 			<Box sx={{ overflowX: "auto", borderRadius: 1, border: "1px solid #e0e0e0" }}>
-			  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
-				<thead>
-				  <tr style={{ background: "#f5f6fa" }}>
+			  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900, maxWidth:920 }}>
+				<thead style={{ background: "#f5f6fa" }}>
+				  <tr >
 					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Size</th>
 															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>
 																Techpotli Price&nbsp;<sup>*</sup>
@@ -1677,7 +1683,8 @@ const renderField = (
 						</Box>
 					</Box>
 				</Box>
-			</Paper>
+				</Paper>
+				
 			{/* Right Sidebar */}
 			<Paper sx={{ flex: 1, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
 				<Typography variant="subtitle1">Follow guidelines to reduce quality check failure</Typography>
@@ -1716,7 +1723,7 @@ const renderField = (
 	</Box>
 	);
 	})()}
-		<ToastContainer
+			<ToastContainer
         position="top-right"
         autoClose={3000}
         hideProgressBar={false}
@@ -1728,6 +1735,80 @@ const renderField = (
         pauseOnHover
         theme="colored"
       />
-		</>
-	);
+			 <Box
+        sx={{
+          position: 'fixed',
+          bottom: 0,
+          left:0,
+          backgroundColor: '#ffffff',
+          padding: '8px 16px',
+          width: '100%',
+          zIndex: 1300, // Ensures it's on the top layer
+          boxShadow: '0 -2px 8px rgba(0,0,0,0.08)',
+          //opacity: 0.2,
+        }}
+            >
+        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+          <Button
+            variant="outlined"
+            sx={{
+              color: '#4d0aff',
+              borderColor: '#4d0aff',
+              fontWeight: 'bold',
+              textTransform: 'none',
+              ml: 8,
+            }}
+            onClick={() => globalThis.history.back()}
+          >
+            Discard Catalog
+          </Button>
+				
+				{activeStep === 1 ? (
+					<Box
+						sx={{mr:12}}
+					>
+						<Button
+							variant="outlined"
+							color="inherit"
+							sx={{mr:2}}
+							onClick={() => {
+								// Save current form state to localStorage as a quick persistence
+								try {
+									localStorage.setItem('draftProductForms', JSON.stringify(productForms));
+									setSnackbarMessage('Saved draft locally');
+									setSnackbarOpen(true);
+								} catch (e) {
+									setSnackbarMessage('Failed to save draft');
+									setSnackbarOpen(true);
+								}
+							}}
+						>
+							Save and Go Back
+						</Button>
+
+
+						<Button
+							variant="contained"
+							color="primary"
+							onClick={async () => {
+								// Placeholder submit handler — replace with real API call
+								try {
+									console.log('Submitting catalog', { productForms, selectionPath });
+									setSnackbarMessage('Catalog submitted (stub)');
+									setSnackbarOpen(true);
+									// Optionally move to a confirmation step or reset
+								} catch (e) {
+									setSnackbarMessage('Submit failed');
+									setSnackbarOpen(true);
+								}
+							}}
+						>
+							Submit Catalog
+						</Button>
+					</Box>
+				) : null}
+		 </Box>
+            </Box>
+			</>
+			);
 }
