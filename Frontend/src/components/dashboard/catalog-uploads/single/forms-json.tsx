@@ -1,4 +1,4 @@
-
+//101 , 102, 701,702,703, 704,705,706
 const formsJson = {
   "form_101": {
        "AddProductDetails": {
@@ -299,96 +299,286 @@ const formsJson = {
   },
 
 
-"form_702": {
+  "form_702": {
      "AddProductDetails": {
       "copyInputDetailsToAllProducts": true,
       "ProductSizeInventory": [
-        { "label": "GST %", "type": "dropdown", "options": ["0", "5", "12", "18", "28"] },
-        { "label": "HSN Code", "type": "text", "placeholder": "Enter Product HSN Code" },
-        { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)" },
-        { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)" },
-        { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name" },
+        { "label": "GST %", "type": "dropdown", "options": ["0", "5", "12", "18", "28"], "info": "Product GST %" },
+        { "label": "HSN Code", "type": "text", "placeholder": "Enter Product HSN Code" , "info":"Product hsn code"},
+        { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)", "info":"Means the total weight of the product excluding the packaging weight. Acceptable unit is gram (g) This information is available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please check the weight of the product excluding any external packing and provide such information in SI Unit - grams."},
+        { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)", "info":"Product ID is an alphanumeric code which is given to a product and can be found on the tag or packaging. It remains the same for all Size variants and changes for all Color variants. For example, a red colored product that comes in three different sizes will have the same Product ID." },
+        { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name", "info": "Please enter the product name. Note: Please avoid adding product features such as weight. dimension, price description here." },
+        { "label": "Size", "type": "dropdown", "options": ['Free Size'] }
+      ]
+    },
+    "ProductDetails": [
+    { "label": "Chargeable", "type": "dropdown", "options": [  "Yes", "No",   ] , "info": "Enter Yes/ No whether the appliance can be recharged." },
+    { "label": "Generic Name", "type": "dropdown", "options": [
+       "Laptop Mouse", "Mice", "Mouse", "PC Mouse",
+    ] , "info": "Generic Name means the commonly used name through which a product is generally called/known. Generic name DOES NOT MEAN the name of the brand or manufacturer of the product or its use." },
+    { "label": "Included Components", "type": "text", "placeholder": "Enter Included Components" , "info":"If the product comes with related parts or accessories, please specify each part or accessory along with the number of units." },
+    { "label": "Net Quantity (N)", "type": "dropdown", "options": [
+       "1","10", "2", "3", "4", "5", "6", "7", "8", "9",
+    ] },
+    { "label": "Power Source", "type": "dropdown", "options": [
+      "Battery", "Dual Power", "Electricity"
+    ],"info":"Power Source is the means by which an electrical appliance receives the necessary electrical energy to function. This can be through batteries or through electricity." },
+    { "label": "Product Length (cm)", "type": "text", "placeholder": "Enter length of the product. Example: If you are listing a Square/rectangular/oblong product with edges, please measure and add the length of the product. If you are selling a circular/round shaped product, please measure and add the diameter of the product. Please provide this information as per the International System of Units (SI Unit) which is centimeter." },
+    { "label": "Product Width (cm)", "type": "text", "placeholder": "Enter width of the product. Example: If you are listing a Square/rectangular/oblong product with edges, please measure and add the width of the product. If you are selling a circular/round shaped product, please measure and add the width of the product. Please provide this information as per the International System of Units (SI Unit) which is centimeter." },
+    { "label": "Warranty Period", "type": "dropdown", "options": [
+      "1 Month", "1 Month Brand Warranty", "1 Month Seller Warranty", "1 Year", "1 Year Brand Warranty", "1 Year Seller Warranty", "12 Months", "2 Months", "2 Months Brand Warranty", "2 Months Seller Warranty", "2 Years", "2 Years Brand Warranty", "2 Years Seller Warranty", "3 Months", "3 Months Brand Warranty", "3 Months Seller Warranty", "3 Years", "3 Years Brand Warranty", "3 Years Seller Warranty", "4 Years", "4 Years Brand Warranty", "4 Years Manufacturer Warranty", "4 Years Seller Warranty", "5 Years", "5 Years Brand Warranty", "5 Years Manufacturer Warranty", "5 Years Seller Warranty", "6 Months", "6 Months Brand Warranty", "6 Months Seller Warranty", "9 Months", "9 Months Brand Warranty", "9 Months Seller Warranty", "9 Months Seller Warranty1 Month", "No Warranty"
+    ] },
+    { "label": "Warranty Type", "type": "dropdown", "options": [
+      "Carry In",  "Not Applicable",  "On Site",  "Pick Up",  "Repair",  "Repair or Replacement",  "Replacement"
+    ] },
+    { "label": "Country of Origin", "type": "dropdown", "options": [
+      "India",  "Afghanistan",  "Albania",  "Algeria",  "Andorra",  "Angola",  "Antigua and Barbuda",  "Argentina",  "Armenia",  "Australia",  "Austria",  "Azerbaijan",  "Bahamas",  "Bahrain",  "Bangladesh",  "Barbados",  "Belarus",  "Belgium",  "Belize",  "Benin",  "Bhutan",  "Bolivia",  "Bosnia-Herzegovina",  "Botswana",  "Brazil",  "Brunei",  "Bulgaria",  "Burkina Faso",  "Burundi",  "Cabo Verde",  "Cambodia",  "Cameroon",  "Canada",  "Central African Rep",  "Chad",  "Chile",  "China",  "Colombia",  "Comoros",  "Congo",  "Costa Rica",  "Croatia",  "Cuba",  "Cyprus",  "Czechia",  "DRC Congo",  "Denmark",  "Djibouti",  "Dominica",  "Dominican Republic",  "Ecuador",  "Egypt",  "El Salvador",  "Equatorial Guinea",  "Eritrea",  "Estonia",  "Eswatini",  "Ethiopia",  "Fiji",  "Finland",  "France",  "Gabon",  "Gambia",  "Georgia",  "Germany",  "Ghana",  "Greece",  "Grenada",  "Guatemala",  "Guinea",  "Guinea Bissau",  "Guyana",  "Haiti",  "Holy See",  "Honduras",  "Hungary",  "Iceland",  "Indonesia",  "Iran",  "Iraq",  "Ireland",  "Israel",  "Italy",  "Jamaica",  "Japan",  "Jordan",  "Kazakhstan",  "Kenya",  "Kiribati",  "Kuwait",  "Kyrgyzstan",  "Laos",  "Latvia",  "Lebanon",  "Lesotho",  "Liberia",  "Libya",  "Liechtenstein",  "Lithuania",  "Luxembourg",  "Madagascar",  "Malawi",  "Malaysia",  "Maldives",  "Mali",  "Malta",  "Marshall Islands",  "Mauritania",  "Mauritius",  "Mexico",  "Micronesia",  "Moldova",  "Monaco",  "Mongolia",  "Montenegro",  "Morocco",  "Mozambique",  "Myanmar",  "Namibia",  "Nauru",  "Nepal",  "Netherlands",  "New Zealand",  "Nicaragua",  "Niger",  "Nigeria",  "North Korea",  "North Macedonia",  "Norway",  "Oman",  "Pakistan",  "Palau",  "Palestine State",  "Panama",  "Papua New Guinea",  "Paraguay",  "Peru",  "Philippines",  "Poland",  "Portugal",  "Qatar",  "Romania",  "Russia",  "Rwanda",  "Saint Kitts &amp; Nevis",  "Saint Lucia",  "St Vincent",  "Samoa",  "San Marino",  "Sao Tome",  "Saudi Arabia",  "Senegal",  "Serbia",  "Seychelles",  "Sierra Leone",  "Singapore",  "Slovakia",  "Slovenia",  "Solomon Islands",  "Somalia",  "South Africa",  "South Korea",  "South Sudan",  "Spain",  "Sri Lanka",  "Sudan",  "Suriname",  "Sweden",  "Switzerland",  "Syria",  "Tajikistan",  "Tanzania",  "Thailand",  "Timor Leste",  "Togo",  "Tonga",  "Trinidad and Tobago",  "Tunisia",  "Turkey",  "Turkmenistan",  "Tuvalu",  "Uganda",  "Ukraine",  "UAE",  "United Kingdom",  "USA",  "Uruguay",  "Uzbekistan",  "Vanuatu",  "Venezuela",  "Vietnam",  "Yemen",  "Zambia",  "Zimbabwe"
+    ], "info":"Country of Origin means the country in which the product has been produced or assembled in. This information is available on the packaging label for pre- packed products. If you are not listing a pre-packed product, please provide the country in which the product is manufactured." },
+    { "label": "Manufacturer Name", "type": "text", "placeholder": "Enter Manufacturer Name", "info": "Enter the name of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Address", "type": "text", "placeholder": "Enter Manufacturer Address", "info": "Enter the address of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Pincode", "type": "text", "placeholder": "Enter Manufacturer Pincode" , "info": "Enter the pincode mentioned in the manufacturers address." },
+    { "label": "Packer Name", "type": "text", "placeholder": "Enter Packer Name", "info": "Enter the name of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Address", "type": "text", "placeholder": "Enter Packer Address", "info":"Enter the address of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Pincode", "type": "text", "placeholder": "Enter Packer Pincode", "info":"Enter the pincode mentioned in the packers address." },
+    { "label": "Importer Name", "type": "text", "placeholder": "Enter Importer Name", "info": "Enter the name of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label.If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product." },
+    { "label": "Importer Address", "type": "text", "placeholder": "Enter Importer Address", "info": "Enter the address of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product."},
+    { "label": "Importer Pincode", "type": "text", "placeholder": "Enter Importer Pincode",  "info": "Pincode of the importer if your product is manufactured outside India."}
+  ],
+   "OtherAttributes": [
+    { "label": "Brand", "type": "dropdown", "options": [
+      "A+ Products",  "ADZOY",  "AMKETTE",  "Anjo",  "Aroma",  "Atarc",  "BINNA",  "Bebingo",  "Blue Feather",  "BoAt",  "CAREOPETA",  "CHARG-X",  "CIRCLE",  "D25",  "DELL",  "DHANVI ENTERPRISE",  "DIGITAL PLUS",  "Dezful",  "Di Product",  "Dubstep",  "Dudao",  "EBUZZ",  "EVM",  "Editrix",  "Enter",  "Etake",  "Felsone",  "Fire-Boltt",  "Foxin",  "GARIHC ENTERPRISE",  "Gambit",  "Goodvik",  "HIBA",  "HP",  "Haripriya Jewells",  "HexaGear",  "Hoppup",  "Huntindia",  "Imnaaz enterprises",  "InfinityCreations",  "Interceptor",  "JETRIVE",  "KINGFASTER",  "Kairangi",  "LYNE",  "Laurant",  "Logitech",  "MESHIV",  "MOREX",  "MTOOL",  "MVPHTY",  "MYZK",  "MagJet",  "Manibam Impex",  "Matlek",  "Mivi",  "Mophonics",  "Msunjay",  "Nu Republic",  "Omniversal",  "Ovking",  "PORTRONICS",  "Pebble",  "Pochanki",  "Prita",  "Priyaasi",  "ProDot",  "Ptron",  "Quadmarq Electronics",  "RAJALWAL",  "RANZ",  "Raxovs",  "Redmi",  "SAPHUI",  "SEDU",  "STmax",  "SUPERTECH",  "SeeCot",  "Sharp Beak",  "Skullcandy",  "Skycell",  "TECHWIBE",  "TRK HUB",  "TRK IMPEX",  "TU4 Enterprise",  "TX-FLO",  "Tachno Touch",  "U&amp;I",  "UGMA PRODUCTS",  "UNITIX",  "Ubon",  "Verilux",  "Voltriq",  "WASD",  "Yellow Chimes",  "ZEBRONICS ZEB-TRANSFORMER-M2 Wired Gaming Mouse with LED Lights",  "ZENIFY",  "Zebion",  "Zebronics",  "iVoomi",  "physicswallah",  "pw",  "skyden prime",  "tvAt",
+    ] },
+    { "label": "Color", "type": "dropdown", "options": [
+      "Beige", "Black", "Blue", "Brown", "Coral", "Cream", "Gold", "Green", "Grey", "Grey Melange", "Khaki", "Lavendar", "Maroon", "Metallic", "Multicolor", "Mustard", "Navy Blue", "Nude", "Olive", "Orange", "Peach", "Pink", "Purple", "Red", "Rust", "Silver", "Teal", "White", "Yellow"
+    ] },
+    { "label": "Compatibility", "type": "dropdown", "options": [
+      "Desktop", "Laptop", 
+    ] },
+    { "label": "IS Number", "type": "text", "placeholder": "Enter IS Number", "info":"It is a number given by the Bureau of Indian Standards (BIS) to products that meet certain safety and quality standards. Please add the numeric value next to IS on the product or on the product packaging. This information will be available on the product/packaging label for pre-packed products. Please enter the same value as in the product/ packaging. You can identify this on the product/ packaging in the following format above the certified mark" },
+    { "label": "Material", "type": "dropdown", "options": [
+      "Fiber", "Metal & Plastic", "Plastic", 
+     ] },
+    { "label": "Product Type", "type": "dropdown", "options": [
+      "Wired Mouse", "Wireless Mouse",
+    ] },
+    { "label": "R Number", "type": "text", "placeholder": "Enter R Number" , "info":"This is a unique number given to a specific manufacturing unit or factory by the Bureau of Indian Standards (BIS). Please add the 7-10 digit registration number next to CM/L or R on the product or on the product packaging. This information will be available on the product/packaging label for pre-packed products. Please enter the same value as in the product/ packaging. You can identify this on the product/ packaging in the following format below the certified mark." },
+    { "label": "Description", "type": "textarea", "placeholder": "Enter Description (max 1400 characters)", "info":"Provide the description of the product which will be visible on the app" }
+    ],
+  },
+
+  "form_703": {
+     "AddProductDetails": {
+      "copyInputDetailsToAllProducts": true,
+      "ProductSizeInventory": [
+        { "label": "GST %", "type": "dropdown", "options": ["0", "5", "12", "18", "28"], "info": "Product GST %" },
+        { "label": "HSN Code", "type": "text", "placeholder": "Enter Product HSN Code" , "info":"Product hsn code"},
+        { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)", "info":"Means the total weight of the product excluding the packaging weight. Acceptable unit is gram (g) This information is available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please check the weight of the product excluding any external packing and provide such information in SI Unit - grams."},
+        { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)", "info":"Product ID is an alphanumeric code which is given to a product and can be found on the tag or packaging. It remains the same for all Size variants and changes for all Color variants. For example, a red colored product that comes in three different sizes will have the same Product ID." },
+        { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name", "info": "Please enter the product name. Note: Please avoid adding product features such as weight. dimension, price description here." },
+        { "label": "Size", "type": "dropdown", "options": ['Free Size'] }
+      ]
+    },
+    "ProductDetails": [
+    { "label": "Color", "type": "dropdown", "options": [
+      "Beige", "Black", "Blue", "Brown", "Coral", "Cream", "Gold", "Green", "Grey", "Grey Melange", "Khaki", "Lavendar", "Maroon", "Metallic", "Multicolor", "Mustard", "Navy Blue", "Nude", "Olive", "Orange", "Peach", "Pink", "Purple", "Red", "Rust", "Silver", "Teal", "White", "Yellow"
+    ] },
+    { "label": "Generic Name", "type": "dropdown", "options": [
+       "Laptop Mouse", "Mice", "Mouse", "PC Mouse",
+    ] , "info": "Generic Name means the commonly used name through which a product is generally called/known. Generic name DOES NOT MEAN the name of the brand or manufacturer of the product or its use." },
+    { "label": "Length", "type": "dropdown", "options": [
+         "15 cm", "16 cm", "17 cm", "18 cm", "19 cm", "20 cm", "21 cm", "22 cm", "23 cm", "24 cm", "25 cm", "26 cm", "27 cm", "28 cm", "29 cm", "30 cm", 
+    ] },
+    { "label": "Material", "type": "dropdown", "options": [
+      "Leather", "Plastic", "Rubber", 
+     ] },
+     { "label": "Warranty Period", "type": "dropdown", "options": [
+      "1 Month", "1 Month Brand Warranty", "1 Month Seller Warranty", "1 Year", "1 Year Brand Warranty", "1 Year Seller Warranty", "12 Months", "2 Months", "2 Months Brand Warranty", "2 Months Seller Warranty", "2 Years", "2 Years Brand Warranty", "2 Years Seller Warranty", "3 Months", "3 Months Brand Warranty", "3 Months Seller Warranty", "3 Years", "3 Years Brand Warranty", "3 Years Seller Warranty", "4 Years", "4 Years Brand Warranty", "4 Years Manufacturer Warranty", "4 Years Seller Warranty", "5 Years", "5 Years Brand Warranty", "5 Years Manufacturer Warranty", "5 Years Seller Warranty", "6 Months", "6 Months Brand Warranty", "6 Months Seller Warranty", "9 Months", "9 Months Brand Warranty", "9 Months Seller Warranty", "9 Months Seller Warranty1 Month", "No Warranty"
+    ] },
+    { "label": "Warranty Type", "type": "dropdown", "options": [
+      "Carry In",  "Not Applicable",  "On Site",  "Pick Up",  "Repair",  "Repair or Replacement",  "Replacement"
+    ] },
+     { "label": "Length", "type": "dropdown", "options": [
+         "15 cm", "16 cm", "17 cm", "18 cm", "19 cm", "20 cm", "21 cm", "22 cm", "23 cm", "24 cm", "25 cm", "26 cm", "27 cm", "28 cm", "29 cm", "30 cm", 
+    ] },
+    { "label": "Country of Origin", "type": "dropdown", "options": [
+      "India",  "Afghanistan",  "Albania",  "Algeria",  "Andorra",  "Angola",  "Antigua and Barbuda",  "Argentina",  "Armenia",  "Australia",  "Austria",  "Azerbaijan",  "Bahamas",  "Bahrain",  "Bangladesh",  "Barbados",  "Belarus",  "Belgium",  "Belize",  "Benin",  "Bhutan",  "Bolivia",  "Bosnia-Herzegovina",  "Botswana",  "Brazil",  "Brunei",  "Bulgaria",  "Burkina Faso",  "Burundi",  "Cabo Verde",  "Cambodia",  "Cameroon",  "Canada",  "Central African Rep",  "Chad",  "Chile",  "China",  "Colombia",  "Comoros",  "Congo",  "Costa Rica",  "Croatia",  "Cuba",  "Cyprus",  "Czechia",  "DRC Congo",  "Denmark",  "Djibouti",  "Dominica",  "Dominican Republic",  "Ecuador",  "Egypt",  "El Salvador",  "Equatorial Guinea",  "Eritrea",  "Estonia",  "Eswatini",  "Ethiopia",  "Fiji",  "Finland",  "France",  "Gabon",  "Gambia",  "Georgia",  "Germany",  "Ghana",  "Greece",  "Grenada",  "Guatemala",  "Guinea",  "Guinea Bissau",  "Guyana",  "Haiti",  "Holy See",  "Honduras",  "Hungary",  "Iceland",  "Indonesia",  "Iran",  "Iraq",  "Ireland",  "Israel",  "Italy",  "Jamaica",  "Japan",  "Jordan",  "Kazakhstan",  "Kenya",  "Kiribati",  "Kuwait",  "Kyrgyzstan",  "Laos",  "Latvia",  "Lebanon",  "Lesotho",  "Liberia",  "Libya",  "Liechtenstein",  "Lithuania",  "Luxembourg",  "Madagascar",  "Malawi",  "Malaysia",  "Maldives",  "Mali",  "Malta",  "Marshall Islands",  "Mauritania",  "Mauritius",  "Mexico",  "Micronesia",  "Moldova",  "Monaco",  "Mongolia",  "Montenegro",  "Morocco",  "Mozambique",  "Myanmar",  "Namibia",  "Nauru",  "Nepal",  "Netherlands",  "New Zealand",  "Nicaragua",  "Niger",  "Nigeria",  "North Korea",  "North Macedonia",  "Norway",  "Oman",  "Pakistan",  "Palau",  "Palestine State",  "Panama",  "Papua New Guinea",  "Paraguay",  "Peru",  "Philippines",  "Poland",  "Portugal",  "Qatar",  "Romania",  "Russia",  "Rwanda",  "Saint Kitts &amp; Nevis",  "Saint Lucia",  "St Vincent",  "Samoa",  "San Marino",  "Sao Tome",  "Saudi Arabia",  "Senegal",  "Serbia",  "Seychelles",  "Sierra Leone",  "Singapore",  "Slovakia",  "Slovenia",  "Solomon Islands",  "Somalia",  "South Africa",  "South Korea",  "South Sudan",  "Spain",  "Sri Lanka",  "Sudan",  "Suriname",  "Sweden",  "Switzerland",  "Syria",  "Tajikistan",  "Tanzania",  "Thailand",  "Timor Leste",  "Togo",  "Tonga",  "Trinidad and Tobago",  "Tunisia",  "Turkey",  "Turkmenistan",  "Tuvalu",  "Uganda",  "Ukraine",  "UAE",  "United Kingdom",  "USA",  "Uruguay",  "Uzbekistan",  "Vanuatu",  "Venezuela",  "Vietnam",  "Yemen",  "Zambia",  "Zimbabwe"
+    ], "info":"Country of Origin means the country in which the product has been produced or assembled in. This information is available on the packaging label for pre- packed products. If you are not listing a pre-packed product, please provide the country in which the product is manufactured." },
+    { "label": "Manufacturer Name", "type": "text", "placeholder": "Enter Manufacturer Name", "info": "Enter the name of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Address", "type": "text", "placeholder": "Enter Manufacturer Address", "info": "Enter the address of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Pincode", "type": "text", "placeholder": "Enter Manufacturer Pincode" , "info": "Enter the pincode mentioned in the manufacturers address." },
+    { "label": "Packer Name", "type": "text", "placeholder": "Enter Packer Name", "info": "Enter the name of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Address", "type": "text", "placeholder": "Enter Packer Address", "info":"Enter the address of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Pincode", "type": "text", "placeholder": "Enter Packer Pincode", "info":"Enter the pincode mentioned in the packers address." },
+    { "label": "Importer Name", "type": "text", "placeholder": "Enter Importer Name", "info": "Enter the name of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label.If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product." },
+    { "label": "Importer Address", "type": "text", "placeholder": "Enter Importer Address", "info": "Enter the address of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product."},
+    { "label": "Importer Pincode", "type": "text", "placeholder": "Enter Importer Pincode",  "info": "Pincode of the importer if your product is manufactured outside India."}
+  ],
+   "OtherAttributes": [
+     { "label": "TRUE", "type": "dropdown", "options": [
+      "Yes",  "No",  
+    ] },
+    { "label": "Brand", "type": "dropdown", "options": [
+      "ADZOY", "AR Enterprises", "ARQIVO", "ARROW SIGN", "AdNet", "Aroma", "Atarc", "Azokle", "BANISTROKES", "BLISSWAVE", "Bebingo", "BoAt", "Buyab Factory", "CAREOPETA", "CIRCLE", "CLOZEU", "COLORFLOW", "CSPC India", "CYBE", "CoolDeal", "D25", "DC Brand", "DELL", "DESK DOCK", "DHANVI ENTERPRISE", "DIGITAL PLUS", "DINNY", "Dubstep", "Dudao", "EBUZZ", "EVROCK", "EXO DECOR", "Editrix", "Etake", "Exprintify", "Felsone", "Fire-Boltt", "GARIHC ENTERPRISE", "GIFTLANE", "GLIMLAG", "GLORIUS PRINT", "GOELITE", "Gfylo", "Gifting Domus", "Gifts Bucket", "HEMRAJ CRAFTS", "HIBA", "HOMELOOKS", "HP", "Hoppup", "ISHYAR", "Interceptor", "JETRIVE", "JMDOM", "K STORY", "KEERIFY", "KRAKEN'S", "LASTWAVE", "LET'SFREEZE", "LYNE", "Laransh", "Laurant", "MAKEPHOTOGIFTS", "MESHIV", "MOBERA", "MOREX", "MTOOL", "MVPHTY", "MacShanan", "MagJet", "Manibam Impex", "Matlek", "Mivi", "Msunjay", "NEKKO", "Nirmuk", "Nu Republic", "OUTFITQUE", "Omniversal", "Ovking", "PORTRONICS", "PRINTIO", "PRODOT", "PVANZO", "Parallel World Mart", "Pebble", "Planet Popcorn", "Pochanki", "Prettify", "PrintMall", "Printometry", "Ptron", "Rasper", "Redmi", "RefineMart", "Replix", "SAVLIA", "SEDU", "SPINCART", "STmax", "SUBLIARTS", "SWAPITECH", "Sambhuya", "SeeCot", "Shaping Fabric", "Sharp Beak", "Shloka", "Skullcandy", "Skycell", "Steko", "THE QOOKLY", "TRK HUB", "TRK IMPEX", "TU4 Enterprise", "TX-FLO", "Tachno Touch", "Tee Mafia", "The Custom Crow", "Tizum", "Twin Brothers", "U&amp;I", "UGMA PRODUCTS", "UGPRO", "UNITIX", "Ubon", "Unbounded Company", "Urbanpop", "VAKRA", "VM SHOPPING MALL", "Vanfly", "Verilux", "Vistamanya Plus", "WAR HAMMER", "WASD", "Winsumm",
+    ] },
+     { "label": "Description", "type": "textarea", "placeholder": "Enter Description (max 1400 characters)", "info":"Provide the description of the product which will be visible on the app" }
+    ],
+  },
+   "form_704": {
+     "AddProductDetails": {
+      "copyInputDetailsToAllProducts": true,
+      "ProductSizeInventory": [
+        { "label": "GST %", "type": "dropdown", "options": ["0", "5", "12", "18", "28"], "info": "Product GST %" },
+        { "label": "HSN Code", "type": "text", "placeholder": "Enter Product HSN Code" , "info":"Product hsn code"},
+        { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)", "info":"Means the total weight of the product excluding the packaging weight. Acceptable unit is gram (g) This information is available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please check the weight of the product excluding any external packing and provide such information in SI Unit - grams."},
+        { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)", "info":"Product ID is an alphanumeric code which is given to a product and can be found on the tag or packaging. It remains the same for all Size variants and changes for all Color variants. For example, a red colored product that comes in three different sizes will have the same Product ID." },
+        { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name", "info": "Please enter the product name. Note: Please avoid adding product features such as weight. dimension, price description here." },
+        { "label": "Size", "type": "dropdown", "options": ['Free Size'] }
+      ]
+    },
+    "ProductDetails": [
+    { "label": "Data Rate", "type": "dropdown", "options": [
+      "DDR2", "DDR3", "DDR4", "DDR5", "Others", 
+    ] },
+    { "label": "Generic Name", "type": "dropdown", "options": [
+       "Motherboards",
+    ] , "info": "Generic Name means the commonly used name through which a product is generally called/known. Generic name DOES NOT MEAN the name of the brand or manufacturer of the product or its use." },
+   { "label": "Net Quantity (N)", "type": "dropdown", "options": [
+       "1","10", "2", "3", "4", "5", "6", "7", "8", "9",
+    ] },
+    { "label": "Product Length (cm)", "type": "text", "placeholder":"Enter Product Length (cm)", "info": "Enter length of the product. Example: If you are listing a Square/rectangular/oblong product with edges, please measure and add the length of the product. If you are selling a circular/round shaped product, please measure and add the diameter of the product. Please provide this information as per the International System of Units (SI Unit) which is centimeter."},
+     { "label": "Product Width (cm)", "type": "text", "placeholder":"Enter Product Width (cm)" , "info": "Enter width of the product. Example: If you are listing a Square/rectangular/oblong product with edges, please measure and add the width of the product. If you are selling a circular/round shaped product, please measure and add the width of the product. Please provide this information as per the International System of Units (SI Unit) which is centimeter."},
+    { "label": "Socket Type", "type": "dropdown", "options": [
+      "Am1", "Am2", "Am4", "Fm1", "Fm2+", "Intel CPU Onboard", "LGA 1150", "LGA 1155", "LGA 1156", "LGA 1200", "LGA 1366", "LGA 2011-V3", "LGA 2066", "LGA 775", "LGA1151", "Others", "PGA 988", "Tr4", 
+     ] },
+     { "label": "Warranty Period", "type": "dropdown", "options": [
+      "1 Month", "1 Month Brand Warranty", "1 Month Seller Warranty", "1 Year", "1 Year Brand Warranty", "1 Year Seller Warranty", "12 Months", "2 Months", "2 Months Brand Warranty", "2 Months Seller Warranty", "2 Years", "2 Years Brand Warranty", "2 Years Seller Warranty", "3 Months", "3 Months Brand Warranty", "3 Months Seller Warranty", "3 Years", "3 Years Brand Warranty", "3 Years Seller Warranty", "4 Years", "4 Years Brand Warranty", "4 Years Manufacturer Warranty", "4 Years Seller Warranty", "5 Years", "5 Years Brand Warranty", "5 Years Manufacturer Warranty", "5 Years Seller Warranty", "6 Months", "6 Months Brand Warranty", "6 Months Seller Warranty", "9 Months", "9 Months Brand Warranty", "9 Months Seller Warranty", "9 Months Seller Warranty1 Month", "No Warranty"
+    ] },
+    { "label": "Warranty Type", "type": "dropdown", "options": [
+      "Carry In",  "Not Applicable",  "On Site",  "Pick Up", 
+    ] },
+     { "label": "Length", "type": "dropdown", "options": [
+         "15 cm", "16 cm", "17 cm", "18 cm", "19 cm", "20 cm", "21 cm", "22 cm", "23 cm", "24 cm", "25 cm", "26 cm", "27 cm", "28 cm", "29 cm", "30 cm", 
+    ] },
+    { "label": "Country of Origin", "type": "dropdown", "options": [
+      "India",  "Afghanistan",  "Albania",  "Algeria",  "Andorra",  "Angola",  "Antigua and Barbuda",  "Argentina",  "Armenia",  "Australia",  "Austria",  "Azerbaijan",  "Bahamas",  "Bahrain",  "Bangladesh",  "Barbados",  "Belarus",  "Belgium",  "Belize",  "Benin",  "Bhutan",  "Bolivia",  "Bosnia-Herzegovina",  "Botswana",  "Brazil",  "Brunei",  "Bulgaria",  "Burkina Faso",  "Burundi",  "Cabo Verde",  "Cambodia",  "Cameroon",  "Canada",  "Central African Rep",  "Chad",  "Chile",  "China",  "Colombia",  "Comoros",  "Congo",  "Costa Rica",  "Croatia",  "Cuba",  "Cyprus",  "Czechia",  "DRC Congo",  "Denmark",  "Djibouti",  "Dominica",  "Dominican Republic",  "Ecuador",  "Egypt",  "El Salvador",  "Equatorial Guinea",  "Eritrea",  "Estonia",  "Eswatini",  "Ethiopia",  "Fiji",  "Finland",  "France",  "Gabon",  "Gambia",  "Georgia",  "Germany",  "Ghana",  "Greece",  "Grenada",  "Guatemala",  "Guinea",  "Guinea Bissau",  "Guyana",  "Haiti",  "Holy See",  "Honduras",  "Hungary",  "Iceland",  "Indonesia",  "Iran",  "Iraq",  "Ireland",  "Israel",  "Italy",  "Jamaica",  "Japan",  "Jordan",  "Kazakhstan",  "Kenya",  "Kiribati",  "Kuwait",  "Kyrgyzstan",  "Laos",  "Latvia",  "Lebanon",  "Lesotho",  "Liberia",  "Libya",  "Liechtenstein",  "Lithuania",  "Luxembourg",  "Madagascar",  "Malawi",  "Malaysia",  "Maldives",  "Mali",  "Malta",  "Marshall Islands",  "Mauritania",  "Mauritius",  "Mexico",  "Micronesia",  "Moldova",  "Monaco",  "Mongolia",  "Montenegro",  "Morocco",  "Mozambique",  "Myanmar",  "Namibia",  "Nauru",  "Nepal",  "Netherlands",  "New Zealand",  "Nicaragua",  "Niger",  "Nigeria",  "North Korea",  "North Macedonia",  "Norway",  "Oman",  "Pakistan",  "Palau",  "Palestine State",  "Panama",  "Papua New Guinea",  "Paraguay",  "Peru",  "Philippines",  "Poland",  "Portugal",  "Qatar",  "Romania",  "Russia",  "Rwanda",  "Saint Kitts &amp; Nevis",  "Saint Lucia",  "St Vincent",  "Samoa",  "San Marino",  "Sao Tome",  "Saudi Arabia",  "Senegal",  "Serbia",  "Seychelles",  "Sierra Leone",  "Singapore",  "Slovakia",  "Slovenia",  "Solomon Islands",  "Somalia",  "South Africa",  "South Korea",  "South Sudan",  "Spain",  "Sri Lanka",  "Sudan",  "Suriname",  "Sweden",  "Switzerland",  "Syria",  "Tajikistan",  "Tanzania",  "Thailand",  "Timor Leste",  "Togo",  "Tonga",  "Trinidad and Tobago",  "Tunisia",  "Turkey",  "Turkmenistan",  "Tuvalu",  "Uganda",  "Ukraine",  "UAE",  "United Kingdom",  "USA",  "Uruguay",  "Uzbekistan",  "Vanuatu",  "Venezuela",  "Vietnam",  "Yemen",  "Zambia",  "Zimbabwe"
+    ], "info":"Country of Origin means the country in which the product has been produced or assembled in. This information is available on the packaging label for pre- packed products. If you are not listing a pre-packed product, please provide the country in which the product is manufactured." },
+    { "label": "Manufacturer Name", "type": "text", "placeholder": "Enter Manufacturer Name", "info": "Enter the name of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Address", "type": "text", "placeholder": "Enter Manufacturer Address", "info": "Enter the address of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Pincode", "type": "text", "placeholder": "Enter Manufacturer Pincode" , "info": "Enter the pincode mentioned in the manufacturers address." },
+    { "label": "Packer Name", "type": "text", "placeholder": "Enter Packer Name", "info": "Enter the name of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Address", "type": "text", "placeholder": "Enter Packer Address", "info":"Enter the address of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Pincode", "type": "text", "placeholder": "Enter Packer Pincode", "info":"Enter the pincode mentioned in the packers address." },
+    { "label": "Importer Name", "type": "text", "placeholder": "Enter Importer Name", "info": "Enter the name of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label.If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product." },
+    { "label": "Importer Address", "type": "text", "placeholder": "Enter Importer Address", "info": "Enter the address of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product."},
+    { "label": "Importer Pincode", "type": "text", "placeholder": "Enter Importer Pincode",  "info": "Pincode of the importer if your product is manufactured outside India."}
+  ],
+   "OtherAttributes": [
+    { "label": "Brand", "type": "dropdown", "options": [
+     "7Q7", "Aroma", "Asrock", "Asus", "Atarc", "Blue Feather", "BoAt", "Consistent", "DHANVI ENTERPRISE", "DIGITAL PLUS", "Dma World", "Dubstep", "Dudao", "EBUZZ", "Eassycart", "Eatech", "Editrix", "Electrobricks", "Enter", "Etake", "Ever Forever", "Felsone", "Fire-Boltt", "Frontech", "GARIHC ENTERPRISE", "Galax", "Gigabyte", "Hoppup", "Hp", "Interceptor", "JAILEX GOLD", "LYNE", "Lapcare", "MOREX", "MSI", "Mak World", "Manibam Impex", "Matlek", "Matrix", "Mivi", "Nu Republic", "OBRELO", "Omniversal", "Others", "Ovking", "Pebble", "Portronics", "Powerx", "Priyathams", "Ptron", "Quadmarq", "Raspberry Pi", "Redmi", "SEDU", "SHRI MODESHWARI ENTERPRISE", "Sharp Beak", "Skycell", "TRK HUB", "TRK IMPEX", "TU4 Enterprise", "Tech-Com", "Techgear", "Techon", "Techut", "U&amp;i", "Ubon", "Un Branded", "Zebbronicss", "Zebion", "Zebronics", "Zoonis", "physicswallah", "pw",
+    ] },
+    { "label": "Chipset", "type": "dropdown", "options": [
+      "Amd 320", "Amd 880G", "Amd B450", "Amd B550", "Amd X470", "Amd X570", "Baytrail-D", "Geforce 7025", "Intel B460", "Intel B65", "Intel G31", "Intel G41", "Intel G45 Express Chipset", "Intel H170", "Intel H370", "Intel H55", "Intel H57", "Intel H61", "Intel H61 Express Chipset", "Intel H77 Chipset", "Intel H81 Express", "Intel X299", "Intel X58 Express", "Intel X99", "Intel Z490", "Others",
+    ] },
+     { "label": "Chipset", "type": "dropdown", "options": [
+     "Desktop", "Laptop", "Others", "Server", "Workstation"
+    ] },
+     { "label": "IS Number", "type": "text", "placeholder": "Enter IS Number", "info":"It is a number given by the Bureau of Indian Standards (BIS) to products that meet certain safety and quality standards. Please add the numeric value next to IS on the product or on the product packaging. This information will be available on the product/packaging label for pre-packed products. Please enter the same value as in the product/ packaging. You can identify this on the product/ packaging in the following format above the certified mark" },
+     { "label": "R Number", "type": "text", "placeholder": "Enter R Number" , "info":"This is a unique number given to a specific manufacturing unit or factory by the Bureau of Indian Standards (BIS). Please add the 7-10 digit registration number next to CM/L or R on the product or on the product packaging. This information will be available on the product/packaging label for pre-packed products. Please enter the same value as in the product/ packaging. You can identify this on the product/ packaging in the following format below the certified mark." },
+     { "label": "Description", "type": "textarea", "placeholder": "Enter Description (max 1400 characters)", "info":"Provide the description of the product which will be visible on the app" }
+    ],
+  },
+   "form_705": {
+     "AddProductDetails": {
+      "copyInputDetailsToAllProducts": true,
+      "ProductSizeInventory": [
+        { "label": "GST %", "type": "dropdown", "options": ["0", "5", "12", "18", "28"], "info": "Product GST %" },
+        { "label": "HSN Code", "type": "text", "placeholder": "Enter Product HSN Code" , "info":"Product hsn code"},
+        { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)", "info":"Means the total weight of the product excluding the packaging weight. Acceptable unit is gram (g) This information is available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please check the weight of the product excluding any external packing and provide such information in SI Unit - grams."},
+        { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)", "info":"Product ID is an alphanumeric code which is given to a product and can be found on the tag or packaging. It remains the same for all Size variants and changes for all Color variants. For example, a red colored product that comes in three different sizes will have the same Product ID." },
+        { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name", "info": "Please enter the product name. Note: Please avoid adding product features such as weight. dimension, price description here." },
         { "label": "Size", "type": "dropdown", "options": ['Free Size'] }
       ]
     },
     "ProductDetails": [
     { "label": "Generic Name", "type": "dropdown", "options": [
-       ] },
-    { "label": "Included Components", "type": "text", "placeholder": "Enter Included Components" },
-    { "label": "Net Quantity (N)", "type": "dropdown", "options": [] },
-    { "label": "Power Source", "type": "dropdown", "options": [] },
-    { "label": "Warranty Period", "type": "dropdown", "options": [] },
-    { "label": "Warranty Type", "type": "dropdown", "options": [] },
-    { "label": "Country of Origin", "type": "dropdown", "options": [] },
-    { "label": "Manufacturer Name", "type": "text", "placeholder": "Enter Manufacturer Name" },
-    { "label": "Manufacturer Address", "type": "text", "placeholder": "Enter Manufacturer Address" },
-    { "label": "Manufacturer Pincode", "type": "text", "placeholder": "Enter Manufacturer Pincode" },
-    { "label": "Packer Name", "type": "text", "placeholder": "Enter Packer Name" },
-    { "label": "Packer Address", "type": "text", "placeholder": "Enter Packer Address" },
-    { "label": "Packer Pincode", "type": "text", "placeholder": "Enter Packer Pincode" },
-    { "label": "Importer Name", "type": "text", "placeholder": "Enter Importer Name" },
-    { "label": "Importer Address", "type": "text", "placeholder": "Enter Importer Address" },
-    { "label": "Importer Pincode", "type": "text", "placeholder": "Enter Importer Pincode" }
+       "Computer Cases", "PC Tower"
+    ] , "info": "Generic Name means the commonly used name through which a product is generally called/known. Generic name DOES NOT MEAN the name of the brand or manufacturer of the product or its use." },
+   { "label": "Net Quantity (N)", "type": "dropdown", "options": [
+       "1","10", "2", "3", "4", "5", "6", "7", "8", "9",
+    ] },
+     { "label": "Product Height (cm)", "type": "text", "placeholder":"Enter Product Height (cm)", "info": "Enter height/depth/thickness of the product. Example: If you are listing a Square/rectangular/oblong product with edges, please measure and add the height/thickness of the product. If you are selling a circular/round shaped product, please measure and add the depth of the product. Please provide this information as per the International System of Units (SI Unit) which is centimeter."},
+    { "label": "Product Length (cm)", "type": "text", "placeholder":"Enter Product Length (cm)", "info": "Enter length of the product. Example: If you are listing a Square/rectangular/oblong product with edges, please measure and add the length of the product. If you are selling a circular/round shaped product, please measure and add the diameter of the product. Please provide this information as per the International System of Units (SI Unit) which is centimeter."},
+     { "label": "Product Width (cm)", "type": "text", "placeholder":"Enter Product Width (cm)" , "info": "Enter width of the product. Example: If you are listing a Square/rectangular/oblong product with edges, please measure and add the width of the product. If you are selling a circular/round shaped product, please measure and add the width of the product. Please provide this information as per the International System of Units (SI Unit) which is centimeter."},
+    { "label": "Country of Origin", "type": "dropdown", "options": [
+      "India",  "Afghanistan",  "Albania",  "Algeria",  "Andorra",  "Angola",  "Antigua and Barbuda",  "Argentina",  "Armenia",  "Australia",  "Austria",  "Azerbaijan",  "Bahamas",  "Bahrain",  "Bangladesh",  "Barbados",  "Belarus",  "Belgium",  "Belize",  "Benin",  "Bhutan",  "Bolivia",  "Bosnia-Herzegovina",  "Botswana",  "Brazil",  "Brunei",  "Bulgaria",  "Burkina Faso",  "Burundi",  "Cabo Verde",  "Cambodia",  "Cameroon",  "Canada",  "Central African Rep",  "Chad",  "Chile",  "China",  "Colombia",  "Comoros",  "Congo",  "Costa Rica",  "Croatia",  "Cuba",  "Cyprus",  "Czechia",  "DRC Congo",  "Denmark",  "Djibouti",  "Dominica",  "Dominican Republic",  "Ecuador",  "Egypt",  "El Salvador",  "Equatorial Guinea",  "Eritrea",  "Estonia",  "Eswatini",  "Ethiopia",  "Fiji",  "Finland",  "France",  "Gabon",  "Gambia",  "Georgia",  "Germany",  "Ghana",  "Greece",  "Grenada",  "Guatemala",  "Guinea",  "Guinea Bissau",  "Guyana",  "Haiti",  "Holy See",  "Honduras",  "Hungary",  "Iceland",  "Indonesia",  "Iran",  "Iraq",  "Ireland",  "Israel",  "Italy",  "Jamaica",  "Japan",  "Jordan",  "Kazakhstan",  "Kenya",  "Kiribati",  "Kuwait",  "Kyrgyzstan",  "Laos",  "Latvia",  "Lebanon",  "Lesotho",  "Liberia",  "Libya",  "Liechtenstein",  "Lithuania",  "Luxembourg",  "Madagascar",  "Malawi",  "Malaysia",  "Maldives",  "Mali",  "Malta",  "Marshall Islands",  "Mauritania",  "Mauritius",  "Mexico",  "Micronesia",  "Moldova",  "Monaco",  "Mongolia",  "Montenegro",  "Morocco",  "Mozambique",  "Myanmar",  "Namibia",  "Nauru",  "Nepal",  "Netherlands",  "New Zealand",  "Nicaragua",  "Niger",  "Nigeria",  "North Korea",  "North Macedonia",  "Norway",  "Oman",  "Pakistan",  "Palau",  "Palestine State",  "Panama",  "Papua New Guinea",  "Paraguay",  "Peru",  "Philippines",  "Poland",  "Portugal",  "Qatar",  "Romania",  "Russia",  "Rwanda",  "Saint Kitts &amp; Nevis",  "Saint Lucia",  "St Vincent",  "Samoa",  "San Marino",  "Sao Tome",  "Saudi Arabia",  "Senegal",  "Serbia",  "Seychelles",  "Sierra Leone",  "Singapore",  "Slovakia",  "Slovenia",  "Solomon Islands",  "Somalia",  "South Africa",  "South Korea",  "South Sudan",  "Spain",  "Sri Lanka",  "Sudan",  "Suriname",  "Sweden",  "Switzerland",  "Syria",  "Tajikistan",  "Tanzania",  "Thailand",  "Timor Leste",  "Togo",  "Tonga",  "Trinidad and Tobago",  "Tunisia",  "Turkey",  "Turkmenistan",  "Tuvalu",  "Uganda",  "Ukraine",  "UAE",  "United Kingdom",  "USA",  "Uruguay",  "Uzbekistan",  "Vanuatu",  "Venezuela",  "Vietnam",  "Yemen",  "Zambia",  "Zimbabwe"
+    ], "info":"Country of Origin means the country in which the product has been produced or assembled in. This information is available on the packaging label for pre- packed products. If you are not listing a pre-packed product, please provide the country in which the product is manufactured." },
+    { "label": "Manufacturer Name", "type": "text", "placeholder": "Enter Manufacturer Name", "info": "Enter the name of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Address", "type": "text", "placeholder": "Enter Manufacturer Address", "info": "Enter the address of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Pincode", "type": "text", "placeholder": "Enter Manufacturer Pincode" , "info": "Enter the pincode mentioned in the manufacturers address." },
+    { "label": "Packer Name", "type": "text", "placeholder": "Enter Packer Name", "info": "Enter the name of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Address", "type": "text", "placeholder": "Enter Packer Address", "info":"Enter the address of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Pincode", "type": "text", "placeholder": "Enter Packer Pincode", "info":"Enter the pincode mentioned in the packers address." },
+    { "label": "Importer Name", "type": "text", "placeholder": "Enter Importer Name", "info": "Enter the name of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label.If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product." },
+    { "label": "Importer Address", "type": "text", "placeholder": "Enter Importer Address", "info": "Enter the address of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product."},
+    { "label": "Importer Pincode", "type": "text", "placeholder": "Enter Importer Pincode",  "info": "Pincode of the importer if your product is manufactured outside India."}
   ],
-  "OtherAttributes": [
-     { "label": "TRUE", "type": "text", "placeholder": "Enter TRUE" },
-    { "label": "Brand", "type": "dropdown", "options": [] },
-    { "label": "Color", "type": "dropdown", "options": [] },
-    { "label": "IS Number", "type": "text", "placeholder": "Enter IS Number" },
-    { "label": "Length", "type": "dropdown", "options": [] },
-    { "label": "Material", "type": "dropdown", "options": [] },
-    { "label": "Product Type", "type": "dropdown", "options": [] },
-    { "label": "R Number", "type": "text", "placeholder": "Enter R Number" },
-    { "label": "USB", "type": "dropdown", "options": [] },
-    { "label": "Width", "type": "dropdown", "options": [] },
-    { "label": "Description", "type": "textarea", "placeholder": "Enter Description (max 1400 characters)" }
+   "OtherAttributes": [
+    { "label": "Brand", "type": "dropdown", "options": [
+      "Aroma",  "Artis",  "Asus",  "Atarc",  "BoAt",  "D25",  "DHANVI ENTERPRISE",  "DIGITAL PLUS",  "Dubstep",  "Dudao",  "EVROCK",  "Editrix",  "Etake",  "Felsone",  "Fire-Boltt",  "GARIHC ENTERPRISE",  "HEMRAJ CRAFTS",  "HP",  "Hoppup",  "Ifyx",  "Interceptor",  "JBS TECH",  "JETRIVE",  "KINGFASTER",  "LOSI",  "LYNE",  "Lenovo",  "Logitech",  "MOREX",  "Manibam Impex",  "Matlek",  "Matrix",  "Mivi",  "Nu Republic",  "OBRELO",  "Omniversal",  "Others",  "Ovking",  "Pebble",  "Portronics",  "Ptron",  "Quadmarq",  "Raxovs",  "Redmi",  "SEDU",  "SHRI MODESHWARI ENTERPRISE",  "Shaping Fabric",  "Sharp Beak",  "Skycell",  "TRK HUB",  "TRK IMPEX",  "TU4 Enterprise",  "Twin Brothers",  "U&amp;i",  "Ubon",  "Verilux",  "Wd",  "Zebion",  "Zebronics",  "physicswallah",  "pw",
+    ] },
+    { "label": "Description", "type": "textarea", "placeholder": "Enter Description (max 1400 characters)", "info":"Provide the description of the product which will be visible on the app" }
     ],
- 
   },
-    "form_703": {
-       "AddProductDetails": {
+    "form_706": {
+     "AddProductDetails": {
       "copyInputDetailsToAllProducts": true,
       "ProductSizeInventory": [
-        { "label": "GST %", "type": "dropdown", "options": ["0", "5", "12", "18", "28"] },
-        { "label": "HSN Code", "type": "text", "placeholder": "Enter Product HSN Code" },
-        { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)" },
-        { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)" },
-        { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name" },
+        { "label": "GST %", "type": "dropdown", "options": ["0", "5", "12", "18", "28"], "info": "Product GST %" },
+        { "label": "HSN Code", "type": "text", "placeholder": "Enter Product HSN Code" , "info":"Product hsn code"},
+        { "label": "Net Weight (gm)", "type": "text", "placeholder": "Enter Net Weight (gm)", "info":"Means the total weight of the product excluding the packaging weight. Acceptable unit is gram (g) This information is available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please check the weight of the product excluding any external packing and provide such information in SI Unit - grams."},
+        { "label": "Style Code / Product ID (optional)", "type": "text", "placeholder": "Enter Style Code / Product ID (optional)", "info":"Product ID is an alphanumeric code which is given to a product and can be found on the tag or packaging. It remains the same for all Size variants and changes for all Color variants. For example, a red colored product that comes in three different sizes will have the same Product ID." },
+        { "label": "Product Name", "type": "text", "placeholder": "Enter Product Name", "info": "Please enter the product name. Note: Please avoid adding product features such as weight. dimension, price description here." },
         { "label": "Size", "type": "dropdown", "options": ['Free Size'] }
       ]
     },
     "ProductDetails": [
-    { "label": "Generic Name", "type": "dropdown", "options": [] },
-    { "label": "Included Components", "type": "text", "placeholder": "Enter Included Components" },
-    { "label": "Net Quantity (N)", "type": "dropdown", "options": [] },
-    { "label": "Power Source", "type": "dropdown", "options": [] },
-    { "label": "Warranty Period", "type": "dropdown", "options": [] },
-    { "label": "Warranty Type", "type": "dropdown", "options": [] },
-    { "label": "Country of Origin", "type": "dropdown", "options": [] },
-    { "label": "Manufacturer Name", "type": "text", "placeholder": "Enter Manufacturer Name" },
-    { "label": "Manufacturer Address", "type": "text", "placeholder": "Enter Manufacturer Address" },
-    { "label": "Manufacturer Pincode", "type": "text", "placeholder": "Enter Manufacturer Pincode" },
-    { "label": "Packer Name", "type": "text", "placeholder": "Enter Packer Name" },
-    { "label": "Packer Address", "type": "text", "placeholder": "Enter Packer Address" },
-    { "label": "Packer Pincode", "type": "text", "placeholder": "Enter Packer Pincode" },
-    { "label": "Importer Name", "type": "text", "placeholder": "Enter Importer Name" },
-    { "label": "Importer Address", "type": "text", "placeholder": "Enter Importer Address" },
-    { "label": "Importer Pincode", "type": "text", "placeholder": "Enter Importer Pincode" }
+    { "label": "Generic Name", "type": "dropdown", "options": [
+       "Memory / Ram",
+    ] , "info": "Generic Name means the commonly used name through which a product is generally called/known. Generic name DOES NOT MEAN the name of the brand or manufacturer of the product or its use." },
+   { "label": "Net Quantity (N)", "type": "dropdown", "options": [
+       "1","10", "2", "3", "4", "5", "6", "7", "8", "9",
+    ] },
+      { "label": "Warranty Period", "type": "dropdown", "options": [
+      "1 Month", "1 Month Brand Warranty", "1 Month Seller Warranty", "1 Year", "1 Year Brand Warranty", "1 Year Seller Warranty", "12 Months", "2 Months", "2 Months Brand Warranty", "2 Months Seller Warranty", "2 Years", "2 Years Brand Warranty", "2 Years Seller Warranty", "3 Months", "3 Months Brand Warranty", "3 Months Seller Warranty", "3 Years", "3 Years Brand Warranty", "3 Years Seller Warranty", "4 Years", "4 Years Brand Warranty", "4 Years Manufacturer Warranty", "4 Years Seller Warranty", "5 Years", "5 Years Brand Warranty", "5 Years Manufacturer Warranty", "5 Years Seller Warranty", "6 Months", "6 Months Brand Warranty", "6 Months Seller Warranty", "9 Months", "9 Months Brand Warranty", "9 Months Seller Warranty", "9 Months Seller Warranty1 Month", "No Warranty"
+    ] },
+    { "label": "Warranty Type", "type": "dropdown", "options": [
+      "Carry In",  "Not Applicable",  "On Site",  "Pick Up", 
+    ] },
+    { "label": "Country of Origin", "type": "dropdown", "options": [
+      "India",  "Afghanistan",  "Albania",  "Algeria",  "Andorra",  "Angola",  "Antigua and Barbuda",  "Argentina",  "Armenia",  "Australia",  "Austria",  "Azerbaijan",  "Bahamas",  "Bahrain",  "Bangladesh",  "Barbados",  "Belarus",  "Belgium",  "Belize",  "Benin",  "Bhutan",  "Bolivia",  "Bosnia-Herzegovina",  "Botswana",  "Brazil",  "Brunei",  "Bulgaria",  "Burkina Faso",  "Burundi",  "Cabo Verde",  "Cambodia",  "Cameroon",  "Canada",  "Central African Rep",  "Chad",  "Chile",  "China",  "Colombia",  "Comoros",  "Congo",  "Costa Rica",  "Croatia",  "Cuba",  "Cyprus",  "Czechia",  "DRC Congo",  "Denmark",  "Djibouti",  "Dominica",  "Dominican Republic",  "Ecuador",  "Egypt",  "El Salvador",  "Equatorial Guinea",  "Eritrea",  "Estonia",  "Eswatini",  "Ethiopia",  "Fiji",  "Finland",  "France",  "Gabon",  "Gambia",  "Georgia",  "Germany",  "Ghana",  "Greece",  "Grenada",  "Guatemala",  "Guinea",  "Guinea Bissau",  "Guyana",  "Haiti",  "Holy See",  "Honduras",  "Hungary",  "Iceland",  "Indonesia",  "Iran",  "Iraq",  "Ireland",  "Israel",  "Italy",  "Jamaica",  "Japan",  "Jordan",  "Kazakhstan",  "Kenya",  "Kiribati",  "Kuwait",  "Kyrgyzstan",  "Laos",  "Latvia",  "Lebanon",  "Lesotho",  "Liberia",  "Libya",  "Liechtenstein",  "Lithuania",  "Luxembourg",  "Madagascar",  "Malawi",  "Malaysia",  "Maldives",  "Mali",  "Malta",  "Marshall Islands",  "Mauritania",  "Mauritius",  "Mexico",  "Micronesia",  "Moldova",  "Monaco",  "Mongolia",  "Montenegro",  "Morocco",  "Mozambique",  "Myanmar",  "Namibia",  "Nauru",  "Nepal",  "Netherlands",  "New Zealand",  "Nicaragua",  "Niger",  "Nigeria",  "North Korea",  "North Macedonia",  "Norway",  "Oman",  "Pakistan",  "Palau",  "Palestine State",  "Panama",  "Papua New Guinea",  "Paraguay",  "Peru",  "Philippines",  "Poland",  "Portugal",  "Qatar",  "Romania",  "Russia",  "Rwanda",  "Saint Kitts &amp; Nevis",  "Saint Lucia",  "St Vincent",  "Samoa",  "San Marino",  "Sao Tome",  "Saudi Arabia",  "Senegal",  "Serbia",  "Seychelles",  "Sierra Leone",  "Singapore",  "Slovakia",  "Slovenia",  "Solomon Islands",  "Somalia",  "South Africa",  "South Korea",  "South Sudan",  "Spain",  "Sri Lanka",  "Sudan",  "Suriname",  "Sweden",  "Switzerland",  "Syria",  "Tajikistan",  "Tanzania",  "Thailand",  "Timor Leste",  "Togo",  "Tonga",  "Trinidad and Tobago",  "Tunisia",  "Turkey",  "Turkmenistan",  "Tuvalu",  "Uganda",  "Ukraine",  "UAE",  "United Kingdom",  "USA",  "Uruguay",  "Uzbekistan",  "Vanuatu",  "Venezuela",  "Vietnam",  "Yemen",  "Zambia",  "Zimbabwe"
+    ], "info":"Country of Origin means the country in which the product has been produced or assembled in. This information is available on the packaging label for pre- packed products. If you are not listing a pre-packed product, please provide the country in which the product is manufactured." },
+    { "label": "Manufacturer Name", "type": "text", "placeholder": "Enter Manufacturer Name", "info": "Enter the name of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Address", "type": "text", "placeholder": "Enter Manufacturer Address", "info": "Enter the address of the Manufacturer which means the entity which has produced the product and this information is generally available on the packaging label of the product. Find “manufactured by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for producing your product." },
+    { "label": "Manufacturer Pincode", "type": "text", "placeholder": "Enter Manufacturer Pincode" , "info": "Enter the pincode mentioned in the manufacturers address." },
+    { "label": "Packer Name", "type": "text", "placeholder": "Enter Packer Name", "info": "Enter the name of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Address", "type": "text", "placeholder": "Enter Packer Address", "info":"Enter the address of the Packer which generally means the entity which has packed the product. Packer details can generally be found on the label of the product. Find “Pkd” on the label. In case where your product does not have a label where this information is available, you will have to separately check who the packer of your product is. In a lot of the cases, the entity that has packed the product may be the same entity that has manufactured the product as well." },
+    { "label": "Packer Pincode", "type": "text", "placeholder": "Enter Packer Pincode", "info":"Enter the pincode mentioned in the packers address." },
+    { "label": "Importer Name", "type": "text", "placeholder": "Enter Importer Name", "info": "Enter the name of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label.If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product." },
+    { "label": "Importer Address", "type": "text", "placeholder": "Enter Importer Address", "info": "Enter the address of the Importer which means the entity which has imported the product from any other country into India for sale in India. This information is generally available on the packaging label of the product. Find “imported by” on the label. If this information is not available on the label of your product or your product does not have a label, in such case you will have to provide us with details of the entity/person who is responsible for importing your product."},
+    { "label": "Importer Pincode", "type": "text", "placeholder": "Enter Importer Pincode",  "info": "Pincode of the importer if your product is manufactured outside India."}
   ],
    "OtherAttributes": [
-     { "label": "TRUE", "type": "text", "placeholder": "Enter TRUE" },
-    { "label": "Brand", "type": "dropdown", "options": [] },
-    { "label": "Color", "type": "dropdown", "options": [] },
-    { "label": "IS Number", "type": "text", "placeholder": "Enter IS Number" },
-    { "label": "Length", "type": "dropdown", "options": [] },
-    { "label": "Material", "type": "dropdown", "options": [] },
-    { "label": "Product Type", "type": "dropdown", "options": [] },
-    { "label": "R Number", "type": "text", "placeholder": "Enter R Number" },
-    { "label": "USB", "type": "dropdown", "options": [] },
-    { "label": "Width", "type": "dropdown", "options": [] },
-    { "label": "Description", "type": "textarea", "placeholder": "Enter Description (max 1400 characters)" }
+    { "label": "Brand", "type": "dropdown", "options": [
+     "A-Data",  "Aroma",  "Atarc",  "Blue Feather",  "BoAt",  "CORWOX",  "Corsair",  "Crucial",  "DHANVI ENTERPRISE",  "DIGITAL PLUS",  "Dubstep",  "Dudao",  "EBUZZ",  "Editrix",  "Etake",  "FLASHM",  "Felsone",  "Fire-Boltt",  "GARIHC ENTERPRISE",  "Hoppup",  "Hyperx",  "Interceptor",  "JETRIVE",  "Kingston",  "LYNE",  "MOREX",  "Manibam Impex",  "Matlek",  "Mivi",  "Nu Republic",  "OBRELO",  "Omniversal",  "Others",  "Pebble",  "Portronics",  "Ptron",  "Quadmarq",  "Redmi",  "SEDU",  "SHRI MODESHWARI ENTERPRISE",  "SUPERTECH",  "Sharp Beak",  "Simmtronics",  "Skycell",  "SpeedStar",  "TRK HUB",  "TRK IMPEX",  "TU4 Enterprise",  "U&amp;i",  "Ubon",  "Xpg",  "Zebion",  "Zebronics",  "physicswallah",  "pw",
+    ] },
+    { "label": "IS Number", "type": "text", "placeholder": "Enter IS Number", "info":"It is a number given by the Bureau of Indian Standards (BIS) to products that meet certain safety and quality standards. Please add the numeric value next to IS on the product or on the product packaging. This information will be available on the product/packaging label for pre-packed products. Please enter the same value as in the product/ packaging. You can identify this on the product/ packaging in the following format above the certified mark" },
+    { "label": "R Number", "type": "text", "placeholder": "Enter R Number" , "info":"This is a unique number given to a specific manufacturing unit or factory by the Bureau of Indian Standards (BIS). Please add the 7-10 digit registration number next to CM/L or R on the product or on the product packaging. This information will be available on the product/packaging label for pre-packed products. Please enter the same value as in the product/ packaging. You can identify this on the product/ packaging in the following format below the certified mark." },
+     { "label": "Ram Type", "type": "dropdown", "options": [
+     "DDR",  "DDR2",  "DDR3",  "DDR4",  "DDR5", "SDRAM"  
+    ] },
+    { "label": "Description", "type": "textarea", "placeholder": "Enter Description (max 1400 characters)", "info":"Provide the description of the product which will be visible on the app" }
     ],
-  }
+  },
 };
 
 export default formsJson;

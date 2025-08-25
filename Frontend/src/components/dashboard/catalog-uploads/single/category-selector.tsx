@@ -13,11 +13,11 @@ import Tooltip from '@mui/material/Tooltip';
 import {ToastContainer, toast} from 'react-toastify';
 import {
 	Box,
-  Button,
-  Typography,
-  Paper,
-  MenuItem,
-  Select,
+    Button,
+    Typography,
+    Paper,
+    MenuItem,
+    Select,
 	FormControl,
 	ListItemButton,
 	Dialog,
@@ -1704,19 +1704,182 @@ const renderField = (
 				</ul>
 				<Box sx={{ mt: 2 }}>
 					<Typography variant="subtitle2">Uploaded Images</Typography>
-					<Box
-						sx={{
-							border: "1px dashed gray",
-							borderRadius: 2,
-							p: 2,
-							textAlign: "center",
-							mt: 1,
-							cursor: "pointer",
-						}}
-					>
-						+ Add Images
+					<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, }}>
+						{(() => {
+							const prodItem = selectedImages[activeProductIndex] as any | undefined;
+							const mainUrl: string | undefined = prodItem?.url ?? (typeof prodItem === 'string' ? prodItem : undefined);
+							const gallery: string[] = Array.isArray(prodItem?.gallery) ? prodItem.gallery : [];
+
+							const openPerProductInput = (replaceMain = false) => {
+								const el = document.getElementById(`per-product-input-${activeProductIndex}`) as HTMLInputElement | null;
+								if (!el) return;
+								el.dataset.replace = replaceMain ? 'true' : 'false';
+								el.value = '';
+								el.click();
+							};
+
+							const removeGalleryAt = (gIndex: number) => {
+								setSelectedImages(prev => {
+									const copy = [...prev];
+									const cur = copy[activeProductIndex] ? { ...(copy[activeProductIndex] as any) } : {};
+									cur.gallery = Array.isArray(cur.gallery) ? [...cur.gallery] : [];
+									cur.gallery.splice(gIndex, 1);
+									// if main missing and gallery has items, promote first gallery to main
+									if (!cur.url && cur.gallery.length > 0) {
+										cur.url = cur.gallery.shift();
+									}
+									copy[activeProductIndex] = cur;
+									return copy;
+								});
+							};
+
+							const changeMainImage = () => openPerProductInput(true);
+
+							return (
+								<>
+									{/* Main front image card */}
+									<Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
+										<Box sx={{ position: 'relative', width: 80, height: 80, borderRadius: 1, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
+											{mainUrl ? (
+												<Image src={mainUrl} alt={`Main ${activeProductIndex + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 }} onClick={changeMainImage} />
+											) : (
+												<Box
+													onClick={() => openPerProductInput(false)}
+													sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#fafafa', cursor: 'pointer' }}
+												>
+													<Add sx={{ color: '#6C63FF' }} />
+												</Box>
+											)}
+										</Box>
+
+										<Box sx={{ textAlign: 'center' }}>
+											<Typography sx={{ fontSize: 12, fontWeight: 700 }}>Front Image <span style={{ color: '#f44336' }}>*</span></Typography>
+											<Typography
+												component="button"
+												onClick={changeMainImage}
+												sx={{ display: 'block', mt: 0.5, fontSize: 12, color: '#3a08c7', background: 'none', border: 'none', cursor: 'pointer', p: 0 }}
+											>
+												CHANGE
+											</Typography>
+										</Box>
+									</Box>
+
+									{/* Gallery thumbnails */}
+									{gallery.map((g, gi) => (<>
+									<Box sx={{display:"flex", flexDirection: 'column', alignItems: 'center', gap: 1}}>
+										<Box key={gi} sx={{ position: 'relative', width: 80, height: 80, borderRadius: 8,  border: '1px solid #e0e0e0' }}>
+											<Image src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8, }} />
+											<IconButton
+												size="small"
+												onClick={() => removeGalleryAt(gi)}
+												sx={{ position: 'absolute', top: -6, right: -6, background: '#1b1717ff', width: 18, height: 18, p: 0 ,  color:' #e0e0e0',
+													"&:hover": {
+                                                           background: "#3b3636ff", // 🔴 red background on hover
+                                                           color: "#fff",        // white icon color
+                                                         },
+												  }}
+											>
+												<CloseIcon sx={{ fontSize: 14 }} />
+											</IconButton>
+										</Box>
+										 <Typography sx={{ fontSize: 12, fontWeight: 700 }}> Image {gi + 2} </Typography>
+										</Box>
+									</>))}
+
+									{/* Add Images tile */}
+									<Box
+										role="button"
+										aria-label={`Add images for product ${activeProductIndex + 1}`}
+										onClick={() => openPerProductInput(false)}
+										sx={{
+											border: "1px dashed #c4c4c4",
+											borderRadius: 1,
+											textAlign: "center",
+											cursor: "pointer",
+											width: 80,
+											height: 80,
+											p: 1,
+											display: "flex",
+											flexDirection: 'column',
+											alignItems: "center",
+											justifyContent: "center",
+											minWidth: 80
+										}}
+									>
+										<Box sx={{ width: 28, height: 28, borderRadius: '50%', bgcolor: '#f5f6ff', display: 'flex', alignItems: 'center', justifyContent: 'center', mb: 0.5 }}>
+											<Add sx={{ color: '#6366f1' }} />
+										</Box>
+										<Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1 }}>Add Images</Typography>
+									</Box>
+
+									{/* Hidden per-product input (supports replace via data-replace) */}
+									<input
+										id={`per-product-input-${activeProductIndex}`}
+										type="file"
+										multiple
+										accept="image/*"
+										style={{ display: "none" }}
+										data-replace="false"
+										onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
+											const replaceMain = (e.currentTarget.dataset.replace === 'true');
+											const files = e.target.files ? Array.from(e.target.files) : [];
+											if (files.length === 0) return;
+											const MAX_PER_PRODUCT = 4;
+
+											const readFile = (f: File) =>
+												new Promise<string>((resolve, reject) => {
+													const r = new FileReader();
+													r.onload = () => (typeof r.result === 'string' ? resolve(r.result) : reject('no result'));
+													r.onerror = () => reject('read error');
+													r.readAsDataURL(f);
+												});
+
+											const imagesData = await Promise.all(files.map(f => readFile(f)));
+
+											setSelectedImages(prev => {
+												const copy = [...prev];
+												const cur = copy[activeProductIndex] ? { ...(copy[activeProductIndex] as any) } : {};
+												cur.gallery = Array.isArray(cur.gallery) ? [...cur.gallery] : [];
+
+												if (replaceMain) {
+													// replace only the main with first file
+													cur.url = imagesData[0];
+												} else {
+													// add files, ensure main exists
+													for (const dataUrl of imagesData) {
+														const totalNow = (cur.url ? 1 : 0) + cur.gallery.length;
+														if (totalNow >= MAX_PER_PRODUCT) break;
+														if (!cur.url) {
+															cur.url = dataUrl;
+														} else {
+															cur.gallery.push(dataUrl);
+														}
+													}
+												}
+
+												copy[activeProductIndex] = cur as any;
+
+												// ensure productForms length matches
+												setProductForms(forms => {
+													const fcopy = [...forms];
+													while (fcopy.length < copy.length) fcopy.push(initialFormData());
+													return fcopy;
+												});
+
+												// reset dataset.replace to false after handling
+												const inputEl = document.getElementById(`per-product-input-${activeProductIndex}`) as HTMLInputElement | null;
+												if (inputEl) inputEl.dataset.replace = 'false';
+
+												return copy;
+											});
+										}}
+									/>
+								</>
+							);
+						})()}
 					</Box>
-				</Box>
+					</Box>
+				
 			</Paper>
 		</Box>
 		
