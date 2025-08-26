@@ -7,7 +7,7 @@ import Button from "@mui/material/Button";
 import Typography from "@mui/material/Typography";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from '@mui/icons-material/Close';
-import { authClient } from '@/lib/auth/client';
+import { useAuth } from '@/modules/authentication';
 import { User } from '@/types/user';
 import { toast } from 'react-toastify';
 
@@ -41,12 +41,12 @@ export default function AvatarUploadModal({
      const [userd, setUser] = React.useState <User | null>(null);
     const clinet = userd || { avatar: '' , id: ''};
     //console.log('clinet', clinet);
+    const { user } = useAuth();
     React.useEffect(() => {
-      authClient.getUser().then((result) => {
-        setUser(result.data ?? null);
-        //console.log('user', result.data?.name);
-      });
-    }, []);
+      if (user) {
+        setUser(user);
+      }
+    }, [user]);
 
  
     const handleUpload = async (e: React.FormEvent) => {

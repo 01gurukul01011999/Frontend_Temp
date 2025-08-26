@@ -12,11 +12,10 @@ import InputLabel from '@mui/material/InputLabel';
 import MenuItem from '@mui/material/MenuItem';
 import OutlinedInput from '@mui/material/OutlinedInput';
 import Select from '@mui/material/Select';
-import { authClient } from '@/lib/auth/client';
+import { useAuth } from '@/modules/authentication';
 import { User } from '@/types/user';
 import {State, City} from 'country-state-city'
 import { useRouter } from 'next/navigation';
-import { useUser } from '@/hooks/use-user';
 import { useForm, Controller, type SubmitHandler } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z as zod } from 'zod';
@@ -50,43 +49,37 @@ type Values = zod.infer<typeof schema>;
 
 
 export function AccountDetailsForm(): React.JSX.Element {
+  const { user, checkSession, updateProfile } = useAuth();
   const [userd, setUser] = React.useState<User | null>(null);
-
 
   const clinet = userd || { fname: '', lname: '', email: '', };
   //console.log('clinet', clinet);
-const defaultValues = {
-  email: '',
-  state: '',
-  city: '',
-  pincode: '',
-  address: '',
-  phone: ''
-};
+  const defaultValues = {
+    email: '',
+    state: '',
+    city: '',
+    pincode: '',
+    address: '',
+    phone: ''
+  };
 
-const { control, handleSubmit, setError, formState: { errors }, reset, watch, setValue } = useForm<Values>({ defaultValues, resolver: zodResolver(schema) });
+  const { control, handleSubmit, setError, formState: { errors }, reset, watch, setValue } = useForm<Values>({ defaultValues, resolver: zodResolver(schema) });
 
-React.useEffect(() => {
-  authClient.getUser().then((result) => {
-    setUser(result.data ?? null);
-    if (result.data) {
+  React.useEffect(() => {
+    if (user) {
+      setUser(user);
       reset({
-        phone: typeof result.data.phone === 'string' ? result.data.phone : '',
-        address: typeof result.data.address === 'string' ? result.data.address : '',
-        pincode: typeof result.data.pincode === 'string' ? result.data.pincode : '',
-        email: typeof result.data.email === 'string' ? result.data.email : '',
-        state: typeof result.data.state === 'string' ? result.data.state : '',
-        city: typeof result.data.city === 'string' ? result.data.city : '',
-        // etc.
+        phone: typeof user.phone === 'string' ? user.phone : '',
+        address: typeof user.address === 'string' ? user.address : '',
+        pincode: typeof user.pincode === 'string' ? user.pincode : '',
+        email: typeof user.email === 'string' ? user.email : '',
+        state: typeof user.state === 'string' ? user.state : '',
+        city: typeof user.city === 'string' ? user.city : '',
       });
     }
-    //console.log('user', result.data?.city);
-  });
-}, [reset]);
+  }, [user, reset]);
 
-const router = useRouter();
-
-const { checkSession } = useUser();
+  const router = useRouter();
 
 const [isPending, setIsPending] = React.useState<boolean>(false);
 
@@ -109,7 +102,7 @@ React.useEffect(() => {
 const onSubmit: SubmitHandler<Values> = React.useCallback(
   async (values) => {
     setIsPending(true);
-    const { error } = await authClient.profile(values);
+    const { error } = await updateProfile(values);
 
     if (error) {
       setError('root', { type: 'server', message: error });

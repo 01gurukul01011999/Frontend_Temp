@@ -30,13 +30,13 @@ export function GuestGuard({ children }: GuestGuardProps): React.JSX.Element | n
       return;
     }
 //console.log(user_sta);
-    if (user?.ac_sta === 'done' || user?.admin_re === 'ok') {
+    if (user?.account_status === 'completed' || user?.role === 'admin') {
       logger.debug('[GuestGuard]: User is logged in, redirecting to dashboard');
       router.replace(paths.dashboard.overview);
       return;
     }
-    if( user?.ac_sta === 'reg' || user?.admin_re  === '') {
-      logger.debug('[GuestGuard]: User is logged in, redirecting to dashboard');
+    if (user?.account_status === 'pending') {
+      logger.debug('[GuestGuard]: User is logged in, redirecting to account setup');
       router.replace(paths.dashboard.account);
       return;
     }

@@ -3,10 +3,9 @@ import * as React from 'react';
 import Box from '@mui/material/Box';
 import Container from '@mui/material/Container';
 import GlobalStyles from '@mui/material/GlobalStyles';
-import { AuthGuard } from '@/components/auth/auth-guard';
+import { DashboardGate } from '@/components/auth/dashboard-gate';
 import { MainNav } from '@/components/dashboard/layout/main-nav';
 import { SideNav } from '@/components/dashboard/layout/side-nav';
-import { authClient } from '@/lib/auth/client';
 import { useRouter, usePathname } from 'next/navigation';
 
 interface LayoutProps {
@@ -14,22 +13,9 @@ interface LayoutProps {
 }
 
 export default function Layout({ children }: LayoutProps): React.JSX.Element {
-  const router = useRouter();
-  const pathname = usePathname();
-  React.useEffect(() => {
-    async function checkStatus() {
-      const res = await authClient.getUser();
-      //console.log('res', res);
-      if (res.data?.ac_sta === "reg" && pathname !== "/dashboard/account") {
-        router.replace("/dashboard/account");
-      } if (res.data?.admin_re === "" && pathname !== "/dashboard/account") {
-        router.replace("/dashboard/account");
-      }
-    }
-    checkStatus();
-  }, [pathname, router]);
+  
   return (
-    <AuthGuard>
+    <DashboardGate>
       <GlobalStyles
         styles={{
           body: {
@@ -61,6 +47,6 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
           </main>
         </Box>
       </Box>
-    </AuthGuard>
+          </DashboardGate>
   );
 }

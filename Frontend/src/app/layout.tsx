@@ -1,9 +1,11 @@
 import * as React from 'react';
 import type { Viewport } from 'next';
 import '@/styles/global.css';
-import { UserProvider } from '@/contexts/user-context';
+import { AuthProvider } from '@/modules/authentication';
 import { LocalizationProvider } from '@/components/core/localization-provider';
 import { ThemeProvider } from '@/components/core/theme-provider/theme-provider';
+import { ToastContainer } from 'react-toastify';
+import 'react-toastify/dist/ReactToastify.css';
 
 export const viewport = { width: 'device-width', initialScale: 1 } satisfies Viewport;
 
@@ -32,9 +34,23 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
     <html lang="en">
       <body>
         <LocalizationProvider>
-          <UserProvider>
-            <ThemeProvider>{children}</ThemeProvider>
-          </UserProvider>
+          <AuthProvider>
+            <ThemeProvider>
+              {children}
+              <ToastContainer
+                position="top-right"
+                autoClose={5000}
+                hideProgressBar={false}
+                newestOnTop={false}
+                closeOnClick
+                rtl={false}
+                pauseOnFocusLoss
+                draggable
+                pauseOnHover
+                theme="light"
+              />
+            </ThemeProvider>
+          </AuthProvider>
         </LocalizationProvider>
       </body>
     </html>

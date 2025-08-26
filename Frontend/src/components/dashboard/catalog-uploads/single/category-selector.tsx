@@ -1,7 +1,7 @@
 'use client';
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/modules/authentication';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import CloseIcon from '@mui/icons-material/Close';
@@ -217,7 +217,7 @@ export default function CategorySelector(): React.JSX.Element {
 	const [searchValue, setSearchValue] = useState<string>('');
 	
 //console.log('uploadimages', uploadedImages);
-	const { user } = useUser();
+	const { user } = useAuth();
 	// Upload images to backend
 	const MAX_TOTAL_SIZE = 5 * 1024 * 1024; // 5MB
 	const _handleGenerateTemplate = async () => {

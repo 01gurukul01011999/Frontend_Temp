@@ -10,37 +10,13 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import  { useEffect, useState } from "react";
 import AvatarUploadModal from '../layout/upload';
-import { authClient } from '@/lib/auth/client';
+import { useAuth } from '@/modules/authentication';
 
 
 
 export function AccountInfo(): React.JSX.Element {
   const [modalOpen, setModalOpen] = useState(false);
-  const [user, setUser] = useState<{id: string; fname: string; lname: string; email: string; avatar: string; phone: string} | null>(null);
-  const [error, setError] = useState<string>("");
-
-  useEffect(() => {
-    async function fetchUser() {
-      const result = await authClient.getUser();
-      if (result.data) {
-        // Map result.data to expected shape if necessary
-        setUser({
-          id: result.data.id,
-          fname: typeof result.data.fname === 'string' ? result.data.fname : '',
-          lname: typeof result.data.lname === 'string' ? result.data.lname : '',
-          email: typeof result.data.email === 'string' ? result.data.email : '',
-          avatar: typeof result.data.avatar === 'string' ? result.data.avatar : '',
-          phone: typeof result.data.phone === 'string' ? result.data.phone : ''
-        });
-      } else if (result.error) {
-        setError(result.error);
-        setUser(null);
-      } else {
-        setUser(null);
-      }
-    }
-    fetchUser();
-  }, []);
+  const { user, error } = useAuth();
 
 
  

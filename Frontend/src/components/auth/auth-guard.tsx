@@ -7,6 +7,7 @@ import Alert from '@mui/material/Alert';
 import { paths } from '@/paths';
 import { logger } from '@/lib/default-logger';
 import { useUser } from '@/hooks/use-user';
+import { createSupabaseBrowserClient } from '@/lib/supabase-browser';
 
 export interface AuthGuardProps {
   children: React.ReactNode;

@@ -1,6 +1,6 @@
 'use client';
 import React from "react";
-import { useUser } from '@/hooks/use-user';
+import { useAuth } from '@/modules/authentication';
 import { Box, Typography, Button, IconButton, Avatar, Stack , 
 	Table,
 	TableBody,
@@ -27,7 +27,7 @@ export default function ImageBulkUpload(): React.JSX.Element {
 	const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
 	type UploadedFile = { img_name: string; name?: string };
 	const [uploadedFiles, setUploadedFiles] = React.useState<UploadedFile[]>([]);
-	const { user } = useUser();
+	const { user } = useAuth();
 	//console.log(selectedFiles);
 
 	// Remove image by index

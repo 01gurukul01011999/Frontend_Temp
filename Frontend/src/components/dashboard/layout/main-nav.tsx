@@ -13,7 +13,7 @@ import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGl
 import { UsersIcon } from '@phosphor-icons/react/dist/ssr/Users';
 
 import { usePopover } from '@/hooks/use-popover';
-import { authClient } from '@/lib/auth/client';
+import { useAuth } from '@/modules/authentication';
 
 import { MobileNav } from './mobile-nav';
 import { UserPopover } from './user-popover';
@@ -22,18 +22,15 @@ export function MainNav(): React.JSX.Element {
   const [openNav, setOpenNav] = React.useState<boolean>(false);
   const [avatar, setAvatar] = React.useState<string>('');
   const userPopover = usePopover<HTMLDivElement>();
+  const { user } = useAuth();
 
   React.useEffect(() => {
-    async function fetchAvatar() {
-      const result = await authClient.getUser();
-      if (result.data && result.data.avatar) {
-        setAvatar(result.data.avatar);
-      } else {
-        setAvatar('');
-      }
+    if (user?.avatar) {
+      setAvatar(user.avatar);
+    } else {
+      setAvatar('');
     }
-    fetchAvatar();
-  }, []);
+  }, [user]);
 
   return (
     <React.Fragment>

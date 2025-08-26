@@ -36,10 +36,11 @@ app.use('/uploads', express.static('public/uploads'));
 
 const db = mysql.createPool({
     connectionLimit: 10, // Adjust as needed
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME
+    // Database connection moved to Supabase
+    // host: process.env.DB_HOST,
+    // user: process.env.DB_USER,
+    // password: process.env.DB_PASSWORD,
+    // database: process.env.DB_NAME
 });
 // Test the pool connection
 db.getConnection((err, connection) => {
