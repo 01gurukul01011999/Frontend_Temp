@@ -138,7 +138,8 @@ export default function CategorySelector(): React.JSX.Element {
 	const [copyAll, setCopyAll] = useState(false);
 	const [popupOpen, setPopupOpen] = useState(false);
 	const [intropopupOpen, setIntroPopupOpen] = useState(false);
-	const [selectedImages, setSelectedImages] = useState<Array<{ url: string }>>([]);
+	type SelectedImageItem = { url?: string; gallery?: string[] } | string;
+	const [selectedImages, setSelectedImages] = useState<SelectedImageItem[]>([]);
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
 	// Store form data for each product
@@ -206,10 +207,10 @@ export default function CategorySelector(): React.JSX.Element {
 	const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 	//console.log('selectedFormId', selectedFormId);
 	// Active form object loaded from formsJson when a formId is found
-	const [activeForm, setActiveForm] = useState<any | null>(null);
-	// Snackbar for messages
-	const [snackbarOpen, setSnackbarOpen] = useState(false);
-	const [snackbarMessage, setSnackbarMessage] = useState('');
+	const [activeForm, setActiveForm] = useState<FormDef | null>(null);
+	// Snackbar for messages (prefix unused binding with _ to satisfy lint rule)
+	const [_snackbarOpen, setSnackbarOpen] = useState(false);
+	const [_snackbarMessage, setSnackbarMessage] = useState('');
 
 	// For Autocomplete
 	const allCategoryPaths = React.useMemo(() => getAllCategoryPaths(categoryTree), []);
@@ -319,7 +320,7 @@ export default function CategorySelector(): React.JSX.Element {
 			
 			setSelectedFormId(fid);
 			if (fid) {
-				const formDef = (formsJson as any)[fid];
+				const formDef = (formsJson as unknown as Record<string, unknown>)[fid] as FormDef | undefined;
 				if (formDef) {
 					// Load form definition into state but do NOT automatically open the form UI.
 					// The UI will remain on the category selection step until the user continues.
@@ -752,7 +753,7 @@ const renderField = (
 	};
 	const isRequired = ["Net Weight (gm)", "Product Name", "Size"].includes(field.label);
 	// Prefer info supplied in forms JSON; fall back to hard-coded map
-	const infoText = (field as any).info ?? infoMap[field.label];
+	const infoText = field.info ?? infoMap[field.label];
 	const showInfo = typeof infoText === 'string' && infoText.length > 0;
 	const subLabel = subLabelMap[field.label];
 
@@ -1348,18 +1349,21 @@ const renderField = (
 				<Box sx={{ display: 'flex', gap: 4 }}>
 					<Box sx={{ minWidth: 100 }}>
 						<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
-							{selectedImages.map((img, idx) => (
-								<Box key={idx} sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden' }}>
-									<Image src={img.url} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', borderRadius: 8 }} />
-									<IconButton
-										size="small"
-										sx={{ position: 'absolute', top: 4, right: 4, background: '#fff' }}
-										onClick={() => setSelectedImages(images => images.filter((_, i) => i !== idx))}
-									>
-										<CloseIcon />
-									</IconButton>
-								</Box>
-							))}
+							{selectedImages.map((img, idx) => {
+								const imgUrl = typeof img === 'string' ? img : (img?.url ?? '');
+								return (
+									<Box key={idx} sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden' }}>
+										<Image src={imgUrl} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', borderRadius: 8 }} />
+										<IconButton
+											size="small"
+											sx={{ position: 'absolute', top: 4, right: 4, background: '#fff' }}
+											onClick={() => setSelectedImages(images => images.filter((_, i) => i !== idx))}
+										>
+											<CloseIcon />
+										</IconButton>
+									</Box>
+								);
+							})}
 						</Box>
 					</Box>
 					<Box sx={{ flex: 1 }}>
@@ -1393,7 +1397,9 @@ const renderField = (
 	<Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
 		{/* Product Tabs */}
 		<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-			{selectedImages.map((img, idx) => (
+			{selectedImages.map((img, idx) => {
+				const thumbUrl = typeof img === 'string' ? img : (img?.url ?? '');
+				return (
 				<Button
 					key={idx}
 					variant={activeProductIndex === idx ? "contained" : "outlined"}
@@ -1401,10 +1407,11 @@ const renderField = (
 					onClick={() => setActiveProductIndex(idx)}
 					sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
 				>
-					<Image src={img.url} alt={`Product ${idx + 1}`} width={48} height={48} style={{ borderRadius: 2, objectFit: 'cover', marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
+					<Image src={thumbUrl} alt={`Product ${idx + 1}`} width={48} height={48} style={{ borderRadius: 2, objectFit: 'cover', marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
 					Product {idx + 1}
 				</Button>
-			))}
+				);
+			})}
 			<Button
 				variant="outlined"
 				color="primary"
@@ -1706,12 +1713,12 @@ const renderField = (
 					<Typography variant="subtitle2">Uploaded Images</Typography>
 					<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, }}>
 						{(() => {
-							const prodItem = selectedImages[activeProductIndex] as any | undefined;
-							const mainUrl: string | undefined = prodItem?.url ?? (typeof prodItem === 'string' ? prodItem : undefined);
-							const gallery: string[] = Array.isArray(prodItem?.gallery) ? prodItem.gallery : [];
+							const prodItem = selectedImages[activeProductIndex] as unknown | undefined;
+							const mainUrl: string | undefined = prodItem && typeof prodItem === 'object' ? (prodItem as { url?: string }).url : (typeof prodItem === 'string' ? prodItem : undefined);
+							const gallery: string[] = prodItem && typeof prodItem === 'object' && Array.isArray((prodItem as { gallery?: unknown }).gallery) ? (prodItem as { gallery?: string[] }).gallery as string[] : [];
 
 							const openPerProductInput = (replaceMain = false) => {
-								const el = document.getElementById(`per-product-input-${activeProductIndex}`) as HTMLInputElement | null;
+								const el = document.querySelector<HTMLInputElement>(`#per-product-input-${activeProductIndex}`);
 								if (!el) return;
 								el.dataset.replace = replaceMain ? 'true' : 'false';
 								el.value = '';
@@ -1721,14 +1728,14 @@ const renderField = (
 							const removeGalleryAt = (gIndex: number) => {
 								setSelectedImages(prev => {
 									const copy = [...prev];
-									const cur = copy[activeProductIndex] ? { ...(copy[activeProductIndex] as any) } : {};
-									cur.gallery = Array.isArray(cur.gallery) ? [...cur.gallery] : [];
-									cur.gallery.splice(gIndex, 1);
+									const cur = copy[activeProductIndex] && typeof copy[activeProductIndex] === 'object' ? { ...(copy[activeProductIndex] as Record<string, unknown>) } : {} as Record<string, unknown>;
+									cur.gallery = Array.isArray(cur.gallery) ? [...(cur.gallery as string[])] : [];
+									(cur.gallery as string[]).splice(gIndex, 1);
 									// if main missing and gallery has items, promote first gallery to main
-									if (!cur.url && cur.gallery.length > 0) {
-										cur.url = cur.gallery.shift();
+									if (!cur.url && (cur.gallery as string[]).length > 0) {
+										cur.url = (cur.gallery as string[]).shift();
 									}
-									copy[activeProductIndex] = cur;
+									copy[activeProductIndex] = cur as { url?: string; gallery?: string[] };
 									return copy;
 								});
 							};
@@ -1822,15 +1829,15 @@ const renderField = (
 										data-replace="false"
 										onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
 											const replaceMain = (e.currentTarget.dataset.replace === 'true');
-											const files = e.target.files ? Array.from(e.target.files) : [];
+											const files = e.target.files ? [...e.target.files] : [];
 											if (files.length === 0) return;
 											const MAX_PER_PRODUCT = 4;
 
 											const readFile = (f: File) =>
 												new Promise<string>((resolve, reject) => {
 													const r = new FileReader();
-													r.onload = () => (typeof r.result === 'string' ? resolve(r.result) : reject('no result'));
-													r.onerror = () => reject('read error');
+													r.addEventListener('load', () => (typeof r.result === 'string' ? resolve(r.result) : reject('no result')));
+													r.addEventListener('error', () => reject('read error'));
 													r.readAsDataURL(f);
 												});
 
@@ -1838,7 +1845,9 @@ const renderField = (
 
 											setSelectedImages(prev => {
 												const copy = [...prev];
-												const cur = copy[activeProductIndex] ? { ...(copy[activeProductIndex] as any) } : {};
+												const cur = copy[activeProductIndex] && typeof copy[activeProductIndex] === 'object'
+													? { ...(copy[activeProductIndex] as { url?: string; gallery?: string[] }) }
+													: {} as { url?: string; gallery?: string[] };
 												cur.gallery = Array.isArray(cur.gallery) ? [...cur.gallery] : [];
 
 												if (replaceMain) {
@@ -1857,7 +1866,7 @@ const renderField = (
 													}
 												}
 
-												copy[activeProductIndex] = cur as any;
+												copy[activeProductIndex] = cur as { url?: string; gallery?: string[] };
 
 												// ensure productForms length matches
 												setProductForms(forms => {
@@ -1867,7 +1876,7 @@ const renderField = (
 												});
 
 												// reset dataset.replace to false after handling
-												const inputEl = document.getElementById(`per-product-input-${activeProductIndex}`) as HTMLInputElement | null;
+												const inputEl = document.querySelector<HTMLInputElement>(`#per-product-input-${activeProductIndex}`);
 												if (inputEl) inputEl.dataset.replace = 'false';
 
 												return copy;
