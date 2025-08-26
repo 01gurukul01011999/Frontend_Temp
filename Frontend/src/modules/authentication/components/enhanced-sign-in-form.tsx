@@ -2,10 +2,15 @@
 
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
+import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import { getNetworkErrorMessage } from '@/lib/network-health';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { zodResolver } from '@hookform/resolvers/zod';
 import { signInSchema, type SignInData } from '@/lib/validations/auth';
 
 export function EnhancedSignInForm() {
@@ -30,22 +35,29 @@ export function EnhancedSignInForm() {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithPassword({
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 seconds
+      });
+      
+      const signInPromise = supabase.auth.signInWithPassword({
         email: data.email,
         password: data.password,
       });
-
-      if (error) {
-        toast.error(error.message);
+      
+      const result = await Promise.race([signInPromise, timeoutPromise]);
+      
+      if ('error' in result && result.error) {
+        toast.error(result.error.message);
         return;
       }
 
       toast.success('Signed in successfully!');
       router.push('/dashboard');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('Sign-in error:', error);
-      toast.error('An unexpected error occurred. Please try again.');
+      toast.error(getNetworkErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -55,24 +67,31 @@ export function EnhancedSignInForm() {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.signInWithOtp({
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 seconds
+      });
+      
+      const otpPromise = supabase.auth.signInWithOtp({
         email: data.email,
         options: {
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-
-      if (error) {
-        toast.error(error.message);
+      
+      const result = await Promise.race([otpPromise, timeoutPromise]);
+      
+      if ('error' in result && result.error) {
+        toast.error(result.error.message);
         return;
       }
 
       setOtpSent(true);
       toast.success('OTP sent to your email!');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('OTP sign-in error:', error);
-      toast.error('An unexpected error occurred. Please try again.');
+      toast.error(getNetworkErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
@@ -82,23 +101,30 @@ export function EnhancedSignInForm() {
     try {
       setIsLoading(true);
       
-      const { error } = await supabase.auth.verifyOtp({
+      // Add timeout to prevent hanging requests
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 seconds
+      });
+      
+      const verifyPromise = supabase.auth.verifyOtp({
         email,
         token: otp,
         type: 'email',
       });
-
-      if (error) {
-        toast.error(error.message);
+      
+      const result = await Promise.race([verifyPromise, timeoutPromise]);
+      
+      if ('error' in result && result.error) {
+        toast.error(result.error.message);
         return;
       }
 
       toast.success('Signed in successfully!');
       router.push('/dashboard');
       
-    } catch (error) {
+    } catch (error: any) {
       console.error('OTP verification error:', error);
-      toast.error('An unexpected error occurred. Please try again.');
+      toast.error(getNetworkErrorMessage(error));
     } finally {
       setIsLoading(false);
     }
