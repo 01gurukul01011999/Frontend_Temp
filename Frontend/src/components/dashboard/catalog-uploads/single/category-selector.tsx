@@ -209,8 +209,36 @@ export default function CategorySelector(): React.JSX.Element {
 	// Active form object loaded from formsJson when a formId is found
 	const [activeForm, setActiveForm] = useState<FormDef | null>(null);
 	// Snackbar for messages (prefix unused binding with _ to satisfy lint rule)
-	const [_snackbarOpen, setSnackbarOpen] = useState(false);
-	const [_snackbarMessage, setSnackbarMessage] = useState('');
+
+	// Validation helper: returns an array of missing fields descriptions (empty if valid)
+	const validateRequiredFields = (formsToCheck: ProductForm[]): string[] => {
+		const missing: string[] = [];
+		const alwaysRequired = ["Net Weight (gm)", "Product Name", "Size", "GST %", "HSN Code"];
+		for (let i = 0; i < formsToCheck.length; i++) {
+			const f = formsToCheck[i];
+			// ProductDetails: all fields in this section should be non-empty
+			const pd = f.ProductDetails || {};
+			for (const key of Object.keys(pd)) {
+				if (alwaysRequired.includes(key) || true) {
+					const val = pd[key];
+					if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
+						missing.push(`Product ${i + 1}: ${key}`);
+					}
+				}
+			}
+			// Ensure GST % and HSN Code when present under ProductSizeInventory
+			const psi = f.ProductSizeInventory || {};
+			for (const req of ["GST %", "HSN Code"]) {
+				if (req in psi) {
+					const val = psi[req];
+					if (val === undefined || val === null || (typeof val === 'string' && val.trim() === '')) {
+						missing.push(`Product ${i + 1}: ${req}`);
+					}
+				}
+			}
+		}
+		return missing;
+	};
 
 	// For Autocomplete
 	const allCategoryPaths = React.useMemo(() => getAllCategoryPaths(categoryTree), []);
@@ -751,7 +779,10 @@ const renderField = (
 		"Net Weight (gm)": "(gms)",
 		"Style Code / Product ID": "(optional)",
 	};
-	const isRequired = ["Net Weight (gm)", "Product Name", "Size"].includes(field.label);
+	// Fields that should always be required by label
+	const alwaysRequired = ["Net Weight (gm)", "Product Name", "Size", "GST %", "HSN Code"];
+	// Make entire ProductDetails section required, and ensure GST % / HSN Code are required in ProductSizeInventory (size/inventory)
+	const isRequired = section === "ProductDetails" || alwaysRequired.includes(field.label) || (section === "ProductSizeInventory" && ["GST %", "HSN Code"].includes(field.label));
 	// Prefer info supplied in forms JSON; fall back to hard-coded map
 	const infoText = field.info ?? infoMap[field.label];
 	const showInfo = typeof infoText === 'string' && infoText.length > 0;
@@ -781,6 +812,7 @@ const renderField = (
 				{labelNode}
 				<TextField
 					value={displayVal}
+					required={isRequired}
 					onClick={(e) => _handleSizeDropdownClick(e, value as string | string[], productIndex, section, field.label)}
 					placeholder="Select size"
 					fullWidth
@@ -794,12 +826,13 @@ const renderField = (
 		return (
 			<Box key={index} sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
 				{labelNode}
-				<FormControl fullWidth sx={{ minWidth: 200 }}>
+				<FormControl fullWidth sx={{ minWidth: 200 }} required={isRequired}>
 					<Select
 						value={value}
 						onChange={handleChange}
 						displayEmpty
-						inputProps={{ 'aria-label': field.label }}
+						inputProps={{ 'aria-label': field.label, 'aria-required': isRequired }}
+						required={isRequired}
 						sx={{ background: '#fff' }}
 					>
 						<MenuItem value="">Select</MenuItem>
@@ -818,6 +851,7 @@ const renderField = (
 				<TextField
 					placeholder={field.placeholder || ""}
 					value={value}
+					required={isRequired}
 					onChange={handleChange}
 					fullWidth
 					sx={{ minWidth: 200, background: '#fff' }}
@@ -834,6 +868,7 @@ const renderField = (
 					multiline
 					rows={3}
 					value={value}
+					required={isRequired}
 					onChange={handleChange}
 					inputProps={{ maxLength: field.maxlength || 500 }}
 					fullWidth
@@ -1348,20 +1383,28 @@ const renderField = (
 				</Typography>
 				<Box sx={{ display: 'flex', gap: 4 }}>
 					<Box sx={{ minWidth: 100 }}>
-						<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 2 }}>
+						<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
 							{selectedImages.map((img, idx) => {
 								const imgUrl = typeof img === 'string' ? img : (img?.url ?? '');
 								return (
-									<Box key={idx} sx={{ position: 'relative', borderRadius: 2, overflow: 'hidden' }}>
-										<Image src={imgUrl} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', borderRadius: 8 }} />
-										<IconButton
-											size="small"
-											sx={{ position: 'absolute', top: 4, right: 4, background: '#fff' }}
-											onClick={() => setSelectedImages(images => images.filter((_, i) => i !== idx))}
-										>
-											<CloseIcon />
-										</IconButton>
-									</Box>
+
+										<Box key={idx} sx={{ position: 'relative', width: 80, height: 80, borderRadius: 2,  border: '1px solid #e0e0e0' }}>
+											<Image src={imgUrl} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 2, }} />
+											<IconButton
+												size="small"
+												onClick={() => setSelectedImages(images => images.filter((_, i) => i !== idx))}
+												sx={{ position: 'absolute', top: -6, right: -6, background: '#1b1717ff', width: 18, height: 18, p: 0 ,  color:' #e0e0e0',
+													"&:hover": {
+                                                           background: "#3b3636ff", // 🔴 red background on hover
+                                                           color: "#fff",        // white icon color
+                                                         },
+												  }}
+											>
+												<CloseIcon sx={{ fontSize: 14 }} />
+											</IconButton>
+										</Box>
+										
+									
 								);
 							})}
 						</Box>
@@ -1407,7 +1450,7 @@ const renderField = (
 					onClick={() => setActiveProductIndex(idx)}
 					sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
 				>
-					<Image src={thumbUrl} alt={`Product ${idx + 1}`} width={48} height={48} style={{ borderRadius: 2, objectFit: 'cover', marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
+					<Image src={thumbUrl} alt={`Product ${idx + 1}`} width={48} height={48} style={{ width:48, height:48,borderRadius: 4,  marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
 					Product {idx + 1}
 				</Button>
 				);
@@ -1511,8 +1554,8 @@ const renderField = (
 			  />
 			
 			</Box>
-			<Box sx={{ overflowX: "auto", borderRadius: 1, border: "1px solid #e0e0e0" }}>
-			  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900, maxWidth:920 }}>
+			<Box sx={{ overflowX: "auto", borderRadius: 1, border: "1px solid #e0e0e0", width:800  }}>
+			  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
 				<thead style={{ background: "#f5f6fa" }}>
 				  <tr >
 					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Size</th>
@@ -1693,7 +1736,7 @@ const renderField = (
 				</Paper>
 				
 			{/* Right Sidebar */}
-			<Paper sx={{ flex: 1, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+			<Paper sx={{ flex: 1, p: 2, display: "flex", flexDirection: "column", gap: 2, alignItems: "stretch", boxSizing: "border-box", maxHeight: "100vh", overflowY: "auto" }}>
 				<Typography variant="subtitle1">Follow guidelines to reduce quality check failure</Typography>
 				<Typography variant="body2" color="text.secondary">
 					- Images with text/watermark are not acceptable in primary images.
@@ -1711,7 +1754,7 @@ const renderField = (
 				</ul>
 				<Box sx={{ mt: 2 }}>
 					<Typography variant="subtitle2">Uploaded Images</Typography>
-					<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, }}>
+					<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, flexWrap: 'wrap' }}>
 						{(() => {
 							const prodItem = selectedImages[activeProductIndex] as unknown | undefined;
 							const mainUrl: string | undefined = prodItem && typeof prodItem === 'object' ? (prodItem as { url?: string }).url : (typeof prodItem === 'string' ? prodItem : undefined);
@@ -1772,26 +1815,26 @@ const renderField = (
 									</Box>
 
 									{/* Gallery thumbnails */}
-									{gallery.map((g, gi) => (<>
-									<Box sx={{display:"flex", flexDirection: 'column', alignItems: 'center', gap: 1}}>
-										<Box key={gi} sx={{ position: 'relative', width: 80, height: 80, borderRadius: 8,  border: '1px solid #e0e0e0' }}>
-											<Image src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8, }} />
-											<IconButton
-												size="small"
-												onClick={() => removeGalleryAt(gi)}
-												sx={{ position: 'absolute', top: -6, right: -6, background: '#1b1717ff', width: 18, height: 18, p: 0 ,  color:' #e0e0e0',
-													"&:hover": {
-                                                           background: "#3b3636ff", // 🔴 red background on hover
-                                                           color: "#fff",        // white icon color
-                                                         },
-												  }}
-											>
-												<CloseIcon sx={{ fontSize: 14 }} />
-											</IconButton>
+									{gallery.map((g, gi) => (
+										<Box key={gi} sx={{display:"flex", flexDirection: 'column', alignItems: 'center', gap: 1}}>
+											<Box sx={{ position: 'relative', width: 80, height: 80, borderRadius: 8,  border: '1px solid #e0e0e0' }}>
+												<Image src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8 }} />
+												<IconButton
+													size="small"
+													onClick={() => removeGalleryAt(gi)}
+													sx={{ position: 'absolute', top: -6, right: -6, background: '#1b1717ff', width: 18, height: 18, p: 0 ,  color:' #e0e0e0',
+														"&:hover": {
+																background: "#3b3636ff",
+																color: "#fff",
+															},
+														}}
+												>
+													<CloseIcon sx={{ fontSize: 14 }} />
+												</IconButton>
+											</Box>
+											<Typography sx={{ fontSize: 12, fontWeight: 700 }}> Image {gi + 2} </Typography>
 										</Box>
-										 <Typography sx={{ fontSize: 12, fontWeight: 700 }}> Image {gi + 2} </Typography>
-										</Box>
-									</>))}
+									))}
 
 									{/* Add Images tile */}
 									<Box
@@ -1831,7 +1874,7 @@ const renderField = (
 											const replaceMain = (e.currentTarget.dataset.replace === 'true');
 											const files = e.target.files ? [...e.target.files] : [];
 											if (files.length === 0) return;
-											const MAX_PER_PRODUCT = 4;
+											const MAX_PER_PRODUCT = 5;
 
 											const readFile = (f: File) =>
 												new Promise<string>((resolve, reject) => {
@@ -1887,8 +1930,7 @@ const renderField = (
 							);
 						})()}
 					</Box>
-					</Box>
-				
+				</Box>
 			</Paper>
 		</Box>
 		
@@ -1944,14 +1986,16 @@ const renderField = (
 							color="inherit"
 							sx={{mr:2}}
 							onClick={() => {
-								// Save current form state to localStorage as a quick persistence
+								// Save current form state to localStorage as a quick persistence then navigate back
 								try {
 									localStorage.setItem('draftProductForms', JSON.stringify(productForms));
-									setSnackbarMessage('Saved draft locally');
-									setSnackbarOpen(true);
+									toast.success('Draft saved locally', { autoClose: 2500 });
+									// navigate back to catalog uploads after short delay so user sees toast
+									setTimeout(() => {
+										try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch (e) { globalThis.history.back(); }
+									}, 500);
 								} catch (e) {
-									setSnackbarMessage('Failed to save draft');
-									setSnackbarOpen(true);
+									toast.error('Failed to save draft', { autoClose: 2500 });
 								}
 							}}
 						>
@@ -1963,15 +2007,23 @@ const renderField = (
 							variant="contained"
 							color="primary"
 							onClick={async () => {
+								// Validate required fields before final submit
+								const missing = validateRequiredFields(productForms);
+								if (missing.length > 0) {
+									// show prominent toast plus snackbar
+									try { toast.error('Please fill required fields', { autoClose: 2500 }); } catch (e) { /* ignore */ }
+									
+									return;
+								}
 								// Placeholder submit handler — replace with real API call
 								try {
 									console.log('Submitting catalog', { productForms, selectionPath });
-									setSnackbarMessage('Catalog submitted (stub)');
-									setSnackbarOpen(true);
+									toast.success('Catalog submitted (stub)', { autoClose: 2500 });
+									
 									// Optionally move to a confirmation step or reset
 								} catch (e) {
-									setSnackbarMessage('Submit failed');
-									setSnackbarOpen(true);
+									toast.error('Submit failed', { autoClose: 2500 });
+								
 								}
 							}}
 						>
