@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, type Resolver } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useRouter } from 'next/navigation';
 import { toast } from 'react-toastify';
@@ -20,10 +20,12 @@ export function EnhancedSignUpForm() {
     formState: { errors },
     reset,
   } = useForm<SignUpData>({
-    resolver: zodResolver(signUpSchema),
+    resolver: zodResolver(signUpSchema) as Resolver<SignUpData>,
     defaultValues: {
-      country: 'IN',
-      is_default: true,
+      address: {
+        country: 'IN',
+        is_default: true,
+      },
     },
   });
 

@@ -95,6 +95,35 @@ app.use('*', (req, res) => {
   res.status(404).json({ error: 'Route not found' });
 });
 
+
+
+app.post(
+  "/upload-avatar",
+  authMiddleware.authenticateUser,
+  upload.single("avatar"),
+  async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const filePath = `/uploads/${req.file.filename}`;
+
+      // TODO: Save filePath in user table (currently just returning)
+      res.json({
+        message: "Avatar uploaded successfully",
+        avatar: filePath,
+      });
+    } catch (error) {
+      res.status(500).json({ error: error.message });
+    }
+  }
+);
+
+
+
+
+
 app.listen(PORT, () => {
   console.log(`Connected to backend on port ${PORT}`);
 });

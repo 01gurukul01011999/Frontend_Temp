@@ -2,7 +2,6 @@ import express from "express";
 import mysql from "mysql";
 import cors from "cors";
 import jwt from "jsonwebtoken";
-import bcrypt from "bcryptjs";
 import bodyPrser from "body-parser";
 import dotenv from "dotenv";
 import nodemailer from "nodemailer";

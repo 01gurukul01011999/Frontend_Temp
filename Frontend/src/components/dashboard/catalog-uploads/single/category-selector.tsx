@@ -2017,7 +2017,41 @@ const renderField = (
 								}
 								// Placeholder submit handler — replace with real API call
 								try {
-									console.log('Submitting catalog', { productForms, selectionPath });
+									// save to Supabase
+									try {
+										if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+											throw new Error('Supabase environment variables are not set (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).');
+										}
+										const { createClient } = await import('@supabase/supabase-js');
+										const supabase = createClient(
+											process.env.NEXT_PUBLIC_SUPABASE_URL,
+											process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+										);
+
+										const payload = {
+											user_id: user?.id ?? null,
+											category_path: selectionPath,
+											product_forms: productForms,
+											created_at: new Date().toISOString()
+										};
+										console.log('Submitting payload to Supabase:', payload);
+
+										const { data, error } = await supabase
+											.from('catalogs') // ensure this table exists with appropriate columns (user_id, category_path, product_forms, created_at)
+											.insert([payload]);
+
+										if (error) {
+											console.error('Supabase insert error', error);
+											toast.error('Failed to save catalog. Try again.');
+										} else {
+											console.log('Catalog saved', data);
+											toast.success('Catalog submitted and saved to database', { autoClose: 2500 });
+											// optionally reset or navigate away
+										}
+									} catch (err) {
+										console.error('Submit error', err);
+										toast.error('Submit failed');
+									}
 									toast.success('Catalog submitted (stub)', { autoClose: 2500 });
 									
 									// Optionally move to a confirmation step or reset

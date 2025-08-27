@@ -15,7 +15,7 @@ export interface AuthGuardProps {
   fallback?: React.ReactNode;
 }
 
-export function AuthGuard({ children, fallback }: AuthGuardProps): React.JSX.Element | null {
+export function AuthGuard({ children, fallback }: AuthGuardProps): React.ReactNode {
   const router = useRouter();
   const { user, error, isLoading, isAuthenticated } = useAuth();
   const [isChecking, setIsChecking] = React.useState<boolean>(true);
