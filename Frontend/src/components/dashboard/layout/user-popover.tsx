@@ -15,6 +15,7 @@ import { UserIcon } from '@phosphor-icons/react/dist/ssr/User';
 import { paths } from '@/paths';
 import { logger } from '@/lib/default-logger';
 import { useAuth } from '@/modules/authentication';
+import { authService } from '@/lib/supabase/auth-service';
 
 export interface UserPopoverProps {
   anchorEl: Element | null;
@@ -26,6 +27,32 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
   const { user, signOut } = useAuth();
 
   const router = useRouter();
+  const [profile, setProfile] = React.useState<any | null>(null);
+  const [profileError, setProfileError] = React.useState<any | null>(null);
+//console.log('UserPopover render, user:', user, 'profile:', profile, 'profileError:', profileError);
+  React.useEffect(() => {
+    let mounted = true;
+
+    const fetchProfile = async () => {
+      if (!user?.id) return;
+
+      try {
+        const { profile: p, error } = await authService.getUserProfile(user.id);
+        if (!mounted) return;
+        setProfile(p ?? null);
+        setProfileError(error ?? null);
+      } catch (err) {
+        if (!mounted) return;
+        setProfileError(err);
+      }
+    };
+
+    fetchProfile();
+
+    return () => {
+      mounted = false;
+    };
+  }, [user]);
 
   const handleSignOut = React.useCallback(async (): Promise<void> => {
     try {
@@ -46,7 +73,7 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
     >
       <Box sx={{ p: '16px 20px ' }}>
         <Typography variant="subtitle1">
-          {`${user?.fname || 'User'}${user?.lname ? ' ' + user.lname : ''}`}
+          {`${profile?.first_name } ${profile?.last_name}`}
         </Typography>
         <Typography color="text.secondary" variant="body2">
            {user?.email || 'User'} 

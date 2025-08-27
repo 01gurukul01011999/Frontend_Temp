@@ -28,6 +28,10 @@ export function SideNav(): React.JSX.Element {
   const userContext = React.useContext(UserContext);
   const user = userContext?.user;
 
+  // Avoid noisy logs before context initializes
+  if (userContext && !userContext.isLoading) {
+    //console.log('SideNav render, user:', user);
+  }
   // State to track open/close for dropdowns by key
   const [openDropdowns, setOpenDropdowns] = React.useState<Record<string, boolean>>({});
 
@@ -37,7 +41,7 @@ export function SideNav(): React.JSX.Element {
       [key]: !prev[key],
     }));
   };
-
+//console.log('SideNav render, user:', user?.business_name);
   // Define button links
   const noticesHref = '/dashboard/notices';
   const supportHref = '/dashboard/support';
@@ -80,24 +84,25 @@ export function SideNav(): React.JSX.Element {
         
       
  {/* User Name Box */}
-        {user && (
+        { user ? (
           <Box component="nav"
             sx={{
-             
-             ml: -2,
-              borderRadius: '10px',
-              px: 0,
-              py: 0,
+             background: 'rgba(255,255,255,0.04)',
+             ml: -1,
+              borderRadius: '5px',
+              px: 1,
+              py: 1,
               fontSize: '0.7rem',
               boxShadow: 1,
-              mt: 0,
+              mt: -1,
               mb: 0,
-              width: '175px',
+              width: '160px',
               whiteSpace: 'normal',
               textOverflow: 'ellipsis',
               display: 'flex',
               alignItems: 'center',
               gap:1,
+              border: '1px solid var(--mui-palette-neutral-700)',
             }}
           >
             {/* Home Icon */}
@@ -105,12 +110,18 @@ export function SideNav(): React.JSX.Element {
               <StorefrontIcon size={32} />
             </Box>
             <Box>
-              {(user.fname ?? '') + ' ' + (user.lname ?? '')} <br />
-              {(user.roll ?? '').toString()}
+              <Typography  variant="body2">{user?.business_name}</Typography>
+            <Typography
+              variant="subtitle2"
+              component="div"
+              sx={{ fontSize: '0.72rem', color: 'var(--mui-palette-neutral-400)', }}
+            >
+              {String(user.role ?? '')}
+            </Typography>
             </Box>
           </Box>
           
-        )}
+        ) : null}
   {/* Two Action Buttons below user box */}
         <Box sx={{ display: 'flex', gap: 0, justifyContent: 'center', ml: -3.8, mt: -1, mb: -3, width: '196px', overflow: 'hidden' }}>
           <Button

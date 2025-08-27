@@ -1,4 +1,4 @@
-import { supabaseAdmin } from './supabase-admin';
+import supabaseAdmin from './supabase-admin';
 
 /**
  * Admin-only functions for managing user accounts

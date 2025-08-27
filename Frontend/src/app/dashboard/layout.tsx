@@ -6,6 +6,7 @@ import GlobalStyles from '@mui/material/GlobalStyles';
 import { DashboardGate } from '@/components/auth/dashboard-gate';
 import { MainNav } from '@/components/dashboard/layout/main-nav';
 import { SideNav } from '@/components/dashboard/layout/side-nav';
+import { UserProvider } from '@/contexts/user-context';
 import { useRouter, usePathname } from 'next/navigation';
 
 interface LayoutProps {
@@ -16,6 +17,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
   
   return (
     <DashboardGate>
+      <UserProvider>
       <GlobalStyles
         styles={{
           body: {
@@ -28,7 +30,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
           },
         }}
       />
-      <Box
+  <Box
         sx={{
           bgcolor: '#e1e1e1', // light gray background
           display: 'flex',
@@ -47,6 +49,7 @@ export default function Layout({ children }: LayoutProps): React.JSX.Element {
           </main>
         </Box>
       </Box>
-          </DashboardGate>
+      </UserProvider>
+    </DashboardGate>
   );
 }

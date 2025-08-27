@@ -21,6 +21,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z as zod } from 'zod';
 import FormHelperText from '@mui/material/FormHelperText';
 import { toast, ToastContainer } from 'react-toastify';
+import { UserContext } from '@/contexts/user-context';
 
 const schema = zod.object({
   phone: zod
@@ -49,10 +50,12 @@ type Values = zod.infer<typeof schema>;
 
 
 export function AccountDetailsForm(): React.JSX.Element {
-  const { user, checkSession, updateProfile } = useAuth();
+  const { checkSession, updateProfile } = useAuth();
   const [userd, setUser] = React.useState<User | null>(null);
+    const userContext = React.useContext(UserContext);
+    const user = userContext?.user;
 
-  const clinet = userd || { fname: '', lname: '', email: '', };
+  const clinet = userd || { first_name: '', last_name: '', email: '' };
   //console.log('clinet', clinet);
   const defaultValues = {
     email: '',
@@ -101,8 +104,14 @@ React.useEffect(() => {
 
 const onSubmit: SubmitHandler<Values> = React.useCallback(
   async (values) => {
+    if (!user?.id) {
+      setError('root', { type: 'server', message: 'User not authenticated' });
+      toast.error('User not authenticated');
+      return;
+    }
+
     setIsPending(true);
-    const { error } = await updateProfile(values);
+    const { error } = await updateProfile(user.id, values);
 
     if (error) {
       setError('root', { type: 'server', message: error });
@@ -118,7 +127,7 @@ const onSubmit: SubmitHandler<Values> = React.useCallback(
     toast.success("Profile updated successfully!"); // Show success toast
     setIsPending(false);
   },
-  [checkSession, router, setError]
+  [checkSession, router, setError, user, updateProfile]
 );
 
 
@@ -141,7 +150,7 @@ const onSubmit: SubmitHandler<Values> = React.useCallback(
               >
                 <FormControl fullWidth required>
                   <InputLabel>First name</InputLabel>
-                  <OutlinedInput value={clinet.fname}  label="First name"  />
+                  <OutlinedInput value={clinet.first_name}  label="First name"  />
                 </FormControl>
               </Grid>
               <Grid
@@ -152,7 +161,7 @@ const onSubmit: SubmitHandler<Values> = React.useCallback(
               >
                 <FormControl fullWidth required>
                   <InputLabel>Last name</InputLabel>
-                  <OutlinedInput value={clinet.lname}   label="Last name"  />
+                  <OutlinedInput value={clinet.last_name}   label="Last name"  />
                 </FormControl>
               </Grid>
               <Grid
