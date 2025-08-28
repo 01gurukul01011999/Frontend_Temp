@@ -29,14 +29,41 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
   }>({
     user: null,
     error: null,
-    isLoading: true,
+    isLoading: false, // Start with false for instant rendering
   });
 
   const router = useRouter();
 
+  // Load cached user data immediately from localStorage
+  React.useEffect(() => {
+    try {
+      if (globalThis.window) {
+        const cachedUser = localStorage.getItem('cached-user-profile');
+        if (cachedUser) {
+          const parsedUser = JSON.parse(cachedUser);
+          setState(prev => ({ 
+            ...prev, 
+            user: parsedUser, 
+            isLoading: false 
+          }));
+          
+          // Start background refresh without blocking UI
+          setTimeout(() => {
+            checkSession();
+          }, 100);
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to load cached user data:', error);
+    }
+  }, []);
+
   const checkSession = React.useCallback(async (): Promise<void> => {
     try {
-      setState(prev => ({ ...prev, isLoading: true, error: null }));
+      // Only show loading if we don't have cached data
+      if (!state.user) {
+        setState(prev => ({ ...prev, isLoading: true, error: null }));
+      }
 
       // Get current Supabase session
       const { session, error: sessionError } = await authService.getSession();
@@ -49,6 +76,7 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
           error: 'Session expired', 
           isLoading: false 
         }));
+        localStorage.removeItem('cached-user-profile');
         router.push('/auth/sign-in');
         return;
       }
@@ -60,6 +88,7 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
           error: null, 
           isLoading: false 
         }));
+        localStorage.removeItem('cached-user-profile');
         return;
       }
 
@@ -74,7 +103,13 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
           error: 'Failed to load profile', 
           isLoading: false 
         }));
+        localStorage.removeItem('cached-user-profile');
         return;
+      }
+
+      // Cache the user profile for instant future access
+      if (profile && globalThis.window) {
+        localStorage.setItem('cached-user-profile', JSON.stringify(profile));
       }
 
       setState(prev => ({ 
@@ -91,8 +126,9 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
         error: 'Something went wrong', 
         isLoading: false 
       }));
+      localStorage.removeItem('cached-user-profile');
     }
-  }, [router]);
+  }, [router, state.user]);
 
   const signOut = React.useCallback(async (): Promise<void> => {
     try {
@@ -100,6 +136,9 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
       if (error) {
         logger.error('Sign out error:', error);
       }
+      
+      // Clear cached data
+      localStorage.removeItem('cached-user-profile');
       
       setState(prev => ({ 
         ...prev, 
@@ -120,6 +159,7 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
       if (event === 'SIGNED_IN' && session?.user) {
         await checkSession();
       } else if (event === 'SIGNED_OUT') {
+        localStorage.removeItem('cached-user-profile');
         setState(prev => ({ 
           ...prev, 
           user: null, 
@@ -129,14 +169,16 @@ export function UserProvider({ children }: UserProviderProps): React.JSX.Element
       }
     });
 
-    // Initial session check
-    checkSession().catch((error) => {
-      logger.error('Initial session check error:', error);
-    });
+    // Initial session check (only if no cached data)
+    if (!state.user) {
+      checkSession().catch((error) => {
+        logger.error('Initial session check error:', error);
+      });
+    }
 
     // Cleanup subscription
     return () => subscription.unsubscribe();
-  }, [checkSession]);
+  }, [checkSession, state.user]);
 
   return (
     <UserContext.Provider value={{ 
