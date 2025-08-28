@@ -7,13 +7,14 @@ import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 import Stack from '@mui/material/Stack';
 import Tooltip from '@mui/material/Tooltip';
+import Typography from '@mui/material/Typography';
 import { BellIcon } from '@phosphor-icons/react/dist/ssr/Bell';
 import { ListIcon } from '@phosphor-icons/react/dist/ssr/List';
-import { MagnifyingGlassIcon } from '@phosphor-icons/react/dist/ssr/MagnifyingGlass';
 import { UsersIcon } from '@phosphor-icons/react/dist/ssr/Users';
 
 import { usePopover } from '@/hooks/use-popover';
 import { useAuth } from '@/modules/authentication';
+import { useUser } from '@/hooks/use-user';
 
 import { MobileNav } from './mobile-nav';
 import { UserPopover } from './user-popover';
@@ -23,6 +24,7 @@ export function MainNav(): React.JSX.Element {
   const [avatar, setAvatar] = React.useState<string>('');
   const userPopover = usePopover<HTMLDivElement>();
   const { user } = useAuth();
+  const { user: contextUser, isLoading } = useUser();
 
   React.useEffect(() => {
     if (user?.avatar) {
@@ -31,6 +33,37 @@ export function MainNav(): React.JSX.Element {
       setAvatar('');
     }
   }, [user]);
+
+  // Get business name with instant cache fallback
+  const getBusinessName = () => {
+    // First try to get from user context
+    if (contextUser?.business_name) {
+      return contextUser.business_name;
+    }
+    
+    // If no user context, try to get from cache for instant display
+    if (globalThis.window && !isLoading) {
+      try {
+        const cachedUser = localStorage.getItem('cached-user-profile') || sessionStorage.getItem('cached-user-profile');
+        if (cachedUser) {
+          const parsedUser = JSON.parse(cachedUser);
+          if (parsedUser.business_name) {
+            return parsedUser.business_name;
+          }
+        }
+      } catch (error) {
+        console.warn('Failed to load cached business name:', error);
+      }
+    }
+    
+    // Show loading only if we're actually loading and have no cached data
+    if (isLoading) {
+      return 'Loading...';
+    }
+    
+    // Final fallback
+    return 'Your Business';
+  };
 
   return (
     <React.Fragment>
@@ -58,11 +91,31 @@ export function MainNav(): React.JSX.Element {
             >
               <ListIcon />
             </IconButton>
-            <Tooltip title="Search">
-              <IconButton>
-                <MagnifyingGlassIcon />
-              </IconButton>
-            </Tooltip>
+            {/* Welcome Message replacing Search Icon */}
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column', 
+              alignItems: 'flex-start',
+              minWidth: '300px',
+              py: 1
+            }}>
+              <Typography variant="h6" sx={{ 
+                fontWeight: 600, 
+                color: '#1a1a1a', 
+                lineHeight: 1.2,
+                fontSize: '1.1rem'
+              }}>
+                Welcome back, {getBusinessName()}
+              </Typography>
+              <Typography variant="body2" sx={{ 
+                color: '#666666', 
+                fontSize: '0.8rem', 
+                lineHeight: 1.2,
+                mt: 0.5
+              }}>
+                Manage and grow your business with Techpotli
+              </Typography>
+            </Box>
           </Stack>
           <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>
             <Tooltip title="Contacts">

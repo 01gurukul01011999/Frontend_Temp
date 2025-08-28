@@ -1,10 +1,9 @@
+'use client';
+
 import * as React from 'react';
-import type { Metadata } from 'next';
 import Grid from '@mui/material/Grid';
 import dayjs from 'dayjs';
 import Chip from "@mui/material/Chip";
-
-import { config } from '@/config';
 import { Budget } from '@/components/dashboard/overview/budget';
 import { LatestOrders } from '@/components/dashboard/overview/latest-orders';
 import { LatestProducts } from '@/components/dashboard/overview/latest-products';
@@ -15,11 +14,12 @@ import { TotalProfit } from '@/components/dashboard/overview/total-profit';
 import { Traffic } from '@/components/dashboard/overview/traffic';
 
 
-export const metadata = { title: `Home | Dashboard | ${config.site.name}` } satisfies Metadata;
+
 
 export default function Page(): React.JSX.Element {
   return (
-    <Grid container spacing={2} sx={{ mt: 2 }}>
+    <>
+      <Grid container spacing={2} sx={{ mt: 2 }}>
       <Grid
         size={{
           lg: 3,
@@ -188,5 +188,6 @@ export default function Page(): React.JSX.Element {
         <Chip label="Example Chip" sx={{ fontSize: "30%" }} />
       </Grid>
     </Grid>
+    </>
   );
 }
