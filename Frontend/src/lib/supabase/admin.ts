@@ -7,7 +7,7 @@ import { createClient } from '@supabase/supabase-js';
  */
 export const createSupabaseAdmin = () => {
   const supabaseUrl = process.env.SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceRoleKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
   if (!supabaseUrl || !serviceRoleKey) {
     throw new Error(
@@ -24,4 +24,5 @@ export const createSupabaseAdmin = () => {
 };
 
 // Export singleton instance
-export const supabaseAdmin = createSupabaseAdmin();
+// Do not create a top-level singleton here to avoid throwing on module import
+// Consumers should call `createSupabaseAdmin()` inside server handlers where env vars are available.

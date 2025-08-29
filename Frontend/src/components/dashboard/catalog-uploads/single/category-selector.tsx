@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import Image from 'next/image';
 import { useAuth } from '@/modules/authentication';
 import Autocomplete from '@mui/material/Autocomplete';
@@ -193,7 +194,44 @@ export default function CategorySelector(): React.JSX.Element {
 	const handleAddProduct = () => {
 		inputRef.current?.click();
 	};
-	const handleContinue = () => {
+	const handleContinue = async () => {
+		// First, upload selected images to backend
+		if (!selectedImages || selectedImages.length === 0) {
+			toast.error('No images selected to upload');
+			return;
+		}
+		try {
+			// Convert data URLs to File objects
+			const files: File[] = await Promise.all(selectedImages.map(async (img, idx) => {
+				const dataUrl = typeof img === 'string' ? img : (img?.url ?? '');
+				if (!dataUrl) throw new Error('Invalid image');
+				const resp = await fetch(dataUrl);
+				const blob = await resp.blob();
+				const ext = blob.type?.split('/')?.[1] || 'jpg';
+				return new File([blob], `image_${idx + 1}.${ext}`, { type: blob.type || 'image/jpeg' });
+			}));
+
+			const formData = new FormData();
+			for (const f of files) formData.append('images', f);
+			if (user && user.id) formData.append('uploaderId', user.id);
+
+			const uploadUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`;
+			const res = await fetch(uploadUrl, { method: 'POST', body: formData });
+			if (!res.ok) {
+				console.error('Image upload failed', await res.text());
+				toast.error('Image upload failed. Please try again.');
+				return;
+			}
+			// Optionally read response
+			// const body = await res.json();
+			toast.success('Images uploaded successfully', { autoClose: 2000 });
+		} catch (err) {
+			console.error('Upload error', err);
+			toast.error('Failed to upload images');
+			return;
+		}
+
+		// Proceed to next step only after successful upload
 		setPopupOpen(false);
 		setActiveStep(1);
 		setActiveProductIndex(0); // Always start with first product tab
@@ -271,6 +309,7 @@ export default function CategorySelector(): React.JSX.Element {
 	
 //console.log('uploadimages', uploadedImages);
 	const { user } = useAuth();
+	const router = useRouter();
 	// Upload images to backend
 	const MAX_TOTAL_SIZE = 5 * 1024 * 1024; // 5MB
 	const _handleGenerateTemplate = async () => {
@@ -2010,52 +2049,53 @@ const renderField = (
 								}
 								// Placeholder submit handler — replace with real API call
 								try {
-									// save to Supabase
-									try {
-										if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
-											throw new Error('Supabase environment variables are not set (NEXT_PUBLIC_SUPABASE_URL / NEXT_PUBLIC_SUPABASE_ANON_KEY).');
-										}
-										const { createClient } = await import('@supabase/supabase-js');
-										const supabase = createClient(
-											process.env.NEXT_PUBLIC_SUPABASE_URL,
-											process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-										);
+																		// send payload to server-side API which uses service role to insert
+																		try {
+																			const ensured = ensureProductFormIds(productForms);
+																			const catalogId = genUniqueId();
+																			const inventoryJson: Record<string, ProductSection> = {};
+																			for (const pf of ensured) {
+																				inventoryJson[pf.id] = pf.ProductSizeInventory || {};
+																			}
 
-										// Ensure product forms have ids and build inventory JSON
-										const ensured = ensureProductFormIds(productForms);
-										const catalogId = genUniqueId();
+																			const payload = {
+																				catalog_id: catalogId,
+																				user_id: user?.id ?? null,
+																				category_path: selectionPath,
+																				product_forms: ensured,
+																				inventory_json: inventoryJson,
+																				status: 'submitted',
+																				QC_status: 'pending',
+																			};
+																			console.log('Submitting payload to server API:', payload);
 
-										const inventoryJson: Record<string, ProductSection> = {};
-										for (const pf of ensured) {
-											inventoryJson[pf.id] = pf.ProductSizeInventory || {};
-										}
-
-										const payload = {
-											catalog_id: catalogId,
-											user_id: user?.id ?? null,
-											category_path: selectionPath,
-											product_forms: ensured,
-											inventory_json: inventoryJson,
-										};
-										console.log('Submitting payload to Supabase:', payload);
-
-										const { data, error } = await supabase
-											.from('catalogs') // ensure this table exists with appropriate columns (catalog_id, user_id, category_path, product_forms, inventory_json, created_at)
-											.insert([payload]);
-
-										if (error) {
-											console.error('Supabase insert error', error);
-											toast.error('Failed to save catalog. Try again.');
-										} else {
-											console.log('Catalog saved', data);
-											toast.success('Catalog submitted and saved to database', { autoClose: 2500 });
-											// optionally reset or navigate away
-										}
-									} catch (err) {
-										console.error('Submit error', err);
-										toast.error('Submit failed');
-									}
-									toast.success('Catalog submitted (stub)', { autoClose: 2500 });
+																			try {
+																				const res = await fetch('/api/catalogs', {
+																					method: 'POST',
+																					headers: { 'Content-Type': 'application/json' },
+																					body: JSON.stringify(payload),
+																				});
+																				const body = await res.json();
+																				if (!res.ok) {
+																					console.error('Server insert error', body);
+																					toast.error('Failed to save catalog: ' + (body?.error?.message || JSON.stringify(body?.error) || body?.error || 'server error'));
+																				} else {
+																					console.log('Server saved', body);
+																					toast.success('Catalog submitted and saved to database', { autoClose: 2500 });
+																					// redirect to catalog uploads list after short delay so toast is visible
+																					setTimeout(() => {
+																						try { router.push('/dashboard/catalog-uploads'); } catch (e) { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch (ee) { globalThis.history.back(); } }
+																					}, 600);
+																				}
+																			} catch (fetchErr) {
+																				console.error('Fetch to /api/catalogs failed', fetchErr);
+																				toast.error('Failed to reach server API');
+																			}
+																		} catch (err) {
+																			console.error('Submit error', err);
+																			toast.error('Submit failed');
+																		}
+							
 									
 									// Optionally move to a confirmation step or reset
 								} catch (e) {
