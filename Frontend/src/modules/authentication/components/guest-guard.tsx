@@ -15,7 +15,7 @@ export interface GuestGuardProps {
   fallback?: React.ReactNode;
 }
 
-export function GuestGuard({ children, fallback }: GuestGuardProps): React.JSX.Element | null {
+export function GuestGuard({ children, fallback }: GuestGuardProps): React.ReactNode {
   const router = useRouter();
   const { user, error, isLoading, isAuthenticated } = useAuth();
   const [isChecking, setIsChecking] = React.useState<boolean>(true);

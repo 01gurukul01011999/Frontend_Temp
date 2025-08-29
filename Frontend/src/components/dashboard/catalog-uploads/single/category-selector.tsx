@@ -44,6 +44,8 @@ const steps = ["Select Category", "Add Product Details"];
 // Types for product form state
 type ProductSection = { [key: string]: string | string[] | number | boolean | Record<string, unknown> };
 type ProductForm = {
+	// optional id will be populated to uniquely identify each product form
+	id?: string;
 	ProductSizeInventory: ProductSection;
 	ProductDetails: ProductSection;
 	OtherAttributes: ProductSection;
@@ -52,10 +54,33 @@ type ProductForm = {
 // Hoisted factory to avoid function-in-render linter rule
 function initialFormData(): ProductForm {
 	return {
+		// id left undefined here; will be assigned when ensuring IDs
 		ProductSizeInventory: {},
 		ProductDetails: {},
 		OtherAttributes: {},
 	};
+}
+
+// Generate a stable unique id (uses crypto.randomUUID when available)
+function genUniqueId(): string {
+	try {
+		if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return (crypto as any).randomUUID();
+	} catch (e) {
+		// ignore and fallback
+	}
+	return `id_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+}
+
+// Ensure each product form has an `id` and return the updated array (pure function — does not touch component state)
+function ensureProductFormIds(forms: ProductForm[]): (ProductForm & { id: string })[] {
+	const updated = forms.map((f) => {
+		const copy = { ...f } as ProductForm & { id?: string };
+		if (!copy.id) {
+			copy.id = genUniqueId();
+		}
+		return copy as ProductForm & { id: string };
+	});
+	return updated as (ProductForm & { id: string })[];
 }
 
 // Small deep clone helper to replace JSON.parse(JSON.stringify(...))
@@ -622,8 +647,13 @@ const _handleSizePopoverApply = () => {
 	setProductForms((forms) => {
 	  const updated = [...forms];
 	  if (!updated[sizePopoverProductIndex]) updated[sizePopoverProductIndex] = initialFormData();
-	  if (!updated[sizePopoverProductIndex][sectionKey]) (updated[sizePopoverProductIndex][sectionKey] as ProductSection) = {};
-	  (updated[sizePopoverProductIndex][sectionKey] as ProductSection)[sizePopoverLabel] = sizePopoverValue;
+	  // Cast the product entry to a generic record so we can safely ensure the section is an object
+	  const target = updated[sizePopoverProductIndex] as unknown as Record<string, unknown>;
+	  if (!target[sectionKey] || typeof target[sectionKey] === 'string') {
+		target[sectionKey] = {};
+	  }
+	  const sectionObj = target[sectionKey] as ProductSection;
+	  sectionObj[sizePopoverLabel] = sizePopoverValue;
 			if (copyAll) {
 				return updated.map(() => deepClone(updated[sizePopoverProductIndex]));
 			}
@@ -738,7 +768,7 @@ const handleApplyFilter = () => {
 const renderField = (
 	field: FormField,
 	index: number,
-	section: keyof ProductForm,
+	section: Exclude<keyof ProductForm, 'id'>,
 	productIndex: number
 ) => {
 	// Narrow the section to ProductSection before indexing to satisfy TS
@@ -1557,106 +1587,26 @@ const renderField = (
 			<Box sx={{ overflowX: "auto", borderRadius: 1, border: "1px solid #e0e0e0", width:800  }}>
 			  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
 				<thead style={{ background: "#f5f6fa" }}>
-				  <tr >
-					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Size</th>
-															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>
-																Techpotli Price&nbsp;<sup>*</sup>
-																<Tooltip
-																	title={
-																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
-																			This is the normal/regular price at which you sell on Techpotli. This price shall be lower than the Maximum Retail Price (MRP) of the Product.
-																		</span>
-																	}
-																	arrow
-																	placement="bottom"
-																	enterTouchDelay={0}
-																	leaveTouchDelay={3000}
-																	slotProps={{
-																	popper: {
-																	  sx: {
-																		'& .MuiTooltip-tooltip': {
-																		  backgroundColor: '#2B2B2B', // Change background color
-																		  color: 'white', // Change text color
-																		  border: '1px solid #000000', // Add a border
-																		},
-																	  },
-																	},
-																  }}
-																>
-																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
-																</Tooltip>
-															</th>
-					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Wrong/Defective Returns Price&nbsp;<sup>*</sup>
-																  <Tooltip
-																	title={
-																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
-																			Customers buying at this price can only return wrong/defective delivered items
-																		</span>
-																	}
-																	arrow
-																	placement="bottom"
-																	enterTouchDelay={0}
-																	leaveTouchDelay={3000}
-																	slotProps={{
-																	popper: {
-																	  sx: {
-																		'& .MuiTooltip-tooltip': {
-																		  backgroundColor: '#2B2B2B', // Change background color
-																		  color: 'white', // Change text color
-																		  border: '1px solid #000000', // Add a border
-																		},
-																	  },
-																	},
-																  }}
-																>
-																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
-																</Tooltip></th>
-					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>MRP&nbsp;<sup>*</sup>
-					<Tooltip
-																	title={
-																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
-																			“MRP” stands for “Maximum Retail Price”. It&apos;s the highest price that a seller is allowed to sell a product for including taxes, charges added on the basic price of the product. No seller can sell a product for a price higher than MRP. Acceptable in INR ONLY. This information is generally available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please provide the MRP as per the explanation above.</span>
-																	}
-																	arrow
-																	placement="bottom"
-																	enterTouchDelay={0}
-																	leaveTouchDelay={3000}
-																	slotProps={{
-																	popper: {
-																	  sx: {
-																		'& .MuiTooltip-tooltip': {
-																		  backgroundColor: '#2B2B2B', // Change background color
-																		  color: 'white', // Change text color
-																		  border: '1px solid #000000', // Add a border
-																		},
-																	  },
-																	},
-																  }}
-																>
-																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
-																</Tooltip></th>
-					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Inventory&nbsp;<sup>*</sup></th>
-					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>SKU (Optional)</th>
-					<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Action</th> {/* New column */}
-				  </tr>
+								<tr>
+											<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Size</th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Techpotli Price&nbsp;<sup>*</sup><Tooltip title={<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>This is the normal/regular price at which you sell on Techpotli. This price shall be lower than the Maximum Retail Price (MRP) of the Product.</span>} arrow placement="bottom" enterTouchDelay={0} leaveTouchDelay={3000} slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}><InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} /></Tooltip></th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Wrong/Defective Returns Price&nbsp;<sup>*</sup><Tooltip title={<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>Customers buying at this price can only return wrong/defective delivered items</span>} arrow placement="bottom" enterTouchDelay={0} leaveTouchDelay={3000} slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}><InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} /></Tooltip></th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>MRP&nbsp;<sup>*</sup><Tooltip title={<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>“MRP” stands for “Maximum Retail Price”. It&apos;s the highest price that a seller is allowed to sell a product for including taxes, charges added on the basic price of the product. No seller can sell a product for a price higher than MRP. Acceptable in INR ONLY. This information is generally available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please provide the MRP as per the explanation above.</span>} arrow placement="bottom" enterTouchDelay={0} leaveTouchDelay={3000} slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}><InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} /></Tooltip></th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Inventory&nbsp;<sup>*</sup></th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>SKU (Optional)</th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Action</th>
+										</tr>
 				</thead>
 				<tbody>
-				  {selectedSizes.map((size: string, idx: number) => (
-					<tr key={size}>
-					  <td style={{ padding: 12 }}>{size}</td>
-					  {["Techpotli Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU"].map(field => (
-						<td style={{ padding: 12 }} key={field}>
-						  <TextField
-							size="small"
-							value={productForms[activeProductIndex]?.ProductSizeInventory?.[`${field}_${size}`] || ""}
-							onChange={e => {
-							  const val = e.target.value;
-							  setProductForms(forms => {
-								const updated = [...forms];
-								if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
-								if (!updated[activeProductIndex].ProductSizeInventory) updated[activeProductIndex].ProductSizeInventory = {};
-								updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
-								// If "copy all" is checked and editing first row, update all
+									{selectedSizes.map((size: string, idx: number) => (
+										<tr key={size}>
+											<td style={{ padding: 12 }}>{size}</td>{["Techpotli Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU"].map(field => (
+												<td style={{ padding: 12 }} key={field}>
+													<TextField
+														size="small"
+														value={productForms[activeProductIndex]?.ProductSizeInventory?.[`${field}_${size}`] || ""}
+														onChange={e => {
+															const val = e.target.value;
+															setProductForms(forms => {
+																const updated = [...forms];
+																if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
+																if (!updated[activeProductIndex].ProductSizeInventory) updated[activeProductIndex].ProductSizeInventory = {};
+																updated[activeProductIndex].ProductSizeInventory[`${field}_${size}`] = val;
+																// If "copy all" is checked and editing first row, update all
 																if (
 																	productForms[activeProductIndex]?.ProductSizeInventory?.copyPriceAll &&
 																	idx === 0
@@ -1665,38 +1615,38 @@ const renderField = (
 																		updated[activeProductIndex].ProductSizeInventory[`${field}_${sz}`] = val;
 																	}
 																}
-								return updated;
-							  });
-							}}
-							placeholder={field}
-						  />
-						</td>
-					  ))}
-					  <td style={{ padding: 12 }}>
-						<Button
-						  color="error"
-						  size="small"
-						  onClick={() => {
-							// Remove this size from selectedSizes and all related fields
-							setProductForms(forms => {
-							  const updated = [...forms];
-							  if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
-							  const inv = updated[activeProductIndex].ProductSizeInventory || {};
-							  const newSizes = selectedSizes.filter(sz => sz !== size);
-							  inv.Size = newSizes;
-								for (const field of ["Meesho Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU"]) {
-									delete inv[`${field}_${size}`];
-								}
-							  updated[activeProductIndex].ProductSizeInventory = inv;
-							  return updated;
-							});
-						  }}
-						>
-						  Delete
-						</Button>
-					  </td>
-					</tr>
-				  ))}
+																return updated;
+															});
+														}}
+														placeholder={field}
+													/>
+												</td>
+											))}
+											<td style={{ padding: 12 }}>
+												<Button
+													color="error"
+													size="small"
+													onClick={() => {
+														// Remove this size from selectedSizes and all related fields
+														setProductForms(forms => {
+															const updated = [...forms];
+															if (!updated[activeProductIndex]) updated[activeProductIndex] = initialFormData();
+															const inv = updated[activeProductIndex].ProductSizeInventory || {};
+															const newSizes = selectedSizes.filter(sz => sz !== size);
+															inv.Size = newSizes;
+															for (const field of ["Meesho Price", "Wrong/Defective Returns Price", "MRP", "Inventory", "SKU"]) {
+																delete inv[`${field}_${size}`];
+															}
+															updated[activeProductIndex].ProductSizeInventory = inv;
+															return updated;
+														});
+													}}
+												>
+													Delete
+												</Button>
+											</td>
+										</tr>
+									))}
 				</tbody>
 			  </table>
 			</Box>
@@ -1981,23 +1931,66 @@ const renderField = (
 					<Box
 						sx={{mr:12}}
 					>
+						{/*<Button
+							variant="text"
+							sx={{ mr: 2 }}
+							onClick={() => {
+								try {
+									const ensured = ensureProductFormIds(productForms);
+									const inventoryJson: Record<string, ProductSection> = {};
+									for (const pf of ensured) inventoryJson[pf.id] = pf.ProductSizeInventory || {};
+									const blob = new Blob([JSON.stringify(inventoryJson, null, 2)], { type: 'application/json' });
+									const url = URL.createObjectURL(blob);
+									const a = document.createElement('a');
+									a.href = url;
+									a.download = 'inventory.json';
+									a.click();
+									URL.revokeObjectURL(url);
+								} catch (e) {
+									toast.error('Failed to export inventory');
+								}
+							}}
+						>
+							Export Inventory
+						</Button>*/}
 						<Button
 							variant="outlined"
 							color="inherit"
 							sx={{mr:2}}
 							onClick={() => {
-								// Save current form state to localStorage as a quick persistence then navigate back
-								try {
-									localStorage.setItem('draftProductForms', JSON.stringify(productForms));
-									toast.success('Draft saved locally', { autoClose: 2500 });
-									// navigate back to catalog uploads after short delay so user sees toast
-									setTimeout(() => {
-										try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch (e) { globalThis.history.back(); }
-									}, 500);
-								} catch (e) {
-									toast.error('Failed to save draft', { autoClose: 2500 });
-								}
-							}}
+									// Save current form state to localStorage as a quick persistence then navigate back
+									try {
+										// ensure each product form has an id
+										const ensured = ensureProductFormIds(productForms);
+
+										// create a catalog-level id
+										const catalogId = genUniqueId();
+
+										// build inventory JSON mapping productFormId -> ProductSizeInventory
+										const inventoryJson: Record<string, ProductSection> = {};
+										for (const pf of ensured) {
+											inventoryJson[pf.id] = pf.ProductSizeInventory || {};
+										}
+
+										const draft = {
+											catalog_id: catalogId,
+											user_id: user?.id ?? null,
+											category_path: selectionPath,
+											product_forms: ensured,
+											inventory: inventoryJson,
+											saved_at: new Date().toISOString()
+										};
+
+										localStorage.setItem('draftProductCatalog', JSON.stringify(draft));
+										toast.success('Draft saved locally', { autoClose: 2500 });
+										// navigate back to catalog uploads after short delay so user sees toast
+										setTimeout(() => {
+											try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch (e) { globalThis.history.back(); }
+										}, 500);
+									} catch (e) {
+										toast.error('Failed to save draft', { autoClose: 2500 });
+									}
+								}}
 						>
 							Save and Go Back
 						</Button>
@@ -2028,16 +2021,26 @@ const renderField = (
 											process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
 										);
 
+										// Ensure product forms have ids and build inventory JSON
+										const ensured = ensureProductFormIds(productForms);
+										const catalogId = genUniqueId();
+
+										const inventoryJson: Record<string, ProductSection> = {};
+										for (const pf of ensured) {
+											inventoryJson[pf.id] = pf.ProductSizeInventory || {};
+										}
+
 										const payload = {
+											catalog_id: catalogId,
 											user_id: user?.id ?? null,
 											category_path: selectionPath,
-											product_forms: productForms,
-											created_at: new Date().toISOString()
+											product_forms: ensured,
+											inventory_json: inventoryJson,
 										};
 										console.log('Submitting payload to Supabase:', payload);
 
 										const { data, error } = await supabase
-											.from('catalogs') // ensure this table exists with appropriate columns (user_id, category_path, product_forms, created_at)
+											.from('catalogs') // ensure this table exists with appropriate columns (catalog_id, user_id, category_path, product_forms, inventory_json, created_at)
 											.insert([payload]);
 
 										if (error) {
