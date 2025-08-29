@@ -1,507 +1,234 @@
 import express from "express";
-import mysql from "mysql";
-import cors from "cors";
 import jwt from "jsonwebtoken";
-import bodyPrser from "body-parser";
-import dotenv from "dotenv";
-import nodemailer from "nodemailer";
+import cors from 'cors';
 import multer from "multer";
-
-
-// Storage config
-const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, ' process.env.UPLOAD_LOCATION');
-  },
-  filename: function (req, file, cb) {
-    const uniqueName = Date.now() + '-' + file.originalname;
-    cb(null, uniqueName);
-  }
-});
-
-// Init multer
-const upload = multer({ storage });
-
-
- // or configure as needed
-
+import path from "path";
+import fs from 'fs';
+import util from 'util';
+import crypto from 'crypto';
+import { fileURLToPath } from "url";
+import pkg from "pg";
+import { createClient } from '@supabase/supabase-js';
+import dotenv from "dotenv";
 dotenv.config();
 
+const { Pool } = pkg;
 const app = express();
+app.use(express.json());
 
-app.use(bodyPrser.json());
-app.use(cors());
-app.use('/uploads', express.static('public/uploads'));
+// (diagnostic wrapper removed) Normal route registration is used below.
 
-const db = mysql.createPool({
-    connectionLimit: 10, // Adjust as needed
-    // Database connection moved to Supabase
-    // host: process.env.DB_HOST,
-    // user: process.env.DB_USER,
-    // password: process.env.DB_PASSWORD,
-    // database: process.env.DB_NAME
+// Allow CORS from frontend (adjust origin as needed)
+const FRONTEND_ORIGIN = process.env.FRONTEND_ORIGIN || 'http://localhost:3000';
+app.use(cors({ origin: FRONTEND_ORIGIN, credentials: true }));
+// Respond to preflight OPTIONS requests with explicit headers to avoid
+// registering an `app.options('*', ...)` route which can trigger
+// path-to-regexp parsing in some environments.
+app.use((req, res, next) => {
+  if (req.method === 'OPTIONS') {
+    res.header('Access-Control-Allow-Origin', FRONTEND_ORIGIN);
+    res.header('Access-Control-Allow-Credentials', 'true');
+    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
+    res.header('Access-Control-Allow-Methods', 'GET,POST,PUT,DELETE,OPTIONS');
+    return res.sendStatus(204);
+  }
+  next();
 });
-// Test the pool connection
-db.getConnection((err, connection) => {
-    if (err) {
-        console.error('Database connection failed:', err);
-    } else {
-        console.log('Connected to the database');
-        connection.release();
-    }
-});
+
+// Environment variables
+const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key_here";
 const PORT = process.env.PORT || 4000;
 
-const JWT_SECRET = 'kishan';
+// Use Supabase server client (service role) to avoid direct Postgres DNS dependency
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
+const SUPABASE_SERVICE_ROLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-app.post("/user", (req, res) => {
-   console.log(req.body);
-const q = "INSERT INTO user (fname, lname, id, email, password, ac_sta, roll ) VALUES (?)";
-const id = Math.floor(Math.random() * 1000000); // Generate a random ID
-const value = [ req.body.firstName, req.body.lastName, id, req.body.email, req.body.password, 'reg', 'seller'];
-//console.log(value);   
-      db.query(q, [value], (err, result) => {
-        if (err) {
-            //console.error("Error executing query:", err);
-            res.status(500).send("Internal Server Error");
-        } else {
-                //console.log("executing query:", result);
-                const token = jwt.sign(
-                    { 
-                        email: req.body.email, 
-                        fname: req.body.fname, 
-                        lname: req.body.lname, 
-                        id: id, 
-                        //avatar: req.body.avatar || null // Assuming avatar is optional
-                    }, // payload
-                    JWT_SECRET,
-                    { expiresIn: 3600 } // token expiry
-                );
+let supabaseAdmin = null;
+if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+  console.error('⚠️ Supabase admin client not initialized: SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY missing.');
+} else {
+  supabaseAdmin = createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, {
+    auth: { persistSession: false },
+  });
+  console.log('✅ Supabase admin client initialized');
+}
 
-  res.json({ token });
-        //res.json(result);
-        }
-    });
-});
+let dbConnected = false;
+let lastDbError = null;
 
+// ============ File Upload Setup ============
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
-app.post("/user-data", (req, res) => {
-   console.log(req.body);
-    const q = "SELECT * FROM user WHERE email = ? AND password = ?";
-    const values = [req.body.email, req.body.password];
-    db.query(q, values, (err, result) => {
-
-        if (err) {
-            console.error("Error executing query:", err.message);
-            res.status(500).send(err.message || "Internal Server Error");
-        } 
-        else {
-            if (result.length > 0) {
-                const user = result[0]; // Assuming the first result is the user we want
-                const token = jwt.sign(
-                    { 
-                        email: user.email, 
-                        fname: user.fname, 
-                        lname: user.lname, 
-                        id: user.id, 
-                        //avatar: user.avatar
-                    }, // payload
-                    JWT_SECRET,
-                    { expiresIn: 86400 } // token expiry
-                );
-
-  res.json({ token });
-                //res.json(result[0]); // Return the first matching user
-            } else {
-                res.status(404).send("User not found");
-            }
-        }
-    });
-
-});
-
-
-
-// ✅ A protected route example
-app.get('/protected', (req, res) => {
-
-  const authHeader = req.headers['authorization'];
-  const token = authHeader && authHeader.split(' ')[1]; // Bearer <token>
-
-  if (!token) return res.sendStatus(401);
-
-  const user = jwt.verify(token, JWT_SECRET, (err, userData) => {
-    if (err) return "token expired"; // Invalid token
-//console.log(userData);
-    if (userData) {
-    const q = "SELECT * FROM user WHERE email = ?";
-    const values = [userData.email];
-    db.query(q, values, (err, result) => {
-        if (err) {
-           // console.error("Error executing query:", err);
-            res.status(500).send("Internal Server Error");
-        } else {
-            if (result.length > 0) {
-                const userdb = result[0]; 
-                //console.log("executing query:", userdb);
-                res.json({ message: 'Protected data', user: userdb });
-            }
-            else{
-                res.status(404).send("User not found"); }    
-            }
-  
-            });
-        }
-}); 
-if (user === "token expired") {
-                    return res.json({status: "error", user: "Token expired"});
-                    }
-
-}); 
-
-
-
-
-app.post("/reset", (req, res) => {
-   console.log(req.body);
-    const q = "SELECT * FROM user WHERE email = ?";
-    const values = [req.body.email];
-    //console.log(values);
-    db.query(q, values,  (err, result) => {
-        if (err) {
-            //console.error("Error executing query:", err);
-            res.status(500).send("Internal Server Error");
-        } else {
-            if (result.length > 0) {
-               console.log(result[0].email);
-               const q = "INSERT INTO `reset_p`( `remail`, `rcode`, `time`) VALUES (?)";
-               const code = Math.floor(100000 + Math.random() * 900000); // Generate a 6-digit code
-               const time = new Date();
-               const value = [result[0].email, code, time];
-               const email = result[0].email;
-              //console.log(value);
-                db.query(q, [value], (err, result) => {
-                    if (err) {
-                        //console.error("Error executing query:", err);
-                        res.status(500).send("Internal Server Error");
-                    } else {
-                        // Here you would typically send the code to the user's email
-                        // For this example, we'll just return it in the response
-                        //res.json({ code: code });
-                        const transporter = nodemailer.createTransport({
-                        service: 'Gmail', // or 'hotmail', or use SMTP settings
-                        auth: {
-                       user: process.env.EMAIL_USER,
-                       pass: process.env.EMAIL_PASS, // Use App Password for Gmail
-                        },
-                      });
-                      const mailOptions = {
-                       from: process.env.EMAIL_USER,
-                        to: email,
-                       subject: 'Your Verification Code',
-                     text: `Your verification code is: ${code}`,
-                            };
-
-                    try {
-                      transporter.sendMail(mailOptions);
-                  //console.log(`Code ${code} sent to ${email}`);
-                   res.json({ message: 'Verification code sent successfully', code: code });
-              } catch (error) {
-                   console.error(error);
-                  res.status(500).json({ message: 'Failed to send email' });
-                    }
-
-                    } 
-
-                });
-
-
-            } else {
-                res.status(404).send("User not found");
-            }
-        }
-    });
-
-});
-
-
-
-app.post("/verify-code", (req, res) => {
-    //console.log(req.body);              
-
-    const q = "SELECT * FROM reset_p WHERE remail = ? AND rcode = ? AND time >= NOW() - INTERVAL 10 MINUTE";
-    const values = [req.body.email, req.body.code]; 
-
-    db.query(q, values, (err, result) => {
-        if (err) {          
-
-            console.error("Error executing query:", err);
-            res.status(500).send("Internal Server Error");
-
-        } else {
-            if (result.length > 0) {
-               // console.log("executing query:", result);
-                res.json({ message: "Code verified successfully" });
-
-            } else {
-                res.status(404).send("Invalid code or email not found");
-            }   
-        }
-    });
-});
-
-app.post("/newPassword", (req, res) => {
-    console.log(req.body);              
-    const q = "UPDATE `user` SET `password`= ? WHERE email = ?";
-    const values = [ req.body.newPassword, req.body.email]; 
-
-    db.query(q, values, (err, result) => {
-        if (err) {          
-
-            console.error("Error executing query:", err);
-            res.status(500).send("Internal Server Error");
-
-        } else {
-           
-                //console.log("executing query:", result);
-                res.json({ message: "Password Changed successfully" });
-   
-        }
-    });
-});
-
-//
-//app.post("/newuser", (req, res) => {
-//   //console.log(req.body);
-//    const q = "";
-//    const values = [req.body.email, req.body.password];
-//    db.query(q, values, (err, result) => {
-//        if (err) {
-//           // console.error("Error executing query:", err);
-//            res.status(500).send("Internal Server Error");
-//        } else {
-//            if (result.length > 0) {
-//                const user = result[0]; // Assuming the first result is the user we want
-//                const token = jwt.sign(
-//                    { 
-//                        email: user.email, 
-//                        fname: user.fname, 
-//                        lname: user.lname, 
-//                        id: user.id, 
-//                       // avatar: user.avatar
-//                    }, // payload
-//                    JWT_SECRET,
-//                    { expiresIn: 3600 } // token expiry
-//                );
-//
-//  res.json({ token });
-//                //res.json(result[0]); // Return the first matching user
-//            } else {
-//                res.status(404).send("User not found");
-//            }
-//        }
-//    });
-//
-//});
-
-
-app.post("/upload-avatar", upload.single('avatar'), (req, res) => {
-    //console.log(req.file); // Uploaded file info
-    const id = req.body.userId;
-
-    const filePath = `/uploads/${req.file.filename}`;
-//console.log("File path:", filePath);
-    const q = "UPDATE user SET avatar = ? WHERE id = ?";
-    const values = [filePath, id];
-console.log("Query values:", values);
-    db.query(q, values, (err, result) => {
-        if (err) {
-            console.error("Error executing query:", err);
-            return res.status(500).send("Internal Server Error");
-        }
-        //console.log("Avatar updated successfully:", result);
-
-       res.json({ message: "Avatar updated successfully", avatar: filePath });
-    });
-});
-
-
-
-
-
-app.post("/update_profile", (req, res) => {
-    console.log(req.body);      
-  const q = "UPDATE user SET phone= ? ,address= ? , state = ? , city = ? , pincode = ? , ac_sta = ? WHERE email = ?";
-   const values = [req.body.phone, req.body.address, req.body.state, req.body.city, req.body.pincode, 'done', req.body.email];
-   db.query(q, values, (err, result) => {
-      if (err) {
-           console.error("Error executing query:", err);
-          res.status(500).send("Internal Server Error");
-      } else {
-           //console.log("Profile updated successfully:", result);
-           res.json({ message: "Profile updated successfully" });
-      }
-   });
-});
-
-//app.post("/category", (req, res) => {
-//    console.log(req.body);
-//     const catId = 'cat'+Math.floor(100000 + Math.random() * 900000); 
-//    const q = "INSERT INTO `category`(`catId`, `catPhoto`, `title`, `parentCat`, `slug`, `metaTitle`, `keyWord`, `descrip`, `featured`, `footer`, `sta`, `datestamp`, `userid`) VALUES (?,?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?,?)";
-//    const values = [ catId, req.body.image, req.body.title, req.body.parent, req.body.slug, req.body.metaTitle, req.body.metaKeywords, req.body.metaDescription , req.body.featured, req.body.showInFooter, req.body.status, new Date(), req.body.userId];
-//    console.log("Query values:", values);
-//    db.query(q, values, (err, result) => {
-//        if (err) {
-//            console.error("Error executing query:", err);
-//            res.status(500).send("Internal Server Error");
-//        } else {
-//            //console.log("Category added successfully:", result);
-//            res.json({ message: "Category added successfully" });
-//        }
-//    });
-//});
-//
-//app.post("/categoryfetch", (req, res) => {
-//     const q = "SELECT * FROM category WHERE userid = ? ";
-//    const values = [req.body.userId];
-//    //console.log("Query values:", values);
-//    db.query(q, values, (err, result) => {
-//        if (err) {
-//            console.error("Error executing query:", err);
-//            res.status(500).send("Internal Server Error");
-//        } else {
-//             if (result.length > 0) {
-//                //console.log("executing query:", result);
-//                res.json( result);
-//
-//            } else {
-//                res.status(204).send("No categories found for this user"); 
-//            }   
-//        }
-//    });
-//});
-//
-//
-//
-//// Assuming you have Express and a Category model (e.g., Mongoose or Sequelize)
-//app.delete('/category/:catId', async (req, res) => {
-//  const { catId } = req.params;
-//  //console.log("Deleting category with ID:", catId);
-//  try {
-//    // Example with Mongoose:
-//    // await Category.findByIdAndDelete(catId);
-//
-//    // Example with SQL:
-//    await db.query('DELETE FROM category WHERE catId = ?', [catId]);
-//
-//    res.status(200).json({ message: 'Category deleted successfully' });
-//  } catch (error) {
-//    res.status(500).json({ message: 'Error deleting category', error });
-//  }
-//});
-//
-//
-//
-//app.get("/categoryeditfetch/:catid/:userid", (req, res) => {
-//     const q = "SELECT * FROM category WHERE catId = ? AND userid = ? ";
-//    const values = [req.params.catid, req.params.userid];
-//    console.log("Query values:", values);
-//    db.query(q, values, (err, result) => {
-//        if (err) {
-//            console.error("Error executing query:", err);
-//            res.status(500).send("Internal Server Error");
-//        } else {
-//             if (result.length > 0) {
-//                console.log("executing query:", result);
-//                res.json( result);
-//
-//            } else {
-//                res.status(204).send("No categories found for this user"); 
-//            }   
-//        }
-//    });
-//});
-//
-//
-//
-//app.post("/categoryedit", upload.single('image'), (req, res) => {
-//   console.log(req.body); // all your fields
-//  console.log(req.file); 
-//  const filePath = `/uploads/${req.file.filename}`;
-//  const q = "UPDATE category SET catPhoto= ?, title= ?, parentCat= ?, slug= ?, metaTitle= ?, keyWord= ?, descrip= ?, featured= ?, footer= ?, sta= ?, editon= ? WHERE catId = ? AND userid = ?";
-//    const values = [ filePath, req.body.title, req.body.parent, req.body.slug, req.body.metaTitle, req.body.metaKeywords, req.body.metaDescription , req.body.featured, req.body.showInFooter, req.body.status, new Date(), req.body.catid, req.body.userId];
-//    console.log("Query values:", values);
-//   db.query(q, values, (err, result) => {
-//        if (err) {
-//            console.error("Error executing query:", err);
-//          res.status(500).send("Internal Server Error");
-//      } else {
-//          //console.log("Category added successfully:", result);
-//          res.json({ message: "Category edited successfully" });
-//      }
-//  });
-//});
-
-
-app.post("/orderfetch", (req, res) => {
-    console.log(req.body);
-    const q = "SELECT * FROM orders WHERE userId = ? ";
-    const values = [req.body.userId];
-    //console.log("Query values:", values);
-    db.query(q, values, (err, result) => {
-        if (err) {
-            console.error("Error executing query:", err);
-            res.status(500).send("Internal Server Error");
-        } else {
-            if (result.length > 0) {
-                //console.log("executing query:", result);
-                res.json(result);
-            } else {
-                res.status(204).send("No orders found for this user");
-            }
-        }
-    });
-});
-
-
-app.post('/api/bulkImgupload', upload.array('images'), async (req, res) => {
-  
-  console.log(req.files); // Log the uploaded files for debugging
-  const uploader_id = req.body.uploaderId; // Get uploader_id from request body
-  const results = [];
-  for (let i = 0; i < req.files.length; i++) {
-    const file = req.files[i];
-    const img_id = 'img' + Date.now() + '-' + Math.floor(Math.random() * 1000000);
-    const img_name = file.filename;
-     const original_name = file.originalname; // <-- add this
-    const datestamp = new Date();
-    // sn is usually auto-increment, so pass NULL or let DB handle it
-    const q = "INSERT INTO images (img_id, img_name, original_name, datestamp, uploader_id) VALUES (?, ?, ?, ?, ?)";
-    const values = [img_id, img_name, original_name, datestamp, uploader_id];
-    try {
-      await new Promise((resolve, reject) => {
-        db.query(q, values, (err, result) => {
-          if (err) {
-            console.error("Error inserting image:", err);
-            reject(err);
-          } else {
-            results.push({ img_id, img_name, original_name, datestamp, uploader_id });
-            resolve();
-          }
-        });
-      });
-    } catch (err) {
-      return res.status(500).json({ success: false, error: err.message });
-    }
+// Ensure uploads directory exists to avoid ENOENT when writing/reading files
+const uploadsDir = path.join(__dirname, 'uploads');
+try {
+  if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+    console.log(`✅ Created uploads directory at ${uploadsDir}`);
   }
-  res.json({ success: true, files: results });
+} catch (e) {
+  console.error('Failed to ensure uploads directory exists:', e);
+}
+
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, path.join(__dirname, "uploads"));
+  },
+  filename: (req, file, cb) => {
+    const uniqueName =
+      Date.now() + "-" + Math.round(Math.random() * 1e9) + path.extname(file.originalname);
+    cb(null, uniqueName);
+  },
 });
 
+const upload = multer({ storage });
 
+// ============ Routes ============
 
+// ✅ Register User
+app.post("/user", async (req, res) => {
+  const id = Math.floor(Math.random() * 1000000);
+  const q = `
+    INSERT INTO users (fname, lname, id, email, password, ac_sta, roll) 
+    VALUES ($1, $2, $3, $4, $5, $6, $7)
+  `;
+  const values = [
+    req.body.firstName,
+    req.body.lastName,
+    id,
+    req.body.email,
+    req.body.password,
+    "reg",
+    "seller",
+  ];
 
+  try {
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase admin client not configured' });
+  const { data: insertData, error: insertError } = await supabaseAdmin.from('users').insert([{ fname: req.body.firstName, lname: req.body.lastName, id, email: req.body.email, password: req.body.password, ac_sta: 'reg', roll: 'seller' }]);
+  if (insertError) throw insertError;
 
+    const token = jwt.sign(
+      {
+        email: req.body.email,
+        fname: req.body.firstName,
+        lname: req.body.lastName,
+        id: id,
+      },
+      JWT_SECRET,
+      { expiresIn: 3600 }
+    );
 
+  res.json({ token });
+  } catch (err) {
+    console.error("Error executing query:", err.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// ✅ Login
+app.post("/login", async (req, res) => {
+  const q = "SELECT * FROM users WHERE email = $1 AND password = $2";
+  const values = [req.body.email, req.body.password];
+
+  try {
+  if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase admin client not configured' });
+  const { data: users, error: fetchError } = await supabaseAdmin.from('users').select('*').eq('email', req.body.email).eq('password', req.body.password);
+  if (fetchError) throw fetchError;
+  if (!users || users.length === 0) return res.status(401).json({ error: 'Invalid credentials' });
+  const user = users[0];
+    const token = jwt.sign(
+      {
+        email: user.email,
+        fname: user.fname,
+        lname: user.lname,
+        id: user.id,
+      },
+      JWT_SECRET,
+      { expiresIn: 3600 }
+    );
+
+    res.json({ token });
+  } catch (err) {
+    console.error("Login error:", err.message);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// DB status endpoint for diagnostics
+app.get('/api/db-status', async (req, res) => {
+  let host = null;
+  try {
+    const url = new URL(SUPABASE_URL || '');
+    host = url.hostname;
+  } catch (e) {
+    // ignore
+  }
+
+  res.json({
+    connected: !!supabaseAdmin,
+    host,
+    lastError: lastDbError ? String(lastDbError.message || lastDbError) : null,
+  });
+});
+
+// ✅ Bulk Image Upload
+app.post("/api/bulkImgupload", upload.array("images"), async (req, res) => {
+  const uploader_id = req.body.uploaderId;
+  const results = [];
+
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ success: false, error: 'Supabase admin client not configured' });
+    for (let file of req.files) {
+      // Defensive: ensure the file was actually written to disk by multer
+      if (!file || !file.path || !fs.existsSync(file.path)) {
+        const eno = new Error(`Uploaded file not found: ${file && file.path ? file.path : "(unknown)"}`);
+        eno.code = 'ENOENT';
+        eno.path = file && file.path ? file.path : uploadsDir;
+        throw eno;
+      }
+  // generate a proper UUID for img_id since the images.img_id column is a UUID
+  // Use crypto.randomUUID() (Node 14.17+/18+) to create a valid UUIDv4 string
+  const img_id = crypto.randomUUID();
+      const img_name = file.filename;
+      const original_name = file.originalname;
+      const datestamp = new Date();
+
+      const { data, error } = await supabaseAdmin.from('images').insert([{ img_id, img_name, original_name, datestamp, uploader_id }]);
+      if (error) throw error;
+
+      results.push({ img_id, img_name, original_name, datestamp, uploader_id, db: data });
+    }
+
+    res.json({ success: true, files: results });
+  } catch (err) {
+    console.error("Error inserting image:", err?.message || err);
+    // If file missing on disk, surface path and ENOENT code to client for debugging
+    if (err && (err.code === 'ENOENT' || (err.message && err.message.includes('ENOENT')))) {
+      const pathInfo = err.path || (req.files && req.files.length ? req.files.map(f => f.path) : null);
+      return res.status(500).json({ success: false, error: 'File not found on server', code: 'ENOENT', path: pathInfo });
+    }
+    res.status(500).json({ success: false, error: err?.message || String(err) });
+  }
+});
+
+// ✅ Get Images by Uploader
+app.get("/api/images/:uploaderId", async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase admin client not configured' });
+    const { data, error } = await supabaseAdmin.from('images').select('*').eq('uploader_id', req.params.uploaderId);
+    if (error) {
+      console.error('Error fetching images:', error);
+      return res.status(500).json({ error: error.message || error });
+    }
+    res.json(data);
+  } catch (err) {
+    console.error("Error fetching images:", err?.message || err);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// ============ Start Server ============
 app.listen(PORT, () => {
-    console.log(`connected to backend on port ${PORT}`);
+  console.log(`🚀 Server running on http://localhost:${PORT}`);
 });
