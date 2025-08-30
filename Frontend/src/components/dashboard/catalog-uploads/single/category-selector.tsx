@@ -38,6 +38,7 @@ import categoryTree, { CategoryNode } from '../bulk/category-tree';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { getSiteURL } from '@/lib/get-site-url';
 import formsJson from "./forms-json"; 
+import { set } from 'zod';
 
 
 const steps = ["Select Category", "Add Product Details"];
@@ -168,6 +169,8 @@ export default function CategorySelector(): React.JSX.Element {
 	const [selectedImages, setSelectedImages] = useState<SelectedImageItem[]>([]);
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
+	const [uploadedImagesjson, setUploadedImagesjson] = useState<string[]>([]);
+	console.log('uploadedImagesjson', uploadedImagesjson);
 	// Store form data for each product
 	const [productForms, setProductForms] = useState<ProductForm[]>([]);
 	const imageTypeList = [
@@ -223,7 +226,31 @@ export default function CategorySelector(): React.JSX.Element {
 				return;
 			}
 			// Optionally read response
-			// const body = await res.json();
+			 const body = await res.json();
+						 const uploaded = body.files || [];
+						 setUploadedImagesjson(uploaded);
+						 console.log('Upload response', body);
+						 // Merge returned img_id into productForms: attach to OtherAttributes.image_ids per product
+						 try {
+											 setProductForms(prev => {
+												 const copy = [...prev];
+												 for (let i = 0; i < uploaded.length; i++) {
+													 const fileRec = uploaded[i];
+													 const imgId = fileRec && fileRec.img_id ? fileRec.img_id : null;
+													 if (!imgId) continue;
+													 if (!copy[i]) copy[i] = initialFormData();
+													 if (!copy[i].OtherAttributes) copy[i].OtherAttributes = {};
+													 // store as array to allow multiple images per product later
+													 const other = copy[i].OtherAttributes as Record<string, unknown>;
+													 const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
+													 // Deduplicate to avoid adding the same img_id multiple times
+													 other.image_ids = Array.from(new Set([...existing, imgId]));
+												 }
+												 return copy;
+											 });
+						 } catch (e) {
+							 console.error('Failed to merge uploaded image ids into productForms', e);
+						 }
 			toast.success('Images uploaded successfully', { autoClose: 2000 });
 		} catch (err) {
 			console.error('Upload error', err);
