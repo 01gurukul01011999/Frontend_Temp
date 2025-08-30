@@ -4,7 +4,6 @@ import cors from 'cors';
 import multer from "multer";
 import path from "path";
 import fs from 'fs';
-import util from 'util';
 import crypto from 'crypto';
 import { fileURLToPath } from "url";
 import pkg from "pg";
@@ -83,6 +82,9 @@ const storage = multer.diskStorage({
 });
 
 const upload = multer({ storage });
+
+// Serve uploaded files so frontend can fetch them directly from the backend
+app.use('/uploads', express.static(uploadsDir));
 
 // ============ Routes ============
 
@@ -189,7 +191,7 @@ app.post("/api/bulkImgupload", upload.array("images"), async (req, res) => {
       }
   // generate a proper UUID for img_id since the images.img_id column is a UUID
   // Use crypto.randomUUID() (Node 14.17+/18+) to create a valid UUIDv4 string
-  const img_id = crypto.randomUUID();
+      const img_id = crypto.randomUUID();
       const img_name = file.filename;
       const original_name = file.originalname;
       const datestamp = new Date();

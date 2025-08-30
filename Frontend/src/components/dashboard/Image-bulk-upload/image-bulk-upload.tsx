@@ -54,9 +54,10 @@ export default function ImageBulkUpload(): React.JSX.Element {
 		// Add uploaderId from user context
 		if (user && user.id) {
 			formData.append('uploaderId', user.id);
+			console.log('Uploader ID:', user.id);
 		}
 	
-		const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}api/bulkImgupload`, {
+		const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`, {
 			method: 'POST',
 			body: formData,
 		});
@@ -138,7 +139,7 @@ export default function ImageBulkUpload(): React.JSX.Element {
 							}}
 						>
 							{selectedFiles.map((file, idx) => {
-								console.log(uploadedFiles);
+								console.log("arry",uploadedFiles);
 								const isUploaded = uploadedFiles.some(
 									(img) => img.img_name === file.name
 								);
@@ -218,15 +219,15 @@ export default function ImageBulkUpload(): React.JSX.Element {
 							{uploadedFiles.map((img, idx) => (
 								<TableRow key={idx}>
 									<TableCell>
-										<Avatar variant="rounded" src={'/uploads/'+img.img_name } />
+										<Avatar variant="rounded" src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/${img.img_name}`} />
 									</TableCell>
 									<TableCell>{img.img_name || img.name || `Image ${idx + 1}`}</TableCell>
 									<TableCell>
-										{'https://techpotli.com/uploads/'+img.img_name}
+										{`${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/${img.img_name}`}
 									</TableCell>
 									<TableCell>
 										<Button size="small" variant="contained" color="primary" sx={{ mr: 1 }}
-											onClick={() => navigator.clipboard.writeText('https://techpotli.com/uploads/'+img.img_name)}>
+											onClick={() => navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/${img.img_name}`)}>
 											Copy Link
 										</Button>
 										<Button size="small" variant="outlined" color="secondary" onClick={() => handleRemoveImage(idx)}>
