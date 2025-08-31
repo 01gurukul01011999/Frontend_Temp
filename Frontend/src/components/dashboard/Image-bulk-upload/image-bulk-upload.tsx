@@ -1,7 +1,7 @@
 'use client';
 import React from "react";
 import { useAuth } from '@/modules/authentication';
-import { Box, Typography, Button, IconButton, Avatar, Stack , 
+import { Box, Typography, Button, IconButton, Avatar, Stack, Tooltip,
 	Table,
 	TableBody,
 	TableCell,
@@ -25,7 +25,7 @@ const forbiddenImages = [
 
 export default function ImageBulkUpload(): React.JSX.Element {
 	const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
-	type UploadedFile = { img_name: string; name?: string };
+	type UploadedFile = { img_name: string; name?: string; publicUrl?: string };
 	const [uploadedFiles, setUploadedFiles] = React.useState<UploadedFile[]>([]);
 	const { user } = useAuth();
 	//console.log(selectedFiles);
@@ -66,6 +66,7 @@ export default function ImageBulkUpload(): React.JSX.Element {
 		const data = await res.json();
 		if (data.success && Array.isArray(data.files)) {
 			setUploadedFiles(data.files as UploadedFile[]);
+			//console.log('Uploaded files:', data.files);
 		}
 	};
 
@@ -211,7 +212,7 @@ export default function ImageBulkUpload(): React.JSX.Element {
 							<TableRow>
 								<TableCell><strong>Image</strong></TableCell>
 								<TableCell><strong>Title</strong></TableCell>
-								<TableCell><strong>Link</strong></TableCell>
+								<TableCell ><strong>Link</strong></TableCell>
 								<TableCell><strong>Actions</strong></TableCell>
 							</TableRow>
 						</TableHead>
@@ -219,15 +220,19 @@ export default function ImageBulkUpload(): React.JSX.Element {
 							{uploadedFiles.map((img, idx) => (
 								<TableRow key={idx}>
 									<TableCell>
-										<Avatar variant="rounded" src={`${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/${img.img_name}`} />
+										<Avatar variant="rounded" src={img.publicUrl } />
 									</TableCell>
-									<TableCell>{img.img_name || img.name || `Image ${idx + 1}`}</TableCell>
-									<TableCell>
-										{`${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/${img.img_name}`}
+									<TableCell sx={{ width: 80 }}>{img.img_name || img.name || `Image ${idx + 1}`}</TableCell>
+									<TableCell sx={{ width: 250, maxWidth: 250 }}>
+										<Tooltip title={img.publicUrl || ''} placement="top" arrow>
+											<Typography variant="body2" sx={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', display: 'block', maxWidth: 250 }}>
+												{img.publicUrl}
+											</Typography>
+										</Tooltip>
 									</TableCell>
 									<TableCell>
 										<Button size="small" variant="contained" color="primary" sx={{ mr: 1 }}
-											onClick={() => navigator.clipboard.writeText(`${process.env.NEXT_PUBLIC_BACKEND_URL}/uploads/${img.img_name}`)}>
+											onClick={() => img.publicUrl ? navigator.clipboard.writeText(img.publicUrl) : Promise.resolve()}>
 											Copy Link
 										</Button>
 										<Button size="small" variant="outlined" color="secondary" onClick={() => handleRemoveImage(idx)}>

@@ -40,7 +40,8 @@ const PORT = process.env.PORT || 4000;
 
 // Use Supabase server client (service role) to avoid direct Postgres DNS dependency
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
-const SUPABASE_SERVICE_ROLE_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+// prefer a server-only service role key, but fall back to other env names if present
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SUPABASE_ANON_KEY;
 
 let supabaseAdmin = null;
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
@@ -173,15 +174,17 @@ app.get('/api/db-status', async (req, res) => {
     lastError: lastDbError ? String(lastDbError.message || lastDbError) : null,
   });
 });
-
-// ✅ Bulk Image Upload
+//Bulk Image Upload
 app.post("/api/bulkImgupload", upload.array("images"), async (req, res) => {
   const uploader_id = req.body.uploaderId;
+  const bucket = process.env.SUPABASE_STORAGE_BUCKET || process.env.SUPABASE_BUCKET || 'images';
   const results = [];
+  const uploadedFiles = req.files || [];
 
   try {
     if (!supabaseAdmin) return res.status(500).json({ success: false, error: 'Supabase admin client not configured' });
-    for (let file of req.files) {
+
+    for (let file of uploadedFiles) {
       // Defensive: ensure the file was actually written to disk by multer
       if (!file || !file.path || !fs.existsSync(file.path)) {
         const eno = new Error(`Uploaded file not found: ${file && file.path ? file.path : "(unknown)"}`);
@@ -189,25 +192,86 @@ app.post("/api/bulkImgupload", upload.array("images"), async (req, res) => {
         eno.path = file && file.path ? file.path : uploadsDir;
         throw eno;
       }
-  // generate a proper UUID for img_id since the images.img_id column is a UUID
-  // Use crypto.randomUUID() (Node 14.17+/18+) to create a valid UUIDv4 string
+
+      // generate a proper UUID for img_id since the images.img_id column is a UUID
       const img_id = crypto.randomUUID();
-      const img_name = file.filename;
       const original_name = file.originalname;
       const datestamp = new Date();
 
-      const { data, error } = await supabaseAdmin.from('images').insert([{ img_id, img_name, original_name, datestamp, uploader_id }]);
-      if (error) throw error;
+      // Read file buffer from disk and upload to Supabase Storage
+      const buffer = fs.readFileSync(file.path);
+      // Build a storage path that includes the uuid to avoid collisions
+      const storagePath = `products/${img_id}_${file.originalname}`.replace(/\s+/g, '_');
 
-      results.push({ img_id, img_name, original_name, datestamp, uploader_id, db: data });
+      const { data: storageData, error: storageError } = await supabaseAdmin.storage.from(bucket).upload(storagePath, buffer, {
+        contentType: file.mimetype || 'application/octet-stream',
+        upsert: false,
+      });
+      if (storageError) throw storageError;
+
+      // Create a signed URL valid for 1 hour so frontend can preview/download privately
+      const signedTtl = 60 * 60; // 1 hour
+      const { data: signedData, error: signedErr } = await supabaseAdmin.storage.from(bucket).createSignedUrl(storagePath, signedTtl);
+      if (signedErr) {
+        // not fatal; continue but record the error
+        console.warn('createSignedUrl error for', storagePath, signedErr.message || signedErr);
+      }
+
+      // Insert metadata into images table. Some projects may not have a `storage_path` column yet;
+      // attempt to insert with storage_path and if the DB/schema complains, retry without it.
+      const img_name = path.basename(storagePath);
+      let dbData = null;
+      try {
+        const { data: _dbData, error: dbError } = await supabaseAdmin.from('images').insert([{ img_id, img_name, original_name, datestamp, uploader_id, storage_path: storagePath }]);
+        if (dbError) throw dbError;
+        dbData = _dbData;
+      } catch (dbErr) {
+        const msg = String((dbErr && (dbErr.message || dbErr)) || dbErr);
+        // Detect PostgREST/schema error mentioning missing column
+        if (msg.includes("storage_path") || msg.includes("Could not find the 'storage_path'")) {
+          console.warn('images.storage_path column not present; retrying insert without storage_path');
+          const { data: _dbData2, error: dbError2 } = await supabaseAdmin.from('images').insert([{ img_id, img_name, original_name, datestamp, uploader_id }]);
+          if (dbError2) throw dbError2;
+          dbData = _dbData2;
+        } else {
+          throw dbErr;
+        }
+      }
+
+      // Build a public URL (works for public buckets) and include both public and signed URLs in the response
+      let publicUrl = null;
+      try {
+        const { data: publicData } = supabaseAdmin.storage.from(bucket).getPublicUrl(storagePath);
+        publicUrl = publicData?.publicUrl || null;
+      } catch (e) {
+        console.warn('getPublicUrl failed for', storagePath, e?.message || e);
+      }
+
+      // push result including identifiers and the signed URL if available
+      results.push({ img_id, img_name, original_name, datestamp, uploader_id, storagePath, storageData, publicUrl, signedUrl: signedData?.signedUrl || null, db: dbData });
+
+      // cleanup local temp file
+      try { fs.unlinkSync(file.path); } catch (e) { /* ignore cleanup errors */ }
     }
 
     res.json({ success: true, files: results });
+    //console.log("Processed", results);
   } catch (err) {
-    console.error("Error inserting image:", err?.message || err);
+    console.error("Error processing image upload:", err?.message || err);
+    // Attempt to clean up any temp files that remain
+    try {
+      for (let f of uploadedFiles || []) {
+        if (f && f.path && fs.existsSync(f.path)) {
+          fs.unlinkSync(f.path);
+        }
+      }
+    } catch (cleanupErr) {
+      console.warn('Error cleaning up temp files:', cleanupErr);
+    }
+
     // If file missing on disk, surface path and ENOENT code to client for debugging
     if (err && (err.code === 'ENOENT' || (err.message && err.message.includes('ENOENT')))) {
-      const pathInfo = err.path || (req.files && req.files.length ? req.files.map(f => f.path) : null);
+      const pathInfo = err.path || (uploadedFiles && uploadedFiles.length ? uploadedFiles.map(f => f.path) : null);
       return res.status(500).json({ success: false, error: 'File not found on server', code: 'ENOENT', path: pathInfo });
     }
     res.status(500).json({ success: false, error: err?.message || String(err) });
