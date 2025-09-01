@@ -105,7 +105,7 @@ export async function updateProfileAction(form: FormData) {
  * Updates the user's avatar URL in their profile
  */
 export async function updateAvatarAction(avatarUrl: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   try {
     // Get current user
@@ -144,7 +144,7 @@ export async function updateAvatarAction(avatarUrl: string) {
  * Deletes the user's profile and auth account
  */
 export async function deleteAccountAction() {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   try {
     // Get current user
@@ -183,7 +183,7 @@ export async function deleteAccountAction() {
  * Retrieves a user's profile by ID for administrative purposes
  */
 export async function getUserByIdAction(userId: string) {
-  const supabase = createSupabaseServerClient();
+  const supabase = await createSupabaseServerClient();
 
   try {
     // Get current user to check permissions
