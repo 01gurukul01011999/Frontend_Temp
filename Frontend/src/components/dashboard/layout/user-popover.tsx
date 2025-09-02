@@ -63,6 +63,8 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
     }
   }, [signOut]);
 
+  //console.log('UserPopover render, user:', user, 'profile:', profile, 'profileError:', profileError);
+
   return (
     <Popover
       anchorEl={anchorEl}

@@ -318,6 +318,7 @@ const url =getSiteURL();
 						return options.filter(opt => opt.join(' > ').toLowerCase().includes(inputValue.toLowerCase()));
 					}}
 					renderOption={(props, option) => {
+						const { key: optionKey, ...propsRest } = props as any;
 						// Find the match index for bolding
 						//const label = option.join(' > ');
 						//const lowerLabel = label.toLowerCase();
@@ -327,7 +328,7 @@ const url =getSiteURL();
 						const last = option.at(-1);
 						const path = option.slice(0, -1).join(' > ');
 						return (
-							<li {...props} style={{ alignItems: 'flex-start', paddingTop: 8, paddingBottom: 8, display: 'block' }}>
+							<li key={optionKey} {...propsRest} style={{ alignItems: 'flex-start', paddingTop: 8, paddingBottom: 8, display: 'block' }}>
 								<div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{last}</div>
 								<div style={{ color: '#6b6b6b', fontSize: 10, marginTop: 2 }}>
 									{path && (

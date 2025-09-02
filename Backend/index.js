@@ -37,6 +37,8 @@ app.use((req, res, next) => {
 // Environment variables
 const JWT_SECRET = process.env.JWT_SECRET || "your_secret_key_here";
 const PORT = process.env.PORT || 4000;
+// Table to update for user/profile records (can be 'users', 'profiles', etc.)
+const USERS_TABLE = process.env.SUPABASE_USERS_TABLE || process.env.SUPABASE_USER_TABLE || 'profiles';
 
 // Use Supabase server client (service role) to avoid direct Postgres DNS dependency
 const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -293,6 +295,167 @@ app.get("/api/images/:uploaderId", async (req, res) => {
     res.status(500).send("Internal Server Error");
   }
 });
+
+
+app.post("/api/catalogs", async (req, res) => {
+  try {
+    // express.json() middleware parses the body into req.body
+    const payload = req.body;
+
+    if (!payload || typeof payload !== 'object') {
+      return res.status(400).json({ error: 'Invalid payload' });
+    }
+
+    // Use the pre-initialized supabaseAdmin client created at server startup
+    if (!supabaseAdmin) {
+      console.error('Supabase admin client not configured');
+      return res.status(500).json({ error: 'Server configuration error: Supabase admin client not configured' });
+    }
+
+    const { data, error } = await supabaseAdmin.from('catalogs').insert([payload]).select();
+
+    if (error) {
+      console.error('Supabase insert error', error);
+      return res.status(500).json({ error });
+    }
+
+    return res.status(200).json({ data });
+  } catch (err) {
+    console.error('API /api/catalogs error', err);
+    return res.status(500).json({ error: String(err) });
+  }
+});
+
+
+app.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
+  const userId = req.body.userId;
+  const file = req.file;
+
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ error: 'Supabase admin client not configured' });
+
+    if (!file) {
+      return res.status(400).json({ error: "No file uploaded" });
+    }
+
+    // Read buffer from disk (diskStorage is used)
+    let buffer = null;
+    try {
+      buffer = fs.readFileSync(file.path);
+    } catch (e) {
+      console.error('Failed to read uploaded file from disk:', e);
+      return res.status(500).json({ error: 'Failed to read uploaded file on server' });
+    }
+
+    // Unique filename stored in bucket path
+    const fileName = `${userId}-${Date.now()}-${file.originalname}`.replace(/\s+/g, '_');
+
+    // Default storage bucket and path: bucket 'techpotli', folder 'avatars'
+    // You can override by setting SUPABASE_STORAGE_BUCKET in .env to a different bucket name.
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET || process.env.SUPABASE_BUCKET || 'techpotli';
+    const storagePath = `avatars/${fileName}`.replace(/\s+/g, '_');
+
+    // Helper to perform upload; will attempt to create bucket if missing
+    async function performUpload() {
+      const { error } = await supabaseAdmin.storage.from(bucket).upload(storagePath, buffer, {
+        contentType: file.mimetype || 'application/octet-stream',
+        upsert: true,
+      });
+      return error;
+    }
+
+    let uploadError = await performUpload();
+
+    // If bucket not found, try to create it (requires admin privileges) then retry
+    if (uploadError) {
+      const msg = (uploadError && (uploadError.message || String(uploadError))) || String(uploadError);
+      if (msg.includes('Bucket not found') || msg.includes('bucket not found') || msg.includes('Could not find bucket')) {
+        try {
+          console.warn(`Bucket '${bucket}' not found. Attempting to create it.`);
+          const { error: createErr } = await supabaseAdmin.storage.createBucket(bucket, { public: true });
+          if (createErr) throw createErr;
+          // retry upload
+          uploadError = await performUpload();
+        } catch (createOrUploadErr) {
+          console.error('Upload/create bucket failed:', createOrUploadErr);
+          try { fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
+          return res.status(500).json({ error: 'Upload failed', details: createOrUploadErr.message || String(createOrUploadErr) });
+        }
+      } else {
+        console.error("Upload error:", uploadError);
+        try { fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
+        return res.status(500).json({ error: 'Upload failed', details: uploadError.message || String(uploadError) });
+      }
+    }
+
+    // Get public URL for the uploaded object
+    let avatarUrl = null;
+    try {
+      const { data: publicData } = await supabaseAdmin.storage.from(bucket).getPublicUrl(storagePath);
+      avatarUrl = publicData?.publicUrl || null;
+    } catch (e) {
+      console.warn('getPublicUrl failed:', e?.message || e);
+    }
+
+    // Update user/profile table in Supabase (table configurable via env)
+    // If the configured table name is wrong (PGRST205), try the common alternate
+    // ('users' <-> 'profiles') before failing so deployments with differing
+    // schemas can still succeed without immediate env changes.
+    let dbError = null;
+    let updatedTable = null;
+    try {
+      const { error } = await supabaseAdmin
+        .from(USERS_TABLE)
+        .update({ avatar_url: avatarUrl })
+        .eq("id", userId);
+      dbError = error || null;
+      if (!dbError) updatedTable = USERS_TABLE;
+    } catch (e) {
+      dbError = e;
+    }
+
+    // If PostgREST reports missing table (PGRST205), try the alternate table name
+    if (dbError && dbError.code === 'PGRST205') {
+      const altTable = USERS_TABLE === 'users' ? 'profiles' : 'users';
+      console.warn(`Primary table '${USERS_TABLE}' missing; attempting update on '${altTable}'.`);
+      try {
+        const { error: altErr } = await supabaseAdmin
+          .from(altTable)
+          .update({ avatar_url: avatarUrl })
+          .eq('id', userId);
+        if (!altErr) {
+          dbError = null;
+          updatedTable = altTable;
+        } else {
+          dbError = altErr;
+        }
+      } catch (altCatch) {
+        dbError = altCatch;
+      }
+    }
+
+    // cleanup temp file
+    try { fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
+
+    if (dbError) {
+      console.error("DB update error:", dbError);
+      if (dbError && dbError.code === 'PGRST205') {
+        return res.status(500).json({ error: 'DB update failed', message: dbError.message, code: dbError.code, hint: 'Check SUPABASE_USERS_TABLE and ensure the table exists in your Supabase project' });
+      }
+      return res.status(500).json({ error: "DB update failed", details: dbError.message || dbError });
+    }
+
+    res.json({ message: "Avatar updated successfully", avatar: avatarUrl, table: updatedTable });
+  } catch (err) {
+    console.error("Server error in /upload-avatar:", err?.message || err);
+    // Attempt to cleanup temp file if present
+    try { if (file && file.path && fs.existsSync(file.path)) fs.unlinkSync(file.path); } catch (e) { /* ignore */ }
+    res.status(500).json({ error: "Internal Server Error", details: String(err) });
+  }
+});
+
+
+
 
 // ============ Start Server ============
 app.listen(PORT, () => {

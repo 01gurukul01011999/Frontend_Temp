@@ -15,6 +15,7 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [_profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [refresh, setRefresh] = useState(0);
   const router = useRouter();
   
   // DEVELOPMENT MODE: Skip all checks for faster development
@@ -24,7 +25,7 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
   const forceBypass = true; // Set to false when ready for production
 
   useEffect(() => {
-    const checkAccess = async () => {
+  const checkAccess = async () => {
       try {
         // HARDCODED BYPASS FOR DEVELOPMENT - REMOVE IN PRODUCTION
         if (forceBypass) {
@@ -40,11 +41,27 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Get current user
-        const { data: { user }, error: userError } = await supabase.auth.getUser();
-        
-        if (userError || !user) {
-          router.push('/auth/sign-in');
+        // Helper: wrap promises with a timeout so UI doesn't hang forever
+        const withTimeout = async <T,>(p: Promise<T>, ms = 8000): Promise<T> => {
+          return await Promise.race([p, new Promise<T>((_, rej) => setTimeout(() => rej(new Error('timeout')), ms))]);
+        };
+
+        // Get current user (with timeout)
+        let user: any = null;
+        try {
+          // supabase.auth.getUser() resolves to { data: { user }, error }
+          const res: any = await withTimeout(supabase.auth.getUser(), 8000);
+          user = res?.data?.user ?? null;
+          const userError = res?.error ?? null;
+          if (userError || !user) {
+            router.push('/auth/sign-in');
+            return;
+          }
+        } catch (err) {
+          // Timeout or network error
+          console.error('[DashboardGate] getUser error:', err);
+          setError('Checking access timed out. Please check your network and try again.');
+          setIsLoading(false);
           return;
         }
 
@@ -101,7 +118,7 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
       }
     };
 
-    checkAccess();
+  checkAccess();
   }, [router, isDevelopment]);
 
   if (isLoading) {
@@ -123,7 +140,6 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
           <div className="text-red-600 text-6xl mb-4">⚠️</div>
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Access Restricted</h2>
           <p className="text-gray-600 mb-6">{error}</p>
-          
           <div className="space-y-3">
             <button
               onClick={() => router.push('/auth/sign-in')}
@@ -131,12 +147,20 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
             >
               Sign In
             </button>
-            
+
             <button
               onClick={() => router.push('/auth/sign-up')}
               className="w-full bg-gray-600 text-white px-6 py-2 rounded-md hover:bg-gray-700 transition-colors"
             >
               Sign Up
+            </button>
+
+            {/* Retry for transient network/timeouts */}
+            <button
+              onClick={() => { setError(null); setIsLoading(true); setRefresh(r => r + 1); }}
+              className="w-full border border-blue-600 text-blue-600 px-6 py-2 rounded-md hover:bg-blue-50 transition-colors"
+            >
+              Retry
             </button>
           </div>
         </div>

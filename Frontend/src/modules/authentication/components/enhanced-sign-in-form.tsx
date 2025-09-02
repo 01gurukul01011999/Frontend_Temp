@@ -6,10 +6,6 @@ import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { getNetworkErrorMessage } from '@/lib/network-health';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signInSchema, type SignInData } from '@/lib/validations/auth';
 

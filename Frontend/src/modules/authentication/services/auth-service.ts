@@ -178,7 +178,7 @@ class AuthService {
       if (!response.data.user || response.data.user === "Token expired") {
         await this.signOut();
         if (typeof window !== 'undefined') {
-          window.location.href = '/auth/sign-in';
+          globalThis.window.location.href = '/auth/sign-in';
         }
         return { data: null, error: 'Token expired or user not found' };
       }
@@ -193,7 +193,7 @@ class AuthService {
               error.response.data.error === 'Unauthorized'))) {
           await this.signOut();
           if (typeof window !== 'undefined') {
-            window.location.href = '/auth/sign-in';
+            globalThis.window.location.href = '/auth/sign-in';
           }
         }
         return { error: error.response?.data?.error || 'Failed to fetch user', data: null };

@@ -15,8 +15,8 @@ export async function signUpAction(form: FormData) {
     const password = String(form.get('password') || '');
     const firstName = String(form.get('firstName') || '');
     const lastName = String(form.get('lastName') || '');
-    const rawPhone = String(form.get('phone') || '');
-    const phone = rawPhone.startsWith('+91') ? rawPhone : `+91${rawPhone.replace(/\D/g, '')}`;
+  const rawPhone = String(form.get('phone') || '');
+  const phone = rawPhone.startsWith('+91') ? rawPhone : `+91${rawPhone.replaceAll(/\D/g, '')}`;
     const businessName = String(form.get('businessName') || '');
     const gstNumber = String(form.get('gstNumber') || '').toUpperCase();
     const pincode = String(form.get('pincode') || '');

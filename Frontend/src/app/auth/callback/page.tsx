@@ -1,6 +1,6 @@
-'use client';
+"use client";
 
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 
@@ -44,7 +44,7 @@ export default function AuthCallback() {
           }
 
           // Check if user profile exists
-          const { data: profile, error: profileError } = await supabase
+          const { data: _profile, error: profileError } = await supabase
             .from('profiles')
             .select('role, account_status, is_verified')
             .eq('id', user.id)

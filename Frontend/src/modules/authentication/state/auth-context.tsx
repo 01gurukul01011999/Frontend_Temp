@@ -7,7 +7,7 @@ import { authService } from '@/lib/supabase/auth-service';
 import { logger } from '@/lib/default-logger';
 
 export interface AuthContextValue extends AuthState {
-  checkSession?: () => Promise<void>;
+  checkSession?: (opts?: { redirectOnMissing?: boolean }) => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (firstName: string, lastName: string, email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
@@ -32,11 +32,10 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
 
   const router = useRouter();
 
-  const checkSession = React.useCallback(async (): Promise<void> => {
+  const checkSession = React.useCallback(async (opts?: { redirectOnMissing?: boolean }): Promise<void> => {
     try {
       console.log('[AuthContext]: Checking session...');
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
       const { user, error } = await authService.getCurrentUser();
       console.log('[AuthContext]: Session check result:', { user: !!user, error });
       
@@ -49,7 +48,10 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
           isLoading: false, 
           isAuthenticated: false 
         }));
-        // Don't redirect on mount, let the user see the forms
+        // Redirect to sign-in if requested (for protected pages)
+        if (opts?.redirectOnMissing) {
+          try { router.push('/auth/sign-in'); } catch (e) { /* ignore */ }
+        }
         return;
       }
 
@@ -60,6 +62,10 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
         isLoading: false, 
         isAuthenticated: !!user 
       }));
+      // If no user and caller asked to redirect, send them to sign-in
+      if (!user && opts?.redirectOnMissing) {
+        try { router.push('/auth/sign-in'); } catch (e) { /* ignore */ }
+      }
     } catch (error) {
       logger.error(error);
       setState(prev => ({ 
@@ -69,6 +75,9 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
         isLoading: false, 
         isAuthenticated: false 
       }));
+      if (opts?.redirectOnMissing) {
+        try { router.push('/auth/sign-in'); } catch (e) { /* ignore */ }
+      }
     }
   }, [router]);
 
@@ -185,6 +194,21 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
     updatePassword,
     updateProfile,
   };
+
+  // Redirect to sign-in for protected routes when session is missing.
+  React.useEffect(() => {
+    try {
+      const pathname = globalThis?.location?.pathname ?? '';
+      // Skip redirect for auth pages and public root
+      const isAuthPage = pathname.startsWith('/auth');
+      const isPublicRoot = pathname === '/';
+      if (!state.isLoading && !state.isAuthenticated && !isAuthPage && !isPublicRoot) {
+        try { router.push('/auth/sign-in'); } catch (e) { /* ignore */ }
+      }
+    } catch (e) {
+      // ignore
+    }
+  }, [state.isLoading, state.isAuthenticated, router]);
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }

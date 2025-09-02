@@ -26,11 +26,13 @@ export async function uploadAvatar(file: File) {
     // Generate unique filename
     const fileExt = file.name.split('.').pop();
     const fileName = `${user.id}-${Date.now()}.${fileExt}`;
-    const filePath = `avatars/${fileName}`;
+  // Allow overriding the bucket name via NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET
+  const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'techpotli';
+  const filePath = `avatars/${fileName}`;
 
     // Upload file to Supabase storage
     const { error: uploadError } = await supabase.storage
-      .from('avatars')
+      .from(bucket)
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -72,8 +74,9 @@ export async function getAvatarUrl(path: string, expiresIn: number = 3600) {
   try {
     if (!path) return null;
 
+  const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'techpotli';
     const { data, error } = await supabase.storage
-      .from('avatars')
+      .from(bucket)
       .createSignedUrl(path, expiresIn);
 
     if (error) {
@@ -99,9 +102,10 @@ export async function deleteAvatar(path: string) {
   try {
     if (!path) return false;
 
-    // Delete file from storage
+  // Delete file from storage
+  const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'techpotli';
     const { error: deleteError } = await supabase.storage
-      .from('avatars')
+      .from(bucket)
       .remove([path]);
 
     if (deleteError) {

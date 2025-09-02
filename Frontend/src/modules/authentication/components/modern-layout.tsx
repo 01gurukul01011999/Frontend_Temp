@@ -1,6 +1,7 @@
-'use client';
 
+'use client';
 import * as React from 'react';
+import Image from 'next/image';
 import { motion } from 'framer-motion';
 import { HeroSection } from './hero-section';
 
@@ -112,10 +113,13 @@ export function ModernLayout({ children }: ModernLayoutProps): React.JSX.Element
             transition={{ duration: 0.8, delay: 0.6 }}
             className="mb-6"
           >
-            <img 
+            <Image 
               src="/techpotli-logo.svg" 
               alt="Techpotli" 
+              height={64}
+              width={256}
               className="h-16 w-auto mx-auto"
+              priority
             />
           </motion.div>
           
@@ -134,7 +138,7 @@ export function ModernLayout({ children }: ModernLayoutProps): React.JSX.Element
            <motion.p
              initial={{ opacity: 0, y: 20 }}
              animate={{ opacity: 1, y: 0 }}
-             transition={{ duration: 0.8, delay: 1.0 }}
+             transition={{ duration: 0.8, delay: 1 }}
              className="text-lg text-gray-600 mb-6"
            >
              Grow faster. Sellers on Techpotli earn{' '}
