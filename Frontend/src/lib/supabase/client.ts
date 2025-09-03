@@ -28,7 +28,7 @@ export const createSupabaseClient = () => {
         fetch: (url, options = {}) => {
           // Add timeout to fetch requests
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 seconds
+          const timeoutId = setTimeout(() => controller.abort(), 15_000); // 15 seconds
           
           return fetch(url, {
             ...options,
@@ -37,8 +37,8 @@ export const createSupabaseClient = () => {
         },
       },
       realtime: {
-        timeout: 15000,
-        heartbeatIntervalMs: 30000,
+        timeout: 15_000,
+        heartbeatIntervalMs: 30_000,
       },
     }
   );

@@ -36,7 +36,7 @@ export function MainNav(): React.JSX.Element {
       if (user?.avatar_url) return user.avatar_url;
 
       // Try cached profile for instant display
-      if (typeof window !== 'undefined') {
+      if (typeof globalThis !== 'undefined' && globalThis.window) {
         try {
           const cached = localStorage.getItem('cached-user-profile') || sessionStorage.getItem('cached-user-profile');
           if (cached) {
@@ -44,16 +44,20 @@ export function MainNav(): React.JSX.Element {
             if (parsed?.avatar_url) return parsed.avatar_url;
             console.log('User Avatar:', parsed.avatar_url);
           }
-        } catch (e) {
-          // ignore JSON parse errors
+        } catch {
+          /* ignore JSON parse errors */
         }
       }
 
       return '';
     };
 
-    setAvatar(computeAvatar());
-  }, [user, contextUser, isLoading]);
+    const newAvatar = computeAvatar();
+    // Only update state when the avatar actually changes to avoid re-render loops
+    setAvatar((prev) => (prev === newAvatar ? prev : newAvatar));
+    // Depend only on the avatar_url fields (not whole user objects) to avoid
+    // re-running the effect when unrelated properties change.
+  }, [user?.avatar_url, contextUser?.avatar_url, isLoading]);
 
   // Get business name with instant cache fallback
   const getBusinessName = () => {

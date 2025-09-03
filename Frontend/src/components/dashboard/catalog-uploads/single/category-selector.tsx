@@ -38,7 +38,6 @@ import categoryTree, { CategoryNode } from '../bulk/category-tree';
 import AddPhotoAlternateIcon from '@mui/icons-material/AddPhotoAlternate';
 import { getSiteURL } from '@/lib/get-site-url';
 import formsJson from "./forms-json"; 
-import { set } from 'zod';
 
 
 const steps = ["Select Category", "Add Product Details"];
@@ -53,6 +52,9 @@ type ProductForm = {
 	OtherAttributes: ProductSection;
 };
 
+// Represent file record returned by backend upload endpoints
+type UploadedFile = { img_id?: string; publicUrl?: string; signedUrl?: string; storagePath?: string };
+
 // Hoisted factory to avoid function-in-render linter rule
 function initialFormData(): ProductForm {
 	return {
@@ -66,8 +68,8 @@ function initialFormData(): ProductForm {
 // Generate a stable unique id (uses crypto.randomUUID when available)
 function genUniqueId(): string {
 	try {
-		if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return (crypto as any).randomUUID();
-	} catch (e) {
+		if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return (crypto as unknown as { randomUUID?: () => string }).randomUUID?.() ?? '';
+	} catch {
 		// ignore and fallback
 	}
 	return `id_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
@@ -84,7 +86,6 @@ function ensureProductFormIds(forms: ProductForm[]): (ProductForm & { id: string
 	});
 	return updated as (ProductForm & { id: string })[];
 }
-
 // Small deep clone helper to replace JSON.parse(JSON.stringify(...))
 function deepClone<T>(v: T): T {
 	// Use structuredClone if available
@@ -159,6 +160,16 @@ function _isLeaf(tree: CategoryNode, path: string[]): boolean {
 	return node === null && path.length > 0;
 }
 
+// Module-scoped helper to read a File into a Data URL. Moved out of component to satisfy
+// unicorn/consistent-function-scoping.
+const _readFileToDataUrl = (f: File): Promise<string> =>
+	new Promise((resolve, reject) => {
+		const r = new FileReader();
+		r.addEventListener('load', () => (typeof r.result === 'string' ? resolve(r.result) : reject(new Error('no result'))));
+		r.addEventListener('error', () => reject(new Error('read error')));
+		r.readAsDataURL(f);
+	});
+
 export default function CategorySelector(): React.JSX.Element {
 	// Removed: const [techpotliInfoAnchor, setTechpotliInfoAnchor] = useState<HTMLElement | null>(null);
 	// Info icon popover anchor for Techpotli Price
@@ -169,7 +180,7 @@ export default function CategorySelector(): React.JSX.Element {
 	const [selectedImages, setSelectedImages] = useState<SelectedImageItem[]>([]);
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
-	const [uploadedImagesjson, setUploadedImagesjson] = useState<string[]>([]);
+	const [_uploadedImagesjson, _setUploadedImagesjson] = useState<UploadedFile[]>([]);
 	//console.log('uploadedImagesjson', uploadedImagesjson);
 	// Store form data for each product
 	const [productForms, setProductForms] = useState<ProductForm[]>([]);
@@ -220,40 +231,40 @@ export default function CategorySelector(): React.JSX.Element {
 
 			const uploadUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`;
 			const res = await fetch(uploadUrl, { method: 'POST', body: formData });
-			if (!res.ok) {
+					if (res.ok === false) {
 				console.error('Image upload failed', await res.text());
 				toast.error('Image upload failed. Please try again.');
 				return;
 			}
 			// Optionally read response
 			 const body = await res.json();
-						 const uploaded = body.files || [];
-						 setUploadedImagesjson(uploaded);
+			 const uploaded: UploadedFile[] = (body.files || []) as UploadedFile[];
+						 _setUploadedImagesjson(uploaded);
 						 console.log('Upload response', body);
 						 // Merge returned img_id into productForms: attach to OtherAttributes.image_ids per product
 						 try {
-											 setProductForms(prev => {
-												 const copy = [...prev];
-												 for (let i = 0; i < uploaded.length; i++) {
-													 const fileRec = uploaded[i];
-													 const imgId = fileRec && fileRec.img_id ? fileRec.img_id : null;
-													 if (!imgId) continue;
-													 if (!copy[i]) copy[i] = initialFormData();
-													 if (!copy[i].OtherAttributes) copy[i].OtherAttributes = {};
-													 // store as array to allow multiple images per product later
-													 const other = copy[i].OtherAttributes as Record<string, unknown>;
-													 const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-													 // Deduplicate to avoid adding the same img_id multiple times
-													 other.image_ids = Array.from(new Set([...existing, imgId]));
-												 }
-												 return copy;
-											 });
-						 } catch (e) {
-							 console.error('Failed to merge uploaded image ids into productForms', e);
-						 }
+											setProductForms(prev => {
+												const copy = [...prev];
+												for (const [i, fileRec] of uploaded.entries()) {
+													const rec = fileRec as UploadedFile | null;
+													const imgId = rec && rec.img_id ? rec.img_id : null;
+													if (!imgId) continue;
+													if (!copy[i]) copy[i] = initialFormData();
+													if (!copy[i].OtherAttributes) copy[i].OtherAttributes = {};
+													// store as array to allow multiple images per product later
+													const other = copy[i].OtherAttributes as Record<string, unknown>;
+													const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
+													// Deduplicate to avoid adding the same img_id multiple times
+													other.image_ids = [...new Set([...existing, imgId])];
+												}
+												return copy;
+											});
+						} catch (error) {
+							console.error('Failed to merge uploaded image ids into productForms', error);
+						}
 			toast.success('Images uploaded successfully', { autoClose: 2000 });
-		} catch (err) {
-			console.error('Upload error', err);
+		} catch (error) {
+			console.error('Upload error', error);
 			toast.error('Failed to upload images');
 			return;
 		}
@@ -328,8 +339,8 @@ export default function CategorySelector(): React.JSX.Element {
 			return false;
 		};
 
-		for (let i = 0; i < formsToCheck.length; i++) {
-			const f = formsToCheck[i];
+		for (const [i, f] of formsToCheck.entries()) {
+			// i is index, f is form
 			const pd = (f.ProductDetails || {}) as ProductSection;
 			for (const key of productDetailsRequired) {
 				if (isEmpty(pd[key])) missing.push(`Product ${i + 1}: ${key}`);
@@ -354,7 +365,7 @@ export default function CategorySelector(): React.JSX.Element {
 //console.log('uploadimages', uploadedImages);
 	const { user } = useAuth();
 	const router = useRouter();
-	const [submitError, setSubmitError] = React.useState<string | null>(null);
+	const [_submitError, setSubmitError] = React.useState<string | null>(null);
 	// Upload images to backend
 	const MAX_TOTAL_SIZE = 5 * 1024 * 1024; // 5MB
 	const _handleGenerateTemplate = async () => {
@@ -528,10 +539,13 @@ function getFormIdFromCategoryTree(tree: Record<string, unknown> | string | null
 	let node: unknown = tree;
 	for (const seg of path) {
 		// Ensure node is an object with string keys (not an array)
-		if (!node || typeof node !== 'object' || Array.isArray(node)) return null;
-		const obj = node as Record<string, unknown>;
-		if (!(seg in obj)) return null;
-		node = obj[seg];
+		if (node && typeof node === 'object' && !Array.isArray(node)) {
+			const obj = node as Record<string, unknown>;
+			if (!(seg in obj)) return null;
+			node = obj[seg];
+		} else {
+			return null;
+		}
 	}
 	if (node === null || node === undefined) return null;
 	if (typeof node === 'string') return node; // leaf could be a string form id
@@ -560,6 +574,8 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const addProductInputRef = React.useRef<HTMLInputElement>(null);
 
+	// ...existing code...
+
 	// Handler for file input change (Add Product) — upload first, then add product on success
 	const handleAddProductImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
@@ -572,10 +588,13 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 				try {
 					const formData = new FormData();
 					formData.append('images', file);
-					if ((user as any)?.id) formData.append('uploaderId', (user as any).id);
+					const uploaderId = (user as { id?: string } | null)?.id;
+					if (uploaderId) {
+						formData.append('uploaderId', uploaderId);
+					}
 					const uploadUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`;
 					const res = await fetch(uploadUrl, { method: 'POST', body: formData });
-					if (!res.ok) {
+					if (res.ok === false) {
 						const text = await res.text();
 						console.error('Upload failed', text);
 						toast.error('Image upload failed. Please try again.');
@@ -594,7 +613,7 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 
 					// Now add preview and product form entry using the successful upload info
 					setSelectedImages(prev => {
-						const newImages = [...prev, { url: dataUrl, img_id: imgId, publicUrl } as any];
+						const newImages = [...prev, { url: dataUrl, img_id: imgId, publicUrl } as SelectedImageItem];
 						setProductForms(forms => {
 							const formsCopy = [...forms];
 							while (formsCopy.length < newImages.length) {
@@ -615,25 +634,27 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 							if (!copy[idx].OtherAttributes) copy[idx].OtherAttributes = {};
 							const other = copy[idx].OtherAttributes as Record<string, unknown>;
 							const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-							other.image_ids = Array.from(new Set([...existing, imgId]));
+							other.image_ids = [...new Set([...existing, imgId])];
 							return copy;
 						});
 					}
 
 					// store returned URLs/ids for UI
-					setUploadedImagesjson(prev => {
+					_setUploadedImagesjson(prev => {
 						try {
-							return [...prev, fileRec?.img_id || fileRec?.storagePath || ''];
-						} catch (e) {
+							// Store the full file record so types are consistent (fallback to a minimal object if needed)
+							const toPush: UploadedFile = fileRec || { img_id: fileRec?.img_id, publicUrl: fileRec?.publicUrl, storagePath: fileRec?.storagePath };
+							return [...prev, toPush];
+						} catch {
 							return prev;
 						}
 					});
 
 					toast.success('Image uploaded and product added', { autoClose: 1500 });
-				} catch (err) {
-					console.error('Error in handleAddProductImage upload flow', err);
-					toast.error('Failed to upload image');
-				} finally {
+					} catch (error) {
+						console.error('Error in handleAddProductImage upload flow', error);
+						toast.error('Failed to upload image');
+					} finally {
 					// Reset input so same file can be selected next time
 					if (addProductInputRef.current) addProductInputRef.current.value = '';
 				}
@@ -649,7 +670,7 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 	const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
 		if (!files || files.length === 0) return;
-		const fileArray = Array.from(files);
+	const fileArray = [...files];
 		const prevCount = selectedImages.length;
 
 		try {
@@ -669,9 +690,10 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 				try {
 					const formData = new FormData();
 					formData.append('images', file);
-					if ((user as any)?.id) formData.append('uploaderId', (user as any).id);
+					const uploaderId = (user as { id?: string } | null)?.id;
+					if (uploaderId) formData.append('uploaderId', String(uploaderId));
 					const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`, { method: 'POST', body: formData });
-					if (!res.ok) {
+					if (res.ok === false) {
 						const text = await res.text();
 						console.error('Upload failed', text);
 						return { dataUrl, fileRec: null, error: true };
@@ -680,8 +702,8 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 					const uploaded = body.files || [];
 					const fileRec = uploaded[0] || null;
 					return { dataUrl, fileRec };
-				} catch (err) {
-					console.error('Upload error', err);
+				} catch (error) {
+					console.error('Upload error', error);
 					return { dataUrl, fileRec: null, error: true };
 				}
 			}));
@@ -699,14 +721,14 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 				const formsCopy = [...prev];
 				while (formsCopy.length < prevCount + newItems.length) formsCopy.push(initialFormData());
 				// Merge image ids into corresponding product forms
-				for (let i = 0; i < newItems.length; i++) {
+				for (const [i, item] of newItems.entries()) {
 					const idx = prevCount + i;
-					const item = newItems[i] as { img_id?: string };
+					const it = item as { img_id?: string };
 					if (!formsCopy[idx]) formsCopy[idx] = initialFormData();
 					if (!formsCopy[idx].OtherAttributes) formsCopy[idx].OtherAttributes = {};
 					const other = formsCopy[idx].OtherAttributes as Record<string, unknown>;
 					const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-					if (item.img_id) other.image_ids = Array.from(new Set([...existing, item.img_id]));
+					if (it.img_id) other.image_ids = [...new Set([...existing, it.img_id])];
 				}
 				return formsCopy;
 			});
@@ -715,8 +737,8 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 			setPopupOpen(true);
 			// Move active product to last added
 			setActiveProductIndex(prevCount + newItems.length - 1);
-		} catch (e) {
-			console.error('Error processing selected images', e);
+		} catch (error) {
+			console.error('Error processing selected images', error);
 			toast.error('Failed to add images');
 		} finally {
 			// Reset input so same file can be selected again
@@ -1303,9 +1325,9 @@ const renderField = (
 						if (!inputValue || inputValue.length < 3) return [];
 						return options.filter(opt => opt.join(' > ').toLowerCase().includes(inputValue.toLowerCase()));
 					}}
-					renderOption={(props, option) => {
-						// Avoid spreading a `key` inside props into a DOM element — extract it and pass explicitly
-						const { key: optionKey, ...propsRest } = props as any;
+					renderOption={(props: React.HTMLAttributes<HTMLLIElement>, option: string[]) => {
+						// Use a stable key derived from the option path, and spread typed props.
+						const optionKey = option.join('-');
 						// Find the match index for bolding
 						//const label = option.join(' > ');
 						//const lowerLabel = label.toLowerCase();
@@ -1316,7 +1338,7 @@ const renderField = (
 						const last = option.at(-1);
 						const path = option.slice(0, -1).join(' > ');
 						return (
-							<li key={optionKey} {...propsRest} style={{ alignItems: 'flex-start', paddingTop: 8, paddingBottom: 8, display: 'block' }}>
+							<li key={optionKey} {...props} style={{ alignItems: 'flex-start', paddingTop: 8, paddingBottom: 8, display: 'block' }}>
 								<div style={{ fontWeight: 600, fontSize: 14, lineHeight: 1.2 }}>{last}</div>
 								<div style={{ color: '#6b6b6b', fontSize: 10, marginTop: 2 }}>
 									{path && (
@@ -2008,28 +2030,22 @@ const renderField = (
 																			data-replace="false"
 																			onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
 																				const replaceMain = (e.currentTarget.dataset.replace === 'true');
-																				const files = e.target.files ? Array.from(e.target.files) : [];
+																				const files = e.target.files ? [...e.target.files] : [];
 																				if (files.length === 0) return;
 																				const MAX_PER_PRODUCT = 5;
 
-																				// Helper to read a file to dataURL (fallback when server doesn't return public url)
-																				const readFileToDataUrl = (f: File) =>
-																					new Promise<string>((resolve, reject) => {
-																						const r = new FileReader();
-																						r.addEventListener('load', () => (typeof r.result === 'string' ? resolve(r.result) : reject(new Error('no result'))));
-																						r.addEventListener('error', () => reject(new Error('read error')));
-																						r.readAsDataURL(f);
-																					});
+																				// use hoisted _readFileToDataUrl helper
 
 																				try {
 																					// Upload files to server first
 																					const fd = new FormData();
 																					for (const f of files) fd.append('images', f);
-																					if ((user as any)?.id) fd.append('uploaderId', (user as any).id);
+																					const uploaderId = (user as { id?: string } | null)?.id;
+																					if (uploaderId) fd.append('uploaderId', String(uploaderId));
 
 																					const uploadUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`;
 																					const res = await fetch(uploadUrl, { method: 'POST', body: fd });
-																					if (!res.ok) {
+																					if (res.ok === false) {
 																						const text = await res.text().catch(() => 'upload failed');
 																						console.error('Per-product upload failed', text);
 																						toast.error('Image upload failed. Please try again.');
@@ -2049,7 +2065,7 @@ const renderField = (
 																								return { previewUrl, imgId: fileRec.img_id };
 																							}
 																							// fallback to dataUrl
-																							const dataUrl = await readFileToDataUrl(file);
+																							const dataUrl = await _readFileToDataUrl(file);
 																							return { previewUrl: dataUrl, imgId: fileRec.img_id };
 																						})
 																					);
@@ -2071,7 +2087,7 @@ const renderField = (
 																								cur.url = first.previewUrl;
 																								if (first.imgId) {
 																									// ensure unique
-																									cur.img_id = Array.from(new Set([...(cur.img_id || []), first.imgId]));
+																									cur.img_id = [...new Set([...(cur.img_id || []), first.imgId])];
 																								}
 																							}
 																						} else {
@@ -2079,7 +2095,7 @@ const renderField = (
 																							for (const p of previews) {
 																								const totalNow = (cur.url ? 1 : 0) + (cur.gallery ? cur.gallery.length : 0);
 																								if (totalNow >= MAX_PER_PRODUCT) break;
-																								if (!cur.url) {
+																								if (cur.url == null) {
 																									cur.url = p.previewUrl;
 																									if (p.imgId) cur.img_id.push(p.imgId);
 																								} else {
@@ -2107,19 +2123,19 @@ const renderField = (
 																								const other = fcopy[activeProductIndex].OtherAttributes as Record<string, unknown>;
 																								const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
 																								const newIds = previews.map(p => p.imgId).filter(Boolean) as string[];
-																								other.image_ids = Array.from(new Set([...existing, ...newIds]));
+																								other.image_ids = [...new Set([...existing, ...newIds])];
 																								return fcopy;
 																							});
-																						} catch (err) {
-																							console.error('Failed to merge img ids into productForms', err);
+																						} catch (error) {
+																							console.error('Failed to merge img ids into productForms', error);
 																						}
 
 																						return copy;
 																					});
 
 																					toast.success('Images uploaded and added', { autoClose: 1500 });
-																				} catch (err) {
-																					console.error('Per-product input handler error', err);
+																				} catch (error) {
+																					console.error('Per-product input handler error', error);
 																					toast.error('Failed to upload images');
 																				} finally {
 																					// reset input and dataset.replace
@@ -2202,7 +2218,7 @@ const renderField = (
 									a.download = 'inventory.json';
 									a.click();
 									URL.revokeObjectURL(url);
-								} catch (e) {
+								} catch {
 									toast.error('Failed to export inventory');
 								}
 							}}
@@ -2251,7 +2267,7 @@ const renderField = (
 													headers: { 'Content-Type': 'application/json' },
 													body: JSON.stringify(payload),
 												});
-												let body: any = null;
+												let body: unknown = null;
 												const contentType = res.headers.get('content-type') || '';
 												if (contentType.includes('application/json')) {
 													try { body = await res.json(); } catch { body = null; }
@@ -2260,27 +2276,27 @@ const renderField = (
 													try { body = await res.text(); } catch { body = null; }
 													console.warn('Non-JSON response for draft save', body);	
 												}
-												if (!res.ok) {
+												if (res.ok === false) {
 													console.error('Draft save failed', res.status, body);
 													// fallback: persist locally so user doesn't lose work
-													try { localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch {}
-													
+													try { localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch { /* ignore localStorage failures */ }
+                                                    
 												} else {
 													toast.success('Draft uploaded to server', { autoClose: 2000 });
 													// navigate back after small delay
 													setTimeout(() => {
-														try { router.push('/dashboard/catalog-uploads'); } catch (e) { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch { globalThis.history.back(); } }
+																					   try { router.push('/dashboard/catalog-uploads'); } catch { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch { globalThis.history.back(); } }
 													}, 600);
 												}
-											} catch (err) {
-												console.error('Error uploading draft', err);
+											} catch (error) {
+												console.error('Error uploading draft', error);
 												// fallback to localStorage
-												try { localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch {}
+												try { localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch { /* ignore localStorage failures */ }
 												toast.error('Failed to upload draft. Saved locally as fallback.');
 											}
 										})();
 									
-									} catch (e) {
+									} catch { /* top-level draft save failure */
 										toast.error('Failed to save draft', { autoClose: 2500 });
 									}
 								}}
@@ -2302,20 +2318,12 @@ const renderField = (
 									// set active product to the first missing product index (assumes format 'Product N: Field')
 									const m = missing[0].match(/Product (\d+):/);
 									if (m) {
-										const idx = parseInt(m[1], 10) - 1;
-										setActiveProductIndex(idx >= 0 ? idx : 0);
+										const idx = Number.parseInt(m[1], 10) - 1;
+										setActiveProductIndex(Math.max(0, idx));
 									}
 									return;
 								}
-
-								{/* Inline submit error banner */}
-								{submitError && (
-									<Box sx={{ width: '100%', mt: 1, mb: 1 }}>
-										<Box sx={{ background: '#ffebee', border: '1px solid #ffcdd2', color: '#b00020', p: 1, borderRadius: 1 }}>
-											<Typography variant="body2" sx={{ fontWeight: 600 }}>{submitError}</Typography>
-										</Box>
-									</Box>
-								)}
+								// Inline submit error banner (rendered below outside handler)
 								// Placeholder submit handler — replace with real API call
 								                                try {
 																		// send payload to server-side API which uses service role to insert
@@ -2346,25 +2354,40 @@ const renderField = (
 																				});
 
 																				// Try to read JSON first, fallback to text when server returns HTML/plain 500
-																				let body: any = null;
+																				let body: unknown = null;
 																				const contentType = res.headers.get('content-type') || '';
 																				if (contentType.includes('application/json')) {
 																					try {
 																						body = await res.json();
-																					} catch (e) {
+																					} catch {
 																						body = null;
 																					}
 																				} else {
 																					try {
 																						body = await res.text();
-																					} catch (e) {
+																					} catch {
 																						body = null;
 																					}
 																				}
 
-																				if (!res.ok) {
+																				if (res.ok === false) {
 																					console.error('Server insert error', res.status, res.statusText, body);
-																					const serverMsg = (body && typeof body === 'object') ? (body.error?.message || JSON.stringify(body)) : (typeof body === 'string' ? body : res.statusText);
+																					const serverMsg = (() => {
+																						// If body is an object, attempt to safely extract an error.message field
+																						if (body && typeof body === 'object' && !Array.isArray(body)) {
+																							const obj = body as Record<string, unknown>;
+																							if ('error' in obj) {
+																								const err = obj.error as unknown;
+																								if (err && typeof err === 'object' && !Array.isArray(err) && 'message' in (err as Record<string, unknown>)) {
+																									return String((err as Record<string, unknown>).message);
+																								}
+																							}
+																							// Fallback: stringify the object
+																							try { return JSON.stringify(obj); } catch { return String(obj); }
+																						}
+																						if (typeof body === 'string') return body;
+																						return res.statusText;
+																					})();
 																					// Show full status and server message to the user and set inline banner
 																					const msg = `Failed to save catalog (${res.status}): ${serverMsg}`;
 																					setSubmitError(msg);
@@ -2376,25 +2399,24 @@ const renderField = (
 																					toast.success('Catalog submitted and saved to database', { autoClose: 2500 });
 																					// redirect to catalog uploads list after short delay so toast is visible
 																					setTimeout(() => {
-																						try { router.push('/dashboard/catalog-uploads'); } catch (e) { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch (ee) { globalThis.history.back(); } }
+																						try { router.push('/dashboard/catalog-uploads'); } catch { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch { globalThis.history.back(); } }
 																					}, 600);
 																				}
-																			} catch (fetchErr) {
-																				console.error('Fetch to /api/catalogs failed', fetchErr);
-																				const msg = (fetchErr as any)?.message || String(fetchErr);
+																			} catch (error) {
+																				console.error('Fetch to /api/catalogs failed', error);
+																				const msg = (error instanceof Error ? error.message : String(error));
 																				setSubmitError('Failed to reach server API: ' + msg);
 																				toast.error('Failed to reach server API: ' + msg);
 																			}
-																		} catch (err) {
-																			console.error('Submit error', err);
+																		} catch (error) {
+																			console.error('Submit error', error);
 																			toast.error('Submit failed');
 																		}
 							
 									
 									// Optionally move to a confirmation step or reset
-								} catch (e) {
+								} catch {
 									toast.error('Submit failed', { autoClose: 2500 });
-								
 								}
 							}}
 						>

@@ -44,7 +44,7 @@ export class SupabaseAuthService {
   /**
    * Sign up a new user with email/password
    */
-  async signUp(params: SignUpParams): Promise<{ error?: string; user?: any }> {
+  async signUp(params: SignUpParams): Promise<{ error?: string; user?: unknown }> {
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: authData, error: authError } = await supabase.auth.signUp({
@@ -86,7 +86,7 @@ export class SupabaseAuthService {
       }
 
       return { user: authData.user };
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred during sign up' };
     }
   }
@@ -94,7 +94,7 @@ export class SupabaseAuthService {
   /**
    * Sign in user with email/password
    */
-  async signIn(params: SignInParams): Promise<{ error?: string; user?: any }> {
+  async signIn(params: SignInParams): Promise<{ error?: string; user?: unknown }> {
     try {
       const supabase = createSupabaseBrowserClient();
       const { data, error } = await supabase.auth.signInWithPassword({
@@ -107,7 +107,7 @@ export class SupabaseAuthService {
       }
 
       return { user: data.user };
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred during sign in' };
     }
   }
@@ -123,7 +123,7 @@ export class SupabaseAuthService {
         return { error: error.message };
       }
       return {};
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred during sign out' };
     }
   }
@@ -131,7 +131,7 @@ export class SupabaseAuthService {
   /**
    * Get the current authenticated user
    */
-  async getCurrentUser(): Promise<{ user?: any; error?: string }> {
+  async getCurrentUser(): Promise<{ user?: unknown; error?: string }> {
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { user }, error } = await supabase.auth.getUser();
@@ -141,7 +141,7 @@ export class SupabaseAuthService {
       }
 
       return { user };
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred while getting user' };
     }
   }
@@ -163,7 +163,7 @@ export class SupabaseAuthService {
       }
 
       return { profile: data };
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred while getting profile' };
     }
   }
@@ -198,7 +198,7 @@ export class SupabaseAuthService {
       }
 
       return {};
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred while updating profile' };
     }
   }
@@ -209,8 +209,9 @@ export class SupabaseAuthService {
   async resetPassword(email: string): Promise<{ error?: string }> {
     try {
       const supabase = createSupabaseBrowserClient();
+      const origin = globalThis.location?.origin ?? '';
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/auth/reset-password`,
+        redirectTo: `${origin}/auth/reset-password`,
       });
 
       if (error) {
@@ -218,7 +219,7 @@ export class SupabaseAuthService {
       }
 
       return {};
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred while requesting password reset' };
     }
   }
@@ -238,7 +239,7 @@ export class SupabaseAuthService {
       }
 
       return {};
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred while updating password' };
     }
   }
@@ -246,7 +247,7 @@ export class SupabaseAuthService {
   /**
    * Get current session
    */
-  async getSession(): Promise<{ session?: any; error?: string }> {
+  async getSession(): Promise<{ session?: unknown; error?: string }> {
     try {
       const supabase = createSupabaseBrowserClient();
       const { data: { session }, error } = await supabase.auth.getSession();
@@ -256,7 +257,7 @@ export class SupabaseAuthService {
       }
 
       return { session };
-    } catch (error) {
+    } catch {
       return { error: 'An unexpected error occurred while getting session' };
     }
   }
@@ -264,7 +265,7 @@ export class SupabaseAuthService {
   /**
    * Listen to auth state changes
    */
-  onAuthStateChange(callback: (event: string, session: any) => void) {
+  onAuthStateChange(callback: (event: string, session: unknown) => void) {
     const supabase = createSupabaseBrowserClient();
     return supabase.auth.onAuthStateChange(callback);
   }

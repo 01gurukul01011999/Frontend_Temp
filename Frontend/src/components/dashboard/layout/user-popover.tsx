@@ -1,6 +1,6 @@
 import * as React from 'react';
 import RouterLink from 'next/link';
-import { useRouter } from 'next/navigation';
+// router not used here
 import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import ListItemIcon from '@mui/material/ListItemIcon';
@@ -26,9 +26,9 @@ export interface UserPopoverProps {
 export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): React.JSX.Element {
   const { user, signOut } = useAuth();
 
-  const router = useRouter();
-  const [profile, setProfile] = React.useState<any | null>(null);
-  const [profileError, setProfileError] = React.useState<any | null>(null);
+  type Profile = { id: string; first_name?: string | null; last_name?: string | null; email?: string | null };
+  const [profile, setProfile] = React.useState<Profile | null>(null);
+  const [_profileError, setProfileError] = React.useState<unknown | null>(null);
 //console.log('UserPopover render, user:', user, 'profile:', profile, 'profileError:', profileError);
   React.useEffect(() => {
     let mounted = true;
@@ -41,9 +41,9 @@ export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): Reac
         if (!mounted) return;
         setProfile(p ?? null);
         setProfileError(error ?? null);
-      } catch (err) {
+      } catch (error) {
         if (!mounted) return;
-        setProfileError(err);
+        setProfileError(error);
       }
     };
 

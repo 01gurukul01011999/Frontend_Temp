@@ -15,7 +15,7 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
   const [isLoading, setIsLoading] = useState(true);
   const [_profile, setProfile] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [refresh, setRefresh] = useState(0);
+  // Removed unused 'refresh' state
   const router = useRouter();
   
   // DEVELOPMENT MODE: Skip all checks for faster development
@@ -47,19 +47,19 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
         };
 
         // Get current user (with timeout)
-        let user: any = null;
+        let user: { id: string } | null = null;
         try {
           // supabase.auth.getUser() resolves to { data: { user }, error }
-          const res: any = await withTimeout(supabase.auth.getUser(), 8000);
+          const res: { data?: { user?: { id: string } | null | undefined }, error?: unknown } = await withTimeout(supabase.auth.getUser(), 8000);
           user = res?.data?.user ?? null;
           const userError = res?.error ?? null;
           if (userError || !user) {
             router.push('/auth/sign-in');
             return;
           }
-        } catch (err) {
+        } catch (error_) {
           // Timeout or network error
-          console.error('[DashboardGate] getUser error:', err);
+          console.error('[DashboardGate] getUser error:', error_);
           setError('Checking access timed out. Please check your network and try again.');
           setIsLoading(false);
           return;
@@ -119,7 +119,7 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
     };
 
   checkAccess();
-  }, [router, isDevelopment]);
+  }, [router, isDevelopment, forceBypass]);
 
   if (isLoading) {
     return (
@@ -157,7 +157,7 @@ export function DashboardGate({ children }: { children: React.ReactNode }) {
 
             {/* Retry for transient network/timeouts */}
             <button
-              onClick={() => { setError(null); setIsLoading(true); setRefresh(r => r + 1); }}
+              onClick={() => { setError(null); setIsLoading(true); }}
               className="w-full border border-blue-600 text-blue-600 px-6 py-2 rounded-md hover:bg-blue-50 transition-colors"
             >
               Retry

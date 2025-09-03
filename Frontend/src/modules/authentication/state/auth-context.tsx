@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import type { User, AuthState } from '../types';
+import type { User, AuthState, ProfileParams } from '../types';
 import { authService } from '@/lib/supabase/auth-service';
 import { logger } from '@/lib/default-logger';
 
@@ -13,7 +13,7 @@ export interface AuthContextValue extends AuthState {
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ error?: string }>;
-  updateProfile: (userId: string, params: any) => Promise<{ error?: string }>;
+  updateProfile: (userId: string, params: unknown) => Promise<{ error?: string }>;
 }
 
 export const AuthContext = React.createContext<AuthContextValue | undefined>(undefined);
@@ -50,23 +50,23 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
         }));
         // Redirect to sign-in if requested (for protected pages)
         if (opts?.redirectOnMissing) {
-          try { router.push('/auth/sign-in'); } catch (e) { /* ignore */ }
+          try { router.push('/auth/sign-in'); } catch { /* ignore */ }
         }
         return;
       }
 
       setState(prev => ({ 
         ...prev, 
-        user: user ?? null, 
+        user: (user ?? null) as User | null, 
         error: null, 
         isLoading: false, 
         isAuthenticated: !!user 
       }));
       // If no user and caller asked to redirect, send them to sign-in
       if (!user && opts?.redirectOnMissing) {
-        try { router.push('/auth/sign-in'); } catch (e) { /* ignore */ }
+        try { router.push('/auth/sign-in'); } catch { /* ignore */ }
       }
-    } catch (error) {
+  } catch (error) {
       logger.error(error);
       setState(prev => ({ 
         ...prev, 
@@ -76,7 +76,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
         isAuthenticated: false 
       }));
       if (opts?.redirectOnMissing) {
-        try { router.push('/auth/sign-in'); } catch (e) { /* ignore */ }
+    try { router.push('/auth/sign-in'); } catch { /* ignore */ }
       }
     }
   }, [router]);
@@ -142,7 +142,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
     try {
       const { error } = await authService.resetPassword(email);
       return { error };
-    } catch (error) {
+    } catch {
       return { error: 'Password reset failed' };
     }
   }, []);
@@ -153,20 +153,20 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
     try {
       const { error } = await authService.updatePassword(newPassword);
       return { error };
-    } catch (error) {
+    } catch {
       return { error: 'Password update failed' };
     }
   }, []);
 
-  const updateProfile = React.useCallback(async (userId: string, params: any): Promise<{ error?: string }> => {
+  const updateProfile = React.useCallback(async (userId: string, params: unknown): Promise<{ error?: string }> => {
     try {
-      const { error } = await authService.updateProfile(userId, params);
+  const { error } = await authService.updateProfile(userId, params as ProfileParams);
       if (!error) {
         // Refresh user data after profile update
         await checkSession();
       }
       return { error };
-    } catch (error) {
+    } catch {
       return { error: 'Profile update failed' };
     }
   }, [checkSession]);
@@ -203,9 +203,9 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
       const isAuthPage = pathname.startsWith('/auth');
       const isPublicRoot = pathname === '/';
       if (!state.isLoading && !state.isAuthenticated && !isAuthPage && !isPublicRoot) {
-        try { router.push('/auth/sign-in'); } catch (e) { /* ignore */ }
+        try { router.push('/auth/sign-in'); } catch { /* ignore */ }
       }
-    } catch (e) {
+    } catch {
       // ignore
     }
   }, [state.isLoading, state.isAuthenticated, router]);

@@ -83,7 +83,7 @@ export function EnhancedSignUpForm() {
         <div className="text-green-600 text-6xl mb-4">✓</div>
         <h2 className="text-2xl font-bold mb-2">Check Your Email</h2>
         <p className="text-gray-600 mb-4">
-          We've sent you a confirmation link. Click it to activate your account.
+          We&apos;ve sent you a confirmation link. Click it to activate your account.
         </p>
         <button
           onClick={() => setIsSuccess(false)}
