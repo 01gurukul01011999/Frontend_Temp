@@ -4,12 +4,12 @@ export const tokenUtils = {
   // Parse JWT token without verification (for client-side display purposes only)
   parseToken: (token: string) => {
     try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const parts = token.split('.');
+      const base64Url = parts[1];
+      const base64 = base64Url.replaceAll('-', '+').replaceAll('_', '/');
       const jsonPayload = decodeURIComponent(
-        atob(base64)
-          .split('')
-          .map(c => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+        [...atob(base64)]
+          .map((c) => '%' + ('00' + c.codePointAt(0)!.toString(16)).slice(-2))
           .join('')
       );
       return JSON.parse(jsonPayload);
@@ -27,7 +27,7 @@ export const tokenUtils = {
       
       const currentTime = Math.floor(Date.now() / 1000);
       return payload.exp < currentTime;
-    } catch (error) {
+    } catch {
       return true;
     }
   },
@@ -39,7 +39,7 @@ export const tokenUtils = {
       if (!payload || !payload.exp) return null;
       
       return new Date(payload.exp * 1000);
-    } catch (error) {
+    } catch {
       return null;
     }
   },
@@ -52,7 +52,7 @@ export const tokenUtils = {
       
       const currentTime = Math.floor(Date.now() / 1000);
       return Math.max(0, payload.exp - currentTime);
-    } catch (error) {
+    } catch {
       return 0;
     }
   },

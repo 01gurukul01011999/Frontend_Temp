@@ -11,7 +11,7 @@ import Stack from '@mui/material/Stack';
 import Typography from '@mui/material/Typography';
 import { Controller, useForm } from 'react-hook-form';
 import { z as zod } from 'zod';
-import { useRouter } from 'next/navigation';
+// router not required in this simplified flow
 
 import { useAuth } from '../hooks/use-auth';
 
@@ -24,16 +24,9 @@ const defaultValues = { email: '' } satisfies Values;
 export function ResetPasswordForm(): React.JSX.Element {
   const [isPending, setIsPending] = useState<boolean>(false);
   const [codeSent, setCodeSent] = useState<boolean>(false);
-  const [verificationCode, setVerificationCode] = useState<string>('');
-  const [email, setEmail] = useState<string>('');
-  const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [codeVerified, setCodeVerified] = useState<boolean>(false);
-  const [newPassword, setNewPassword] = useState<string>('');
-  const [passwordError, setPasswordError] = useState<string | null>(null);
-  const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
-  const router = useRouter();
+  // email state not needed after simplification
 
-  const { resetPassword, verifyCode, updatePassword } = useAuth();
+  const { resetPassword } = useAuth();
 
   const {
     control,
@@ -45,51 +38,24 @@ export function ResetPasswordForm(): React.JSX.Element {
   const onSubmit = React.useCallback(
     async (values: Values): Promise<void> => {
       setIsPending(true);
-      setEmail(values.email); // Save email for verification step
-      const { error } = await resetPassword(values.email);
+  const { error } = await resetPassword(values.email);
       if (error) {
         setError('root', { type: 'server', message: error });
         setIsPending(false);
         return;
       }
-      setIsPending(false);
-      setCodeSent(true); // Show verification code input
+  setIsPending(false);
+  setCodeSent(true);
     },
     [resetPassword, setError]
   );
 
-  const handleVerify = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsPending(true);
-    setVerifyError(null);
-    const { error } = await verifyCode(email, verificationCode);
-    setIsPending(false);
-    if (error) {
-      setVerifyError(error);
-    } else {
-      setCodeVerified(true);
-    }
-  };
-
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setIsPending(true);
-    setPasswordError(null);
-    setPasswordSuccess(null);
-    const { error } = await updatePassword(email, newPassword);
-    setIsPending(false);
-    if (error) {
-      setPasswordError(error);
-    } else {
-      setPasswordSuccess('Password updated successfully!');
-      router.push('sign-in?reset=success');
-    }
-  };
+  // No verification/update flow in this component; backend sends a recovery link.
 
   return (
     <Stack spacing={4}>
       <Typography variant="h5">Reset password</Typography>
-      {codeSent === false ? (
+  {codeSent === false ? (
         <form onSubmit={handleSubmit(onSubmit)}>
           <Stack spacing={2}>
             <Controller
@@ -109,45 +75,10 @@ export function ResetPasswordForm(): React.JSX.Element {
             </Button>
           </Stack>
         </form>
-      ) : codeVerified === false ? (
-        <form onSubmit={handleVerify}>
-          <Stack spacing={2}>
-            <FormControl>
-              <InputLabel>Verification Code</InputLabel>
-              <OutlinedInput
-                value={verificationCode}
-                onChange={e => setVerificationCode(e.target.value)}
-                label="Verification Code"
-                type="text"
-                required
-              />
-            </FormControl>
-            {verifyError ? <Alert color="error">{verifyError}</Alert> : null}
-            <Button disabled={isPending} type="submit" variant="contained">
-              Verify Code
-            </Button>
-          </Stack>
-        </form>
       ) : (
-        <form onSubmit={handlePasswordChange}>
-          <Stack spacing={2}>
-            <FormControl>
-              <InputLabel>New Password</InputLabel>
-              <OutlinedInput
-                value={newPassword}
-                onChange={e => setNewPassword(e.target.value)}
-                label="New Password"
-                type="password"
-                required
-              />
-            </FormControl>
-            {passwordError ? <Alert color="error">{passwordError}</Alert> : null}
-            {passwordSuccess ? <Alert color="success">{passwordSuccess}</Alert> : null}
-            <Button disabled={isPending} type="submit" variant="contained">
-              Set New Password
-            </Button>
-          </Stack>
-        </form>
+        <Stack spacing={2}>
+          <Alert color="success">If an account with that email exists, a recovery link has been sent.</Alert>
+        </Stack>
       )}
     </Stack>
   );

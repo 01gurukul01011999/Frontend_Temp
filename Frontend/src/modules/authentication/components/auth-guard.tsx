@@ -17,10 +17,10 @@ export interface AuthGuardProps {
 
 export function AuthGuard({ children, fallback }: AuthGuardProps): React.ReactNode {
   const router = useRouter();
-  const { user, error, isLoading, isAuthenticated } = useAuth();
+  const { user, error, isLoading, isAuthenticated, checkSession } = useAuth();
   const [isChecking, setIsChecking] = React.useState<boolean>(true);
 
-  const checkPermissions = async (): Promise<void> => {
+  const checkPermissions = React.useCallback(async (): Promise<void> => {
     if (isLoading) {
       return;
     }
@@ -37,13 +37,22 @@ export function AuthGuard({ children, fallback }: AuthGuardProps): React.ReactNo
     }
 
     setIsChecking(false);
-  };
+  }, [isLoading, error, isAuthenticated, user, router]);
 
   React.useEffect(() => {
+    // Ensure the auth state is fresh and redirect if missing
+    (async () => {
+      try {
+        await checkSession?.({ redirectOnMissing: true });
+      } catch {
+        // ignore
+      }
+    })();
+
     checkPermissions().catch(() => {
       // noop
     });
-  }, [user, error, isLoading, isAuthenticated, router]);
+  }, [checkSession, checkPermissions]);
 
   if (isLoading || isChecking) {
     return fallback || (

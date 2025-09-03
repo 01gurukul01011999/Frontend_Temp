@@ -9,7 +9,6 @@ import type {
   VerifyCodeParams, 
   NewPasswordParams, 
   ProfileParams,
-  AuthResponse 
 } from '../types';
 
 class AuthService {
@@ -18,21 +17,21 @@ class AuthService {
 
   // Token Management
   private getToken(): string | null {
-    if (typeof window !== 'undefined') {
+    if (typeof globalThis !== 'undefined') {
       return localStorage.getItem(this.tokenKey);
     }
     return null;
   }
 
   private setToken(token: string): void {
-    if (typeof window !== 'undefined') {
-      localStorage.setItem(this.tokenKey, token);
+    if (typeof globalThis !== 'undefined') {
+      globalThis.localStorage.setItem(this.tokenKey, token);
     }
   }
 
   private removeToken(): void {
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem(this.tokenKey);
+    if (typeof globalThis !== 'undefined') {
+      globalThis.localStorage.removeItem(this.tokenKey);
     }
   }
 
@@ -59,7 +58,7 @@ class AuthService {
   async signIn(params: SignInParams): Promise<{ error?: string }> {
     try {
       const response = await axios.post(`${this.baseUrl}/user-data`, params, {
-        timeout: 10000 // 10 second timeout for sign-in
+        timeout: 10_000 // 10 second timeout for sign-in
       });
       const { token } = response.data;
       
@@ -69,7 +68,7 @@ class AuthService {
       }
       
       return { error: 'No token received' };
-    } catch (error: unknown) {
+  } catch (error: unknown) {
       if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Invalid Email or Password' };
       }
@@ -81,7 +80,7 @@ class AuthService {
     try {
       this.removeToken();
       return {};
-    } catch (error) {
+    } catch {
       return { error: 'Sign out failed' };
     }
   }
@@ -91,7 +90,7 @@ class AuthService {
     try {
       await axios.post(`${this.baseUrl}/reset`, params);
       return {};
-    } catch (error: unknown) {
+  } catch (error: unknown) {
       if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Password reset failed' };
       }
@@ -103,7 +102,7 @@ class AuthService {
     try {
       await axios.post(`${this.baseUrl}/verify-code`, params);
       return {};
-    } catch (error: unknown) {
+  } catch (error: unknown) {
       if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Verification failed' };
       }
@@ -115,7 +114,7 @@ class AuthService {
     try {
       await axios.post(`${this.baseUrl}/newPassword`, params);
       return {};
-    } catch (error: unknown) {
+  } catch (error: unknown) {
       if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Update password failed' };
       }
@@ -128,7 +127,7 @@ class AuthService {
     try {
       await axios.post(`${this.baseUrl}/update_profile`, params);
       return {};
-    } catch (error: unknown) {
+  } catch (error: unknown) {
       if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Update data failed' };
       }
@@ -154,7 +153,7 @@ class AuthService {
       });
 
       return { avatar: response.data.avatar };
-    } catch (error: unknown) {
+  } catch (error: unknown) {
       if (isAxiosError(error)) {
         return { error: error.response?.data?.error || 'Avatar update failed' };
       }
@@ -172,13 +171,13 @@ class AuthService {
 
       const response = await axios.get(`${this.baseUrl}/protected`, {
         headers: { Authorization: `Bearer ${token}` },
-        timeout: 5000 // 5 second timeout to prevent hanging
+  timeout: 5000 // 5 second timeout to prevent hanging
       });
 
       if (!response.data.user || response.data.user === "Token expired") {
         await this.signOut();
-        if (typeof window !== 'undefined') {
-          window.location.href = '/auth/sign-in';
+        if (typeof globalThis !== 'undefined') {
+          globalThis.location.href = '/auth/sign-in';
         }
         return { data: null, error: 'Token expired or user not found' };
       }
@@ -192,8 +191,8 @@ class AuthService {
              (error.response.data.error === 'Token expired' || 
               error.response.data.error === 'Unauthorized'))) {
           await this.signOut();
-          if (typeof window !== 'undefined') {
-            window.location.href = '/auth/sign-in';
+          if (typeof globalThis !== 'undefined') {
+            globalThis.location.href = '/auth/sign-in';
           }
         }
         return { error: error.response?.data?.error || 'Failed to fetch user', data: null };

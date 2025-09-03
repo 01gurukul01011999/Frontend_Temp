@@ -11,6 +11,7 @@ import Typography from '@mui/material/Typography';
 import { BellIcon } from '@phosphor-icons/react/dist/ssr/Bell';
 import { ListIcon } from '@phosphor-icons/react/dist/ssr/List';
 import { UsersIcon } from '@phosphor-icons/react/dist/ssr/Users';
+import { usePathname } from 'next/navigation';
 
 import { usePopover } from '@/hooks/use-popover';
 import { useAuth } from '@/modules/authentication';
@@ -25,14 +26,38 @@ export function MainNav(): React.JSX.Element {
   const userPopover = usePopover<HTMLDivElement>();
   const { user } = useAuth();
   const { user: contextUser, isLoading } = useUser();
+  const pathname = usePathname();
 
   React.useEffect(() => {
-    if (user?.avatar) {
-      setAvatar(user.avatar);
-    } else {
-      setAvatar('');
-    }
-  }, [user]);
+    // Prefer avatar from the richer `contextUser` (profiles) if present,
+    // fall back to auth `user`, then to a cached profile in storage, then empty.
+    const computeAvatar = () => {
+      if (contextUser?.avatar_url) return contextUser.avatar_url;
+      if (user?.avatar_url) return user.avatar_url;
+
+      // Try cached profile for instant display
+      if (typeof globalThis !== 'undefined' && globalThis.window) {
+        try {
+          const cached = localStorage.getItem('cached-user-profile') || sessionStorage.getItem('cached-user-profile');
+          if (cached) {
+            const parsed = JSON.parse(cached);
+            if (parsed?.avatar_url) return parsed.avatar_url;
+            console.log('User Avatar:', parsed.avatar_url);
+          }
+        } catch {
+          /* ignore JSON parse errors */
+        }
+      }
+
+      return '';
+    };
+
+    const newAvatar = computeAvatar();
+    // Only update state when the avatar actually changes to avoid re-render loops
+    setAvatar((prev) => (prev === newAvatar ? prev : newAvatar));
+    // Depend only on the avatar_url fields (not whole user objects) to avoid
+    // re-running the effect when unrelated properties change.
+  }, [user?.avatar_url, contextUser?.avatar_url, isLoading]);
 
   // Get business name with instant cache fallback
   const getBusinessName = () => {
@@ -97,24 +122,36 @@ export function MainNav(): React.JSX.Element {
               flexDirection: 'column', 
               alignItems: 'flex-start',
               minWidth: '300px',
-              py: 1
             }}>
-              <Typography variant="h6" sx={{ 
-                fontWeight: 600, 
-                color: '#1a1a1a', 
-                lineHeight: 1.2,
-                fontSize: '1.1rem'
-              }}>
-                Welcome back, {getBusinessName()}
-              </Typography>
-              <Typography variant="body2" sx={{ 
-                color: '#666666', 
-                fontSize: '0.8rem', 
-                lineHeight: 1.2,
-                mt: 0.5
-              }}>
-                Manage and grow your business with Techpotli
-              </Typography>
+
+
+              {pathname == '/dashboard' && (
+                <>
+                  <Typography
+                    variant="h6"
+                    sx={{
+                      fontWeight: 600,
+                      color: '#1a1a1a',
+                      lineHeight: 1.2,
+                      fontSize: '1.1rem',
+                    }}
+                  >
+                    Welcome back, {getBusinessName()}
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color: '#666666',
+                      fontSize: '0.8rem',
+                      lineHeight: 1.2,
+                      mt: 0.5,
+                    }}
+                  >
+                    Manage and grow your business with Techpotli
+                  </Typography>
+                </>
+              )}
+              
             </Box>
           </Stack>
           <Stack sx={{ alignItems: 'center' }} direction="row" spacing={2}>

@@ -104,8 +104,8 @@ export function MobileNav({ open, onClose }: MobileNavProps): React.JSX.Element 
               <StorefrontIcon size={32} />
             </Box>
             <Box>
-              {(user.fname ?? '') + ' ' + (user.lname ?? '')} <br />
-              {(user.roll ?? '').toString()}
+              {(user.first_name ?? '') + ' ' + (user.last_name ?? '')} <br />
+              {(user.role ?? '').toString()}
             </Box>
           </Box>
         )}

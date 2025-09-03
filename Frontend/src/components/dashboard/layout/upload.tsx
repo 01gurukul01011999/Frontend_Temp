@@ -54,6 +54,7 @@ export default function AvatarUploadModal({
     if (!selectedFile) return;
     const formData = new FormData();
     formData.append("avatar", selectedFile);
+    console.log('clinet.id', clinet.id);
     formData.append("userId", clinet.id);
     const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/upload-avatar`, {
       method: 'POST',

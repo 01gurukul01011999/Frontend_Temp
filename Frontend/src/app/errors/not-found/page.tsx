@@ -21,6 +21,9 @@ export default function NotFound(): React.JSX.Element {
             component="img"
             alt="Under development"
             src="/assets/error-404.png"
+            loading="lazy"
+            decoding="async"
+            fetchPriority="low"
             sx={{ display: 'inline-block', height: 'auto', maxWidth: '100%', width: '400px' }}
           />
         </Box>

@@ -15,8 +15,8 @@ export const useSession = () => {
     checkSession: context.checkSession,
     
     // Utility methods
-    hasRole: (role: string) => context.user?.roll === role,
-    hasPermission: (permission: string) => {
+  hasRole: (role: string) => context.user?.role === role,
+    hasPermission: (_permission: string) => {
       // Add permission logic here based on your requirements
       return context.isAuthenticated;
     },

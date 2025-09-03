@@ -6,10 +6,6 @@ import { toast } from 'react-toastify';
 import { useRouter } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import { getNetworkErrorMessage } from '@/lib/network-health';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { signInSchema, type SignInData } from '@/lib/validations/auth';
 
@@ -37,7 +33,7 @@ export function EnhancedSignInForm() {
       
       // Add timeout to prevent hanging requests
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 seconds
+        setTimeout(() => reject(new Error('Request timeout')), 15_000); // 15 seconds
       });
       
       const signInPromise = supabase.auth.signInWithPassword({
@@ -55,7 +51,7 @@ export function EnhancedSignInForm() {
       toast.success('Signed in successfully!');
       router.push('/dashboard');
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('Sign-in error:', error);
       toast.error(getNetworkErrorMessage(error));
     } finally {
@@ -69,13 +65,13 @@ export function EnhancedSignInForm() {
       
       // Add timeout to prevent hanging requests
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 seconds
+        setTimeout(() => reject(new Error('Request timeout')), 15_000); // 15 seconds
       });
       
       const otpPromise = supabase.auth.signInWithOtp({
         email: data.email,
         options: {
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
+          emailRedirectTo: `${globalThis.location?.origin ?? ''}/auth/callback`,
         },
       });
       
@@ -89,7 +85,7 @@ export function EnhancedSignInForm() {
       setOtpSent(true);
       toast.success('OTP sent to your email!');
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('OTP sign-in error:', error);
       toast.error(getNetworkErrorMessage(error));
     } finally {
@@ -103,7 +99,7 @@ export function EnhancedSignInForm() {
       
       // Add timeout to prevent hanging requests
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Request timeout')), 15000); // 15 seconds
+        setTimeout(() => reject(new Error('Request timeout')), 15_000); // 15 seconds
       });
       
       const verifyPromise = supabase.auth.verifyOtp({
@@ -122,7 +118,7 @@ export function EnhancedSignInForm() {
       toast.success('Signed in successfully!');
       router.push('/dashboard');
       
-    } catch (error: any) {
+    } catch (error: unknown) {
       console.error('OTP verification error:', error);
       toast.error(getNetworkErrorMessage(error));
     } finally {
@@ -136,7 +132,7 @@ export function EnhancedSignInForm() {
         <div className="text-center">
           <h3 className="text-lg font-medium mb-2">Enter OTP</h3>
           <p className="text-gray-600">
-            We've sent a one-time password to {email}
+            We&apos;ve sent a one-time password to {email}
           </p>
         </div>
 
@@ -175,10 +171,10 @@ export function EnhancedSignInForm() {
   return (
     <div className="space-y-4">
       <div className="flex space-x-2 mb-4">
-        <button
+          <button
           onClick={() => setIsOtpMode(false)}
           className={`flex-1 py-2 px-4 rounded-md transition-colors ${
-            !isOtpMode
+            isOtpMode === false
               ? 'bg-blue-600 text-white'
               : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
           }`}
@@ -255,8 +251,8 @@ export function EnhancedSignInForm() {
       </form>
 
       <div className="border-t pt-4">
-        <p className="text-sm text-gray-600 text-center">
-          Don't have an account?{' '}
+          <p className="text-sm text-gray-600 text-center">
+          Don&apos;t have an account?{' '}
           <button
             type="button"
             onClick={() => router.push('/auth/sign-up')}

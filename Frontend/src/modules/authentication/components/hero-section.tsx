@@ -3,6 +3,8 @@
 import * as React from 'react';
 import { motion } from 'framer-motion';
 import { TrendingUp, Users, DollarSign, Star, ArrowUpRight, CheckCircle } from 'lucide-react';
+import Image from 'next/image';
+
 
 export function HeroSection(): React.JSX.Element {
   const stats = [
@@ -76,11 +78,13 @@ export function HeroSection(): React.JSX.Element {
           transition={{ duration: 0.8, delay: 0.3 }}
           className="mb-8"
         >
-                      <img 
-              src="/techpotli-logo.svg" 
-              alt="Techpotli" 
-              className="h-20 w-auto mx-auto"
-            />
+          <Image
+            src="/techpotli-logo.svg"
+            alt="Techpotli"
+            width={160}
+            height={80}
+            className="h-20 w-auto mx-auto"
+          />
         </motion.div>
 
                  {/* Main heading */}

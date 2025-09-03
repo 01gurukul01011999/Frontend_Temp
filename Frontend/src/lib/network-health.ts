@@ -13,7 +13,7 @@ export interface NetworkStatus {
  * Check if the user is online
  */
 export const checkOnlineStatus = (): boolean => {
-  return navigator.onLine;
+  return globalThis.navigator?.onLine ?? true;
 };
 
 /**
@@ -24,8 +24,8 @@ export const testSupabaseConnection = async (): Promise<NetworkStatus> => {
   
   try {
     // Create AbortController for timeout
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), 10_000); // 10 second timeout
     
     const response = await fetch('/api/health', {
       method: 'GET',
@@ -45,7 +45,7 @@ export const testSupabaseConnection = async (): Promise<NetworkStatus> => {
       latency,
       lastCheck: new Date(),
     };
-  } catch (error) {
+  } catch {
     return {
       isOnline: false,
       latency: -1,
@@ -67,42 +67,44 @@ export const createNetworkMonitor = (onStatusChange: (status: NetworkStatus) => 
   checkStatus();
   
   // Check every 30 seconds
-  const interval = setInterval(checkStatus, 30000);
+  const interval = setInterval(checkStatus, 30_000);
   
   // Listen for online/offline events
   const handleOnline = () => onStatusChange({ isOnline: true, latency: 0, lastCheck: new Date() });
   const handleOffline = () => onStatusChange({ isOnline: false, latency: -1, lastCheck: new Date() });
   
-  window.addEventListener('online', handleOnline);
-  window.addEventListener('offline', handleOffline);
+  globalThis.addEventListener('online', handleOnline);
+  globalThis.addEventListener('offline', handleOffline);
   
   // Return cleanup function
   return () => {
     clearInterval(interval);
-    window.removeEventListener('online', handleOnline);
-    window.removeEventListener('offline', handleOffline);
+  globalThis.removeEventListener('online', handleOnline);
+  globalThis.removeEventListener('offline', handleOffline);
   };
 };
 
 /**
  * Get user-friendly network error message
  */
-export const getNetworkErrorMessage = (error: any): string => {
-  if (error.message?.includes('Failed to fetch')) {
+export const getNetworkErrorMessage = (error: unknown): string => {
+  const maybeMessage = (error as { message?: unknown } | undefined)?.message;
+
+  if (typeof maybeMessage === 'string' && maybeMessage.includes('Failed to fetch')) {
     return 'Network connection failed. Please check your internet connection.';
   }
-  
-  if (error.message?.includes('timeout') || error.message?.includes('aborted')) {
+
+  if (typeof maybeMessage === 'string' && (maybeMessage.includes('timeout') || maybeMessage.includes('aborted'))) {
     return 'Request timed out. Please check your internet connection and try again.';
   }
-  
-  if (error.message?.includes('NetworkError')) {
+
+  if (typeof maybeMessage === 'string' && maybeMessage.includes('NetworkError')) {
     return 'Network error occurred. Please check your connection and try again.';
   }
-  
-  if (!navigator.onLine) {
+
+  if (globalThis.navigator?.onLine === false) {
     return 'You are currently offline. Please check your internet connection.';
   }
-  
+
   return 'An unexpected error occurred. Please try again.';
 };

@@ -2,18 +2,18 @@
 
 import * as React from 'react';
 import { useRouter } from 'next/navigation';
-import type { User, AuthState } from '../types';
+import type { User, AuthState, ProfileParams } from '../types';
 import { authService } from '@/lib/supabase/auth-service';
 import { logger } from '@/lib/default-logger';
 
 export interface AuthContextValue extends AuthState {
-  checkSession?: () => Promise<void>;
+  checkSession?: (opts?: { redirectOnMissing?: boolean }) => Promise<void>;
   signIn: (email: string, password: string) => Promise<{ error?: string }>;
   signUp: (firstName: string, lastName: string, email: string, password: string) => Promise<{ error?: string }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error?: string }>;
   updatePassword: (newPassword: string) => Promise<{ error?: string }>;
-  updateProfile: (userId: string, params: any) => Promise<{ error?: string }>;
+  updateProfile: (userId: string, params: unknown) => Promise<{ error?: string }>;
 }
 
 export const AuthContext = React.createContext<AuthContextValue | undefined>(undefined);
@@ -32,11 +32,10 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
 
   const router = useRouter();
 
-  const checkSession = React.useCallback(async (): Promise<void> => {
+  const checkSession = React.useCallback(async (opts?: { redirectOnMissing?: boolean }): Promise<void> => {
     try {
       console.log('[AuthContext]: Checking session...');
       setState(prev => ({ ...prev, isLoading: true, error: null }));
-      
       const { user, error } = await authService.getCurrentUser();
       console.log('[AuthContext]: Session check result:', { user: !!user, error });
       
@@ -49,18 +48,25 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
           isLoading: false, 
           isAuthenticated: false 
         }));
-        // Don't redirect on mount, let the user see the forms
+        // Redirect to sign-in if requested (for protected pages)
+        if (opts?.redirectOnMissing) {
+          try { router.push('/auth/sign-in'); } catch { /* ignore */ }
+        }
         return;
       }
 
       setState(prev => ({ 
         ...prev, 
-        user: user ?? null, 
+        user: (user ?? null) as User | null, 
         error: null, 
         isLoading: false, 
         isAuthenticated: !!user 
       }));
-    } catch (error) {
+      // If no user and caller asked to redirect, send them to sign-in
+      if (!user && opts?.redirectOnMissing) {
+        try { router.push('/auth/sign-in'); } catch { /* ignore */ }
+      }
+  } catch (error) {
       logger.error(error);
       setState(prev => ({ 
         ...prev, 
@@ -69,6 +75,9 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
         isLoading: false, 
         isAuthenticated: false 
       }));
+      if (opts?.redirectOnMissing) {
+    try { router.push('/auth/sign-in'); } catch { /* ignore */ }
+      }
     }
   }, [router]);
 
@@ -133,7 +142,7 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
     try {
       const { error } = await authService.resetPassword(email);
       return { error };
-    } catch (error) {
+    } catch {
       return { error: 'Password reset failed' };
     }
   }, []);
@@ -144,20 +153,20 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
     try {
       const { error } = await authService.updatePassword(newPassword);
       return { error };
-    } catch (error) {
+    } catch {
       return { error: 'Password update failed' };
     }
   }, []);
 
-  const updateProfile = React.useCallback(async (userId: string, params: any): Promise<{ error?: string }> => {
+  const updateProfile = React.useCallback(async (userId: string, params: unknown): Promise<{ error?: string }> => {
     try {
-      const { error } = await authService.updateProfile(userId, params);
+  const { error } = await authService.updateProfile(userId, params as ProfileParams);
       if (!error) {
         // Refresh user data after profile update
         await checkSession();
       }
       return { error };
-    } catch (error) {
+    } catch {
       return { error: 'Profile update failed' };
     }
   }, [checkSession]);
@@ -185,6 +194,21 @@ export function AuthProvider({ children }: AuthProviderProps): React.JSX.Element
     updatePassword,
     updateProfile,
   };
+
+  // Redirect to sign-in for protected routes when session is missing.
+  React.useEffect(() => {
+    try {
+      const pathname = globalThis?.location?.pathname ?? '';
+      // Skip redirect for auth pages and public root
+      const isAuthPage = pathname.startsWith('/auth');
+      const isPublicRoot = pathname === '/';
+      if (!state.isLoading && !state.isAuthenticated && !isAuthPage && !isPublicRoot) {
+        try { router.push('/auth/sign-in'); } catch { /* ignore */ }
+      }
+    } catch {
+      // ignore
+    }
+  }, [state.isLoading, state.isAuthenticated, router]);
 
   return <AuthContext.Provider value={contextValue}>{children}</AuthContext.Provider>;
 }
