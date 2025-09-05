@@ -535,7 +535,7 @@ const url =getSiteURL();
 										<Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2, mt: 1, width: '100%' }}>
 											{uploadedImages.map((img, idx) => (
 												<Box key={idx} sx={{ position: 'relative', width: 100, height: 100, borderRadius: 2, overflow: 'hidden', border: '1px solid #eee', background: '#fafbff', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-													<Image src={img} alt={`uploaded`} width={100} height={100} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+													<Image src={img} alt={`uploaded`} fill style={{ objectFit: 'cover' }} />
 													<IconButton
 														size="small"
 														sx={{ position: 'absolute', top: 2, right: 2, background: '#fff', boxShadow: 1, zIndex: 2 }}
