@@ -55,6 +55,10 @@ type ProductForm = {
 // Represent file record returned by backend upload endpoints
 type UploadedFile = { img_id?: string; publicUrl?: string; signedUrl?: string; storagePath?: string };
 
+// SelectedImageItem is used by top-level helpers (e.g. resolvePreviewSrc)
+// define it at module scope so functions outside the component can reference it.
+type SelectedImageItem = { url?: string; gallery?: string[]; img_id?: string | string[]; publicUrl?: string; signedUrl?: string; file?: File } | string;
+
 // Hoisted factory to avoid function-in-render linter rule
 function initialFormData(): ProductForm {
 	return {
@@ -163,20 +167,47 @@ function _isLeaf(tree: CategoryNode, path: string[]): boolean {
 // Module-scoped helper to read a File into a Data URL. Moved out of component to satisfy
 // unicorn/consistent-function-scoping.
 const _readFileToDataUrl = (f: File): Promise<string> =>
-	new Promise((resolve, reject) => {
-		const r = new FileReader();
-		r.addEventListener('load', () => (typeof r.result === 'string' ? resolve(r.result) : reject(new Error('no result'))));
-		r.addEventListener('error', () => reject(new Error('read error')));
-		r.readAsDataURL(f);
-	});
+	Promise.resolve(URL.createObjectURL(f));
+
+// PreviewImage: uses <img> for blob:data URLs (object URLs/data URLs) because next/image
+// cannot reliably render those. For normal http/https or relative urls use next/image.
+function PreviewImage(props: { src?: string | null; alt?: string; width?: number; height?: number; style?: React.CSSProperties; onClick?: () => void }) {
+	const { src, alt, width, height, style, onClick } = props;
+	if (!src) return null;
+	const s = String(src || '');
+	// Treat object/blob/data URLs and external http(s) signed URLs as plain <img>
+	const isBlobOrDataOrHttp = s.startsWith('blob:') || s.startsWith('data:') || /^https?:\/\//.test(s);
+	if (isBlobOrDataOrHttp) {
+		return (
+			<Image
+				src={s}
+				alt={alt ?? ''}
+				width={width ?? 80}
+				height={height ?? 80}
+				style={style}
+				onClick={onClick}
+				unoptimized
+			/>
+		);
+	}
+	// For local assets (relative paths) keep using next/image for optimization
+	return <Image src={s} alt={alt || ''} width={width ?? 80} height={height ?? 80} style={style} onClick={onClick} />;
+}
+
+// Resolve a preview source from a SelectedImageItem or string.
+function resolvePreviewSrc(item?: SelectedImageItem | string): string {
+	if (!item) return '';
+	if (typeof item === 'string') return item;
+	const rec = item as { signedUrl?: string; publicUrl?: string; url?: string };
+	return (rec.signedUrl as string) ?? (rec.publicUrl as string) ?? (rec.url as string) ?? '';
+}
 
 export default function CategorySelector(): React.JSX.Element {
 	// Removed: const [techpotliInfoAnchor, setTechpotliInfoAnchor] = useState<HTMLElement | null>(null);
-	// Info icon popover anchor for Techpotli Price
-	const [copyAll, setCopyAll] = useState(false);
+	
 	const [popupOpen, setPopupOpen] = useState(false);
 	const [intropopupOpen, setIntroPopupOpen] = useState(false);
-	type SelectedImageItem = { url?: string; gallery?: string[]; img_id?: string | string[]; publicUrl?: string } | string;
+	type SelectedImageItem = { url?: string; gallery?: string[]; img_id?: string | string[]; publicUrl?: string; signedUrl?: string; file?: File } | string;
 	const [selectedImages, setSelectedImages] = useState<SelectedImageItem[]>([]);
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
@@ -215,9 +246,18 @@ export default function CategorySelector(): React.JSX.Element {
 			return;
 		}
 		try {
-			// Convert data URLs to File objects
+			// Build File[] from selectedImages: prefer already-stored File objects (from selection),
+			// otherwise fetch blob from the preview URL as a fallback.
 			const files: File[] = await Promise.all(selectedImages.map(async (img, idx) => {
-				const dataUrl = typeof img === 'string' ? img : (img?.url ?? '');
+				if (typeof img === 'string') {
+					const resp = await fetch(img);
+					const blob = await resp.blob();
+					const ext = blob.type?.split('/')?.[1] || 'jpg';
+					return new File([blob], `image_${idx + 1}.${ext}`, { type: blob.type || 'image/jpeg' });
+				}
+				const obj = img as { file?: File; url?: string };
+				if (obj.file instanceof File) return obj.file;
+				const dataUrl = obj.url ?? '';
 				if (!dataUrl) throw new Error('Invalid image');
 				const resp = await fetch(dataUrl);
 				const blob = await resp.blob();
@@ -239,29 +279,47 @@ export default function CategorySelector(): React.JSX.Element {
 			// Optionally read response
 			 const body = await res.json();
 			 const uploaded: UploadedFile[] = (body.files || []) as UploadedFile[];
-						 _setUploadedImagesjson(uploaded);
-						 console.log('Upload response', body);
-						 // Merge returned img_id into productForms: attach to OtherAttributes.image_ids per product
-						 try {
-											setProductForms(prev => {
-												const copy = [...prev];
-												for (const [i, fileRec] of uploaded.entries()) {
-													const rec = fileRec as UploadedFile | null;
-													const imgId = rec && rec.img_id ? rec.img_id : null;
-													if (!imgId) continue;
-													if (!copy[i]) copy[i] = initialFormData();
-													if (!copy[i].OtherAttributes) copy[i].OtherAttributes = {};
-													// store as array to allow multiple images per product later
-													const other = copy[i].OtherAttributes as Record<string, unknown>;
-													const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-													// Deduplicate to avoid adding the same img_id multiple times
-													other.image_ids = [...new Set([...existing, imgId])];
-												}
-												return copy;
-											});
-						} catch (error) {
-							console.error('Failed to merge uploaded image ids into productForms', error);
-						}
+			_setUploadedImagesjson(uploaded);
+			//console.log('Upload response', uploaded);
+			// Use only signedUrl from the upload response for UI and JSON.
+			try {
+				setProductForms(prev => {
+					const copy = [...prev];
+					for (const [i, fileRec] of uploaded.entries()) {
+						const rec = fileRec as UploadedFile | null;
+						const signed = rec?.signedUrl ?? null;
+						if (!signed) continue;
+						if (!copy[i]) copy[i] = initialFormData();
+						if (!copy[i].OtherAttributes) copy[i].OtherAttributes = {};
+						const other = copy[i].OtherAttributes as Record<string, unknown>;
+						const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
+						other.image_urls = [...new Set([...existing, signed])];
+					}
+					return copy;
+				});
+			} catch (error) {
+				console.error('Failed to merge uploaded signed URLs into productForms', error);
+			}
+
+			// Replace local previews with server-provided signed URLs only (ignore other fields)
+			try {
+				const signedUrls = uploaded.map((u) => u.signedUrl || '');
+
+				setSelectedImages((prev) => prev.map((item, idx) => {
+					const signed = signedUrls[idx] || '';
+					if (!signed) return item;
+					if (typeof item === 'string') return signed;
+					const it = { ...(item as Record<string, unknown>) } as Record<string, unknown>;
+					it.signedUrl = signed;
+					it.url = signed;
+					return it as SelectedImageItem;
+				}));
+
+				// store signed URLs separately for convenience
+				setUploadedImages(signedUrls.filter(Boolean) as string[]);
+			} catch (error) {
+				console.warn('Failed to map signed URLs for uploaded images', error);
+			}
 			toast.success('Images uploaded successfully', { autoClose: 2000 });
 		} catch (error) {
 			console.error('Upload error', error);
@@ -576,94 +634,111 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 
 	// ...existing code...
 
-	// Handler for file input change (Add Product) — upload first, then add product on success
+	// Handler for file input change (Add Product) — upload selected file immediately and add product using signedUrl
 	const handleAddProductImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
-		if (files && files.length > 0) {
-			const file = files[0];
-			// Read data URL for preview (we'll use this after successful upload)
-			const reader = new FileReader();
-			reader.addEventListener('load', async () => {
-				const dataUrl = typeof reader.result === 'string' ? reader.result : '';
-				try {
-					const formData = new FormData();
-					formData.append('images', file);
-					const uploaderId = (user as { id?: string } | null)?.id;
-					if (uploaderId) {
-						formData.append('uploaderId', uploaderId);
-					}
-					const uploadUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`;
-					const res = await fetch(uploadUrl, { method: 'POST', body: formData });
-					if (res.ok === false) {
-						const text = await res.text();
-						console.error('Upload failed', text);
-						toast.error('Image upload failed. Please try again.');
-						return;
-					}
-					const body = await res.json();
-					const uploaded = body.files || [];
-					if (uploaded.length === 0) {
-						toast.error('Upload did not return file info');
-						return;
-					}
+		if (!files || files.length === 0) return;
+		const file = files[0];
+		// Show quick preview using object URL while upload runs
+		const previewUrl = URL.createObjectURL(file);
+		// Reserve the new slot immediately so UI shows the product entry
+		setSelectedImages(prev => {
+			const newImages = [...prev, { url: previewUrl, file } as SelectedImageItem];
+			setProductForms(forms => {
+				const formsCopy = [...forms];
+				while (formsCopy.length < newImages.length) formsCopy.push(initialFormData());
+				return formsCopy;
+			});
+			setActiveProductIndex(newImages.length - 1);
+			return newImages;
+		});
 
-					const fileRec = uploaded[0];
-					const imgId = fileRec?.img_id || null;
-					const publicUrl = fileRec?.publicUrl || fileRec?.signedUrl || null;
+		try {
+			const formData = new FormData();
+			formData.append('images', file);
+			const uploaderId = (user as { id?: string } | null)?.id;
+			if (uploaderId) formData.append('uploaderId', uploaderId);
+			const uploadUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`;
+			const res = await fetch(uploadUrl, { method: 'POST', body: formData });
+			if (!res.ok) {
+				const txt = await res.text();
+				console.error('Upload failed', txt);
+				toast.error('Image upload failed. Showing preview only.');
+				return;
+			}
+			const body = await res.json();
+			const uploaded: UploadedFile[] = (body.files || []) as UploadedFile[];
+			const rec = uploaded[0] || null;
+			const signed = rec?.signedUrl ?? null;
 
-					// Now add preview and product form entry using the successful upload info
-					setSelectedImages(prev => {
-						const newImages = [...prev, { url: dataUrl, img_id: imgId, publicUrl } as SelectedImageItem];
-						setProductForms(forms => {
-							const formsCopy = [...forms];
-							while (formsCopy.length < newImages.length) {
-								formsCopy.push(initialFormData());
-							}
-							return formsCopy;
-						});
-						setActiveProductIndex(newImages.length - 1);
-						return newImages;
-					});
-
-					// Merge returned img_id into the newly added product form (last index)
-					if (imgId) {
-						setProductForms(prev => {
-							const copy = [...prev];
-							const idx = copy.length - 1;
-							if (!copy[idx]) copy[idx] = initialFormData();
-							if (!copy[idx].OtherAttributes) copy[idx].OtherAttributes = {};
-							const other = copy[idx].OtherAttributes as Record<string, unknown>;
-							const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-							other.image_ids = [...new Set([...existing, imgId])];
-							return copy;
-						});
-					}
-
-					// store returned URLs/ids for UI
-					_setUploadedImagesjson(prev => {
-						try {
-							// Store the full file record so types are consistent (fallback to a minimal object if needed)
-							const toPush: UploadedFile = fileRec || { img_id: fileRec?.img_id, publicUrl: fileRec?.publicUrl, storagePath: fileRec?.storagePath };
-							return [...prev, toPush];
-						} catch {
-							return prev;
-						}
-					});
-
-					toast.success('Image uploaded and product added', { autoClose: 1500 });
-					} catch (error) {
-						console.error('Error in handleAddProductImage upload flow', error);
-						toast.error('Failed to upload image');
-					} finally {
-					// Reset input so same file can be selected next time
-					if (addProductInputRef.current) addProductInputRef.current.value = '';
+			// Update the last added selectedImages entry to use signedUrl (if available)
+			setSelectedImages(prev => {
+				const copy = [...prev];
+				const idx = copy.length - 1;
+				if (idx < 0) return prev;
+				if (signed) {
+					const it = { ...(copy[idx] as Record<string, unknown>) } as Record<string, unknown>;
+					it.signedUrl = signed;
+					it.url = signed;
+					copy[idx] = it as SelectedImageItem;
+				} else {
+					// if no signedUrl, leave preview as is
 				}
+				return copy;
 			});
-			reader.addEventListener('error', () => {
-				toast.error('Failed to read selected file');
-				if (addProductInputRef.current) addProductInputRef.current.value = '';
-			});
-			reader.readAsDataURL(file);
+
+			// Merge signedUrl into productForms OtherAttributes.image_urls for this last product
+			if (signed) {
+				setProductForms(prev => {
+					const copy = [...prev];
+					const idx = copy.length - 1;
+					if (!copy[idx]) copy[idx] = initialFormData();
+					if (!copy[idx].OtherAttributes) copy[idx].OtherAttributes = {};
+					const other = copy[idx].OtherAttributes as Record<string, unknown>;
+					const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
+					other.image_urls = [...new Set([...existing, signed])];
+					return copy;
+				});
+
+				// Deterministically update selectedImages[activeProductIndex] so React re-renders with the new signed url
+				const chosenMain = (rec?.signedUrl) || (rec?.publicUrl) || signed;
+				const chosenGallery = (uploaded || []).slice(1).map((p: UploadedFile | null | undefined) => p?.signedUrl || p?.publicUrl).filter(Boolean) as string[];
+				if (chosenMain) {
+					setSelectedImages(prev => {
+						const copy = [...prev];
+						const existingRaw = (copy[activeProductIndex] && typeof copy[activeProductIndex] === 'object') ? (copy[activeProductIndex] as Record<string, unknown>) : {} as Record<string, unknown>;
+						// Use a plain record to safely assign new properties and avoid union-with-string issues
+						const curRec: Record<string, unknown> = { ...existingRaw };
+						curRec.url = chosenMain;
+						curRec.signedUrl = chosenMain;
+						curRec.gallery = Array.isArray(curRec.gallery) ? [...(curRec.gallery as string[])] : [];
+						for (const g of chosenGallery) {
+							if (!(curRec.gallery as string[]).includes(g)) (curRec.gallery as string[]).push(g);
+						}
+						copy[activeProductIndex] = curRec as SelectedImageItem;
+						return copy;
+					});
+				}
+
+				// ensure productForms length matches
+			// store uploaded metadata
+				_setUploadedImagesjson(prev => {
+					try {
+						const toPush: UploadedFile = rec ?? { img_id: undefined, publicUrl: undefined, storagePath: undefined, signedUrl: undefined };
+						return [...prev, toPush];
+					} catch {
+						return prev;
+					}
+				});
+
+				if (signed) toast.success('Image uploaded and product added', { autoClose: 1500 });
+			} // end if (signed)
+		} // end try
+		catch (error) {
+			console.error('Error uploading add-product image', error);
+			toast.error('Failed to upload image. Showing preview only.');
+		} finally {
+			if (addProductInputRef.current) addProductInputRef.current.value = '';
 		}
 	};
 
@@ -673,43 +748,13 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 	const fileArray = [...files];
 		const prevCount = selectedImages.length;
 
+
 		try {
-			// For each file: read data URL (for preview) and upload to backend
-			const uploadResults = await Promise.all(fileArray.map(async (file) => {
-				const dataUrl = await new Promise<string>((resolve, reject) => {
-					const reader = new FileReader();
-					reader.addEventListener('load', () => {
-						if (typeof reader.result === 'string') resolve(reader.result);
-						else reject('Failed to read file');
-					});
-					reader.addEventListener('error', () => reject(new Error('Failed to read file')));
-					reader.readAsDataURL(file);
+				// For each file: create a preview object and keep the File for later upload
+				const newItems: SelectedImageItem[] = fileArray.map((file) => {
+					const dataUrl = URL.createObjectURL(file);
+					return { url: dataUrl, file, img_id: undefined } as SelectedImageItem;
 				});
-
-				// Upload single file to backend immediately
-				try {
-					const formData = new FormData();
-					formData.append('images', file);
-					const uploaderId = (user as { id?: string } | null)?.id;
-					if (uploaderId) formData.append('uploaderId', String(uploaderId));
-					const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`, { method: 'POST', body: formData });
-					if (res.ok === false) {
-						const text = await res.text();
-						console.error('Upload failed', text);
-						return { dataUrl, fileRec: null, error: true };
-					}
-					const body = await res.json();
-					const uploaded = body.files || [];
-					const fileRec = uploaded[0] || null;
-					return { dataUrl, fileRec };
-				} catch (error) {
-					console.error('Upload error', error);
-					return { dataUrl, fileRec: null, error: true };
-				}
-			}));
-
-			// Build new selectedImages items from results
-			const newItems: SelectedImageItem[] = uploadResults.map(r => ({ url: r.dataUrl, img_id: r.fileRec?.img_id || undefined, publicUrl: r.fileRec?.publicUrl || r.fileRec?.signedUrl || undefined }));
 
 			// Append previews and ensure productForms length; merge returned img_ids into OtherAttributes.image_ids
 			setSelectedImages(prev => {
@@ -823,6 +868,9 @@ const [sizePopoverValue, setSizePopoverValue] = useState<string[]>([]);
 const [sizePopoverProductIndex, setSizePopoverProductIndex] = useState<number | null>(null);
 const [sizePopoverSection, setSizePopoverSection] = useState<keyof ProductForm | "">("");
 const [sizePopoverLabel, setSizePopoverLabel] = useState<string>("");
+
+// Copy-all checkbox state (ensures `copyAll` is defined before any usage)
+const [copyAll, setCopyAll] = useState<boolean>(false);
 
 const _handleSizeDropdownClick = (
   e: React.MouseEvent<HTMLElement>,
@@ -1623,11 +1671,11 @@ const renderField = (
 					<Box sx={{ minWidth: 100 }}>
 						<Box sx={{ display: 'grid', gridTemplateColumns: 'repeat(5, 1fr)', gap: 2 }}>
 							{selectedImages.map((img, idx) => {
-								const imgUrl = typeof img === 'string' ? img : (img?.url ?? '');
+								const imgUrl = resolvePreviewSrc(img);
 								return (
 
 										<Box key={idx} sx={{ position: 'relative', width: 80, height: 80, borderRadius: 2,  border: '1px solid #e0e0e0' }}>
-											<Image src={imgUrl} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 2, }} />
+													<PreviewImage src={imgUrl} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 2, }} />
 											<IconButton
 												size="small"
 												onClick={() => setSelectedImages(images => images.filter((_, i) => i !== idx))}
@@ -1678,8 +1726,11 @@ const renderField = (
 	<Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
 		{/* Product Tabs */}
 		<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
-			{selectedImages.map((img, idx) => {
-				const thumbUrl = typeof img === 'string' ? img : (img?.url ?? '');
+
+				{selectedImages.map((img, idx) => {
+					//console.log('Rendering thumbnail for image:', img); // Debug log to verify the image object
+				const thumbSrc = resolvePreviewSrc(img);
+      //console.log('Thumbnail Source:', thumbSrc); // Debug log to verify the thumbnail source
 				return (
 				<Button
 					key={idx}
@@ -1688,7 +1739,7 @@ const renderField = (
 					onClick={() => setActiveProductIndex(idx)}
 					sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
 				>
-					<Image src={thumbUrl} alt={`Product ${idx + 1}`} width={48} height={48} style={{ width:48, height:48,borderRadius: 4,  marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
+					<PreviewImage src={thumbSrc} alt={`Product ${idx + 1}`} width={48} height={48} style={{ width:48, height:48,borderRadius: 4,  marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
 					Product {idx + 1}
 				</Button>
 				);
@@ -1914,8 +1965,8 @@ const renderField = (
 					<Typography variant="subtitle2">Uploaded Images</Typography>
 					<Box sx={{ display: 'flex', alignItems: 'flex-start', gap: 1, flexWrap: 'wrap' }}>
 						{(() => {
-							const prodItem = selectedImages[activeProductIndex] as unknown | undefined;
-							const mainUrl: string | undefined = prodItem && typeof prodItem === 'object' ? (prodItem as { url?: string }).url : (typeof prodItem === 'string' ? prodItem : undefined);
+							const prodItem = selectedImages[activeProductIndex] as SelectedImageItem | undefined;
+							const mainUrl: string | undefined = resolvePreviewSrc(prodItem) || undefined;
 							const gallery: string[] = prodItem && typeof prodItem === 'object' && Array.isArray((prodItem as { gallery?: unknown }).gallery) ? (prodItem as { gallery?: string[] }).gallery as string[] : [];
 
 							const openPerProductInput = (replaceMain = false) => {
@@ -1949,7 +2000,7 @@ const renderField = (
 									<Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
 										<Box sx={{ position: 'relative', width: 80, height: 80, borderRadius: 1, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
 											{mainUrl ? (
-												<Image src={mainUrl} alt={`Main ${activeProductIndex + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 }} onClick={changeMainImage} />
+												<PreviewImage src={mainUrl} alt={`Main ${activeProductIndex + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 }} onClick={changeMainImage} />
 											) : (
 												<Box
 													onClick={() => openPerProductInput(false)}
@@ -1973,10 +2024,10 @@ const renderField = (
 									</Box>
 
 									{/* Gallery thumbnails */}
-									{gallery.map((g, gi) => (
+										{gallery.map((g, gi) => (
 										<Box key={gi} sx={{display:"flex", flexDirection: 'column', alignItems: 'center', gap: 1}}>
 											<Box sx={{ position: 'relative', width: 80, height: 80, borderRadius: 8,  border: '1px solid #e0e0e0' }}>
-												<Image src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8 }} />
+												<PreviewImage src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8 }} />
 												<IconButton
 													size="small"
 													onClick={() => removeGalleryAt(gi)}
@@ -2057,12 +2108,13 @@ const renderField = (
 																					const uploaded = Array.isArray(body.files) ? body.files : [];
 
 																					// Map uploaded files to preview urls and ids. If server didn't return url, fall back to reading the file.
-																					const previews: { previewUrl: string; imgId?: string }[] = await Promise.all(
+																					const previews: { previewUrl: string; imgId?: string; publicUrl?: string; signedUrl?: string }[] = await Promise.all(
 																						files.map(async (file, idx) => {
 																							const fileRec = uploaded[idx] || {};
-																							const previewUrl = fileRec.publicUrl || fileRec.signedUrl || fileRec.storagePath || fileRec.url;
+																							// prefer signedUrl for private buckets
+																							const previewUrl = fileRec.signedUrl || fileRec.publicUrl || fileRec.storagePath || fileRec.url;
 																							if (previewUrl) {
-																								return { previewUrl, imgId: fileRec.img_id };
+																								return { previewUrl, imgId: fileRec.img_id, publicUrl: fileRec.publicUrl, signedUrl: fileRec.signedUrl };
 																							}
 																							// fallback to dataUrl
 																							const dataUrl = await _readFileToDataUrl(file);
@@ -2071,41 +2123,56 @@ const renderField = (
 																					);
 
 																					// Update selectedImages and productForms for this product index
+																					// Build deterministic chosenMain and chosenGallery from server response (prefer signedUrl)
+																					const first = previews[0];
+																					const chosenMain = first?.signedUrl || first?.publicUrl || first?.previewUrl || undefined;
+																					const chosenGallery = previews.slice(1).map(p => p.signedUrl || p.publicUrl || p.previewUrl).filter(Boolean) as string[];
+																					const newImgIds = previews.map(p => p.imgId).filter(Boolean) as string[];
+
 																					setSelectedImages(prev => {
 																						const copy = [...prev];
-																						const cur = copy[activeProductIndex] && typeof copy[activeProductIndex] === 'object'
-																							? { ...(copy[activeProductIndex] as { url?: string; gallery?: string[]; img_id?: string[] }) }
-																							: {} as { url?: string; gallery?: string[]; img_id?: string[] };
+																						const existing = copy[activeProductIndex];
+																						const existingObj = (existing && typeof existing === 'object') ? (existing as { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string }) : {} as { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string };
+																						// Create a fresh object for mutation
+																						const curObj: { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string } = { ...existingObj };
 
-																						cur.gallery = Array.isArray(cur.gallery) ? [...cur.gallery] : [];
-																						cur.img_id = Array.isArray(cur.img_id) ? [...cur.img_id] : [];
-
+																						// If replacing main image, set chosenMain; otherwise if no main, promote first preview
 																						if (replaceMain) {
-																							// replace main with first uploaded preview
-																							const first = previews[0];
-																							if (first) {
-																								cur.url = first.previewUrl;
-																								if (first.imgId) {
-																									// ensure unique
-																									cur.img_id = [...new Set([...(cur.img_id || []), first.imgId])];
-																								}
-																							}
+																							if (chosenMain) curObj.url = chosenMain;
+																							if (first?.signedUrl) curObj.signedUrl = first.signedUrl;
+																							else if (first?.publicUrl) curObj.publicUrl = first.publicUrl;
 																						} else {
-																							// add each preview to main/gallery until MAX_PER_PRODUCT
-																							for (const p of previews) {
-																								const totalNow = (cur.url ? 1 : 0) + (cur.gallery ? cur.gallery.length : 0);
-																								if (totalNow >= MAX_PER_PRODUCT) break;
-																								if (cur.url == null) {
-																									cur.url = p.previewUrl;
-																									if (p.imgId) cur.img_id.push(p.imgId);
+																							if (chosenMain) {
+																								// if main exists, append to gallery; otherwise set as main
+																								if (curObj.url) {
+																									curObj.gallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
+																									if (curObj.gallery.length < MAX_PER_PRODUCT) {
+																										if (curObj.gallery.includes(chosenMain)) {
+																											// already present
+																										} else {
+																											curObj.gallery.push(chosenMain);
+																										}
+																									}
 																								} else {
-																									cur.gallery.push(p.previewUrl);
-																									if (p.imgId) cur.img_id.push(p.imgId);
+																									curObj.url = chosenMain;
 																								}
 																							}
 																						}
 
-																						copy[activeProductIndex] = cur as { url?: string; gallery?: string[]; img_id?: string[] };
+																						// Merge gallery while respecting MAX_PER_PRODUCT
+																						const curGallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
+																						for (const g of chosenGallery) {
+																							if (curGallery.length >= MAX_PER_PRODUCT) break;
+																							if (!curGallery.includes(g)) curGallery.push(g);
+																						}
+																						curObj.gallery = curGallery;
+
+																						// Merge img ids
+																						const curImgIds = Array.isArray(curObj.img_id) ? [...(curObj.img_id as string[])] : [];
+																						for (const id of newImgIds) if (!curImgIds.includes(id)) curImgIds.push(id);
+																						curObj.img_id = curImgIds;
+
+																						copy[activeProductIndex] = curObj as SelectedImageItem;
 
 																						// ensure productForms length matches
 																						setProductForms(forms => {
@@ -2121,9 +2188,8 @@ const renderField = (
 																								if (!fcopy[activeProductIndex]) fcopy[activeProductIndex] = initialFormData();
 																								if (!fcopy[activeProductIndex].OtherAttributes) fcopy[activeProductIndex].OtherAttributes = {};
 																								const other = fcopy[activeProductIndex].OtherAttributes as Record<string, unknown>;
-																								const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-																								const newIds = previews.map(p => p.imgId).filter(Boolean) as string[];
-																								other.image_ids = [...new Set([...existing, ...newIds])];
+																								const existingIds = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
+																								other.image_ids = [...new Set([...existingIds, ...newImgIds])];
 																								return fcopy;
 																							});
 																						} catch (error) {
@@ -2132,6 +2198,10 @@ const renderField = (
 
 																						return copy;
 																					});
+
+																					// Force a shallow update to ensure any consumers re-render and pick up new signedUrl values
+																					setSelectedImages(prev => [...prev]);
+																					console.log('selectedImages refreshed for product', activeProductIndex, 'chosenMain=', chosenMain);
 
 																					toast.success('Images uploaded and added', { autoClose: 1500 });
 																				} catch (error) {
