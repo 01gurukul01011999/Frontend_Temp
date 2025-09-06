@@ -699,8 +699,28 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 					other.image_urls = [...new Set([...existing, signed])];
 					return copy;
 				});
-			}
 
+				// Deterministically update selectedImages[activeProductIndex] so React re-renders with the new signed url
+				const chosenMain = (rec?.signedUrl) || (rec?.publicUrl) || signed;
+				const chosenGallery = (uploaded || []).slice(1).map((p: UploadedFile | null | undefined) => p?.signedUrl || p?.publicUrl).filter(Boolean) as string[];
+				if (chosenMain) {
+					setSelectedImages(prev => {
+						const copy = [...prev];
+						const existingRaw = (copy[activeProductIndex] && typeof copy[activeProductIndex] === 'object') ? (copy[activeProductIndex] as Record<string, unknown>) : {} as Record<string, unknown>;
+						// Use a plain record to safely assign new properties and avoid union-with-string issues
+						const curRec: Record<string, unknown> = { ...existingRaw };
+						curRec.url = chosenMain;
+						curRec.signedUrl = chosenMain;
+						curRec.gallery = Array.isArray(curRec.gallery) ? [...(curRec.gallery as string[])] : [];
+						for (const g of chosenGallery) {
+							if (!(curRec.gallery as string[]).includes(g)) (curRec.gallery as string[]).push(g);
+						}
+						copy[activeProductIndex] = curRec as SelectedImageItem;
+						return copy;
+					});
+				}
+
+				// ensure productForms length matches
 			// store uploaded metadata
 				_setUploadedImagesjson(prev => {
 					try {
@@ -711,8 +731,10 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 					}
 				});
 
-			if (signed) toast.success('Image uploaded and product added', { autoClose: 1500 });
-		} catch (error) {
+				if (signed) toast.success('Image uploaded and product added', { autoClose: 1500 });
+			} // end if (signed)
+		} // end try
+		catch (error) {
 			console.error('Error uploading add-product image', error);
 			toast.error('Failed to upload image. Showing preview only.');
 		} finally {
@@ -2086,12 +2108,13 @@ const renderField = (
 																					const uploaded = Array.isArray(body.files) ? body.files : [];
 
 																					// Map uploaded files to preview urls and ids. If server didn't return url, fall back to reading the file.
-																					const previews: { previewUrl: string; imgId?: string }[] = await Promise.all(
+																					const previews: { previewUrl: string; imgId?: string; publicUrl?: string; signedUrl?: string }[] = await Promise.all(
 																						files.map(async (file, idx) => {
 																							const fileRec = uploaded[idx] || {};
-																							const previewUrl = fileRec.publicUrl || fileRec.signedUrl || fileRec.storagePath || fileRec.url;
+																							// prefer signedUrl for private buckets
+																							const previewUrl = fileRec.signedUrl || fileRec.publicUrl || fileRec.storagePath || fileRec.url;
 																							if (previewUrl) {
-																								return { previewUrl, imgId: fileRec.img_id };
+																								return { previewUrl, imgId: fileRec.img_id, publicUrl: fileRec.publicUrl, signedUrl: fileRec.signedUrl };
 																							}
 																							// fallback to dataUrl
 																							const dataUrl = await _readFileToDataUrl(file);
@@ -2100,41 +2123,56 @@ const renderField = (
 																					);
 
 																					// Update selectedImages and productForms for this product index
+																					// Build deterministic chosenMain and chosenGallery from server response (prefer signedUrl)
+																					const first = previews[0];
+																					const chosenMain = first?.signedUrl || first?.publicUrl || first?.previewUrl || undefined;
+																					const chosenGallery = previews.slice(1).map(p => p.signedUrl || p.publicUrl || p.previewUrl).filter(Boolean) as string[];
+																					const newImgIds = previews.map(p => p.imgId).filter(Boolean) as string[];
+
 																					setSelectedImages(prev => {
 																						const copy = [...prev];
-																						const cur = copy[activeProductIndex] && typeof copy[activeProductIndex] === 'object'
-																							? { ...(copy[activeProductIndex] as { url?: string; gallery?: string[]; img_id?: string[] }) }
-																							: {} as { url?: string; gallery?: string[]; img_id?: string[] };
+																						const existing = copy[activeProductIndex];
+																						const existingObj = (existing && typeof existing === 'object') ? (existing as { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string }) : {} as { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string };
+																						// Create a fresh object for mutation
+																						const curObj: { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string } = { ...existingObj };
 
-																						cur.gallery = Array.isArray(cur.gallery) ? [...cur.gallery] : [];
-																						cur.img_id = Array.isArray(cur.img_id) ? [...cur.img_id] : [];
-
+																						// If replacing main image, set chosenMain; otherwise if no main, promote first preview
 																						if (replaceMain) {
-																							// replace main with first uploaded preview
-																							const first = previews[0];
-																							if (first) {
-																								cur.url = first.previewUrl;
-																								if (first.imgId) {
-																									// ensure unique
-																									cur.img_id = [...new Set([...(cur.img_id || []), first.imgId])];
-																								}
-																							}
+																							if (chosenMain) curObj.url = chosenMain;
+																							if (first?.signedUrl) curObj.signedUrl = first.signedUrl;
+																							else if (first?.publicUrl) curObj.publicUrl = first.publicUrl;
 																						} else {
-																							// add each preview to main/gallery until MAX_PER_PRODUCT
-																							for (const p of previews) {
-																								const totalNow = (cur.url ? 1 : 0) + (cur.gallery ? cur.gallery.length : 0);
-																								if (totalNow >= MAX_PER_PRODUCT) break;
-																								if (cur.url == null) {
-																									cur.url = p.previewUrl;
-																									if (p.imgId) cur.img_id.push(p.imgId);
+																							if (chosenMain) {
+																								// if main exists, append to gallery; otherwise set as main
+																								if (curObj.url) {
+																									curObj.gallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
+																									if (curObj.gallery.length < MAX_PER_PRODUCT) {
+																										if (curObj.gallery.includes(chosenMain)) {
+																											// already present
+																										} else {
+																											curObj.gallery.push(chosenMain);
+																										}
+																									}
 																								} else {
-																									cur.gallery.push(p.previewUrl);
-																									if (p.imgId) cur.img_id.push(p.imgId);
+																									curObj.url = chosenMain;
 																								}
 																							}
 																						}
 
-																						copy[activeProductIndex] = cur as { url?: string; gallery?: string[]; img_id?: string[] };
+																						// Merge gallery while respecting MAX_PER_PRODUCT
+																						const curGallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
+																						for (const g of chosenGallery) {
+																							if (curGallery.length >= MAX_PER_PRODUCT) break;
+																							if (!curGallery.includes(g)) curGallery.push(g);
+																						}
+																						curObj.gallery = curGallery;
+
+																						// Merge img ids
+																						const curImgIds = Array.isArray(curObj.img_id) ? [...(curObj.img_id as string[])] : [];
+																						for (const id of newImgIds) if (!curImgIds.includes(id)) curImgIds.push(id);
+																						curObj.img_id = curImgIds;
+
+																						copy[activeProductIndex] = curObj as SelectedImageItem;
 
 																						// ensure productForms length matches
 																						setProductForms(forms => {
@@ -2150,9 +2188,8 @@ const renderField = (
 																								if (!fcopy[activeProductIndex]) fcopy[activeProductIndex] = initialFormData();
 																								if (!fcopy[activeProductIndex].OtherAttributes) fcopy[activeProductIndex].OtherAttributes = {};
 																								const other = fcopy[activeProductIndex].OtherAttributes as Record<string, unknown>;
-																								const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-																								const newIds = previews.map(p => p.imgId).filter(Boolean) as string[];
-																								other.image_ids = [...new Set([...existing, ...newIds])];
+																								const existingIds = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
+																								other.image_ids = [...new Set([...existingIds, ...newImgIds])];
 																								return fcopy;
 																							});
 																						} catch (error) {
@@ -2161,6 +2198,10 @@ const renderField = (
 
 																						return copy;
 																					});
+
+																					// Force a shallow update to ensure any consumers re-render and pick up new signedUrl values
+																					setSelectedImages(prev => [...prev]);
+																					console.log('selectedImages refreshed for product', activeProductIndex, 'chosenMain=', chosenMain);
 
 																					toast.success('Images uploaded and added', { autoClose: 1500 });
 																				} catch (error) {
