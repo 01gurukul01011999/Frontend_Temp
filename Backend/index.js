@@ -312,7 +312,7 @@ app.post("/api/catalogs", async (req, res) => {
       return res.status(500).json({ error: 'Server configuration error: Supabase admin client not configured' });
     }
 
-    const { data, error } = await supabaseAdmin.from('catalogs').insert([payload]).select();
+    const { data, error } = await supabaseAdmin.from('catalogs_old').insert([payload]).select();
 
     if (error) {
       console.error('Supabase insert error', error);
@@ -453,6 +453,98 @@ app.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
     res.status(500).json({ error: "Internal Server Error", details: String(err) });
   }
 });
+
+app.post("/orderfetch", async (req, res) => {
+ 
+  try {
+    const { userId } = req.body;
+    console.log(req.body);
+
+    const { data, error } = await supabaseAdmin
+      .from("orders")
+      .select("*")
+      .eq("seller_id", userId);
+
+    if (error) {
+      console.error("Supabase query error:", error);
+      return res.status(500).send("Database Error");
+    }
+
+    if (data.length > 0) {
+      res.json(data);
+      console.log(data);
+    } else {
+      res.status(204).send("No orders found for this user");
+    }
+  } catch (err) {
+    console.error("Server error:", err);
+    res.status(500).send("Internal Server Error");
+  }
+});
+
+// Update order status
+app.post("/order/:orders_id", async (req, res) => {
+  try {
+    const { orders_id } = req.params;   // <-- URL se orders_id mil gaya
+    const { sta } = req.body;           // <-- body se new status mil gaya
+
+    // Supabase update query
+    const { data, error } = await supabaseAdmin
+      .from("orders")
+      .update({ sta })
+      .eq("orders_id", orders_id)
+      .select();
+
+    if (error) {
+      console.error("Supabase error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+
+    if (!data || data.length === 0) {
+      return res.status(404).json({ error: "Order not found" });
+    }
+
+    res.json({ message: "Order updated successfully", order: data[0] });
+  } catch (err) {
+    console.error("Server error:", err);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+
+
+app.post("/api/fetch-catalogs", async (req, res) => {
+  try {
+    const { userId } = req.body;
+    console.log(req.body);
+
+    const { data, error } = await supabaseAdmin 
+      .from("catalogs_old")
+      .select("*")
+      .eq("user_id", userId);
+
+    if (error) {
+      console.error("Supabase query error:", error);
+      return res.status(500).send("Database Error");
+    }
+
+    if (data.length > 0) {
+      res.json(data);
+      console.log(data);
+    } else {
+      res.status(204).send("No catalogs found for this user");
+    }
+
+      }
+    catch (err) {
+      console.error("Server error:", err)
+        
+      res.status(500).send("Internal Server Error")
+    }
+
+  });
+
+
 
 
 

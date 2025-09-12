@@ -199,7 +199,7 @@ function resolvePreviewSrc(item?: SelectedImageItem | string): string {
 	if (!item) return '';
 	if (typeof item === 'string') return item;
 	const rec = item as { signedUrl?: string; publicUrl?: string; url?: string };
-	return (rec.signedUrl as string) ?? (rec.publicUrl as string) ?? (rec.url as string) ?? '';
+	return (rec.publicUrl as string) ?? (rec.signedUrl as string) ?? (rec.url as string) ?? '';
 }
 
 export default function CategorySelector(): React.JSX.Element {
@@ -212,9 +212,10 @@ export default function CategorySelector(): React.JSX.Element {
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
 	const [_uploadedImagesjson, _setUploadedImagesjson] = useState<UploadedFile[]>([]);
-	//console.log('uploadedImagesjson', uploadedImagesjson);
+	console.log('uploadedImagesjson', _uploadedImagesjson);
 	// Store form data for each product
 	const [productForms, setProductForms] = useState<ProductForm[]>([]);
+	console.log('productForms', productForms);
 	const imageTypeList = [
 		{ label: 'Watermark image', icon: '/assets/invalid-image-1.png' },
 		{ label: 'Fake branded/1st copy', icon: '/assets/invalid-image-2.png' },
@@ -301,24 +302,26 @@ export default function CategorySelector(): React.JSX.Element {
 				console.error('Failed to merge uploaded signed URLs into productForms', error);
 			}
 
-			// Replace local previews with server-provided signed URLs only (ignore other fields)
+			// Replace local previews with server-provided URLs (prefer publicUrl, fallback to signedUrl)
 			try {
-				const signedUrls = uploaded.map((u) => u.signedUrl || '');
+				const urls = uploaded.map((u) => u.publicUrl || u.signedUrl || '');
 
 				setSelectedImages((prev) => prev.map((item, idx) => {
-					const signed = signedUrls[idx] || '';
-					if (!signed) return item;
-					if (typeof item === 'string') return signed;
+					const chosen = urls[idx] || '';
+					if (!chosen) return item;
+					if (typeof item === 'string') return chosen;
 					const it = { ...(item as Record<string, unknown>) } as Record<string, unknown>;
-					it.signedUrl = signed;
-					it.url = signed;
+					const rec = uploaded[idx] || {};
+					if (rec.publicUrl) it.publicUrl = rec.publicUrl;
+					else if (rec.signedUrl) it.signedUrl = rec.signedUrl;
+					it.url = chosen;
 					return it as SelectedImageItem;
 				}));
 
-				// store signed URLs separately for convenience
-				setUploadedImages(signedUrls.filter(Boolean) as string[]);
+				// store preview URLs separately for convenience
+				setUploadedImages(urls.filter(Boolean) as string[]);
 			} catch (error) {
-				console.warn('Failed to map signed URLs for uploaded images', error);
+				console.warn('Failed to map uploaded URLs for images', error);
 			}
 			toast.success('Images uploaded successfully', { autoClose: 2000 });
 		} catch (error) {
@@ -670,19 +673,19 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 			const uploaded: UploadedFile[] = (body.files || []) as UploadedFile[];
 			const rec = uploaded[0] || null;
 			const signed = rec?.signedUrl ?? null;
+			const pub = rec?.publicUrl ?? null;
 
-			// Update the last added selectedImages entry to use signedUrl (if available)
+			// Update the last added selectedImages entry to use publicUrl (preferred) or signedUrl
 			setSelectedImages(prev => {
 				const copy = [...prev];
 				const idx = copy.length - 1;
 				if (idx < 0) return prev;
-				if (signed) {
+				if (pub || signed) {
 					const it = { ...(copy[idx] as Record<string, unknown>) } as Record<string, unknown>;
-					it.signedUrl = signed;
-					it.url = signed;
+					if (pub) it.publicUrl = pub;
+					else if (signed) it.signedUrl = signed;
+					it.url = pub || signed || it.url;
 					copy[idx] = it as SelectedImageItem;
-				} else {
-					// if no signedUrl, leave preview as is
 				}
 				return copy;
 			});
@@ -701,16 +704,18 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 				});
 
 				// Deterministically update selectedImages[activeProductIndex] so React re-renders with the new signed url
-				const chosenMain = (rec?.signedUrl) || (rec?.publicUrl) || signed;
-				const chosenGallery = (uploaded || []).slice(1).map((p: UploadedFile | null | undefined) => p?.signedUrl || p?.publicUrl).filter(Boolean) as string[];
+		const chosenMain = (rec?.publicUrl) || (rec?.signedUrl) || signed;
+		const chosenGallery = (uploaded || []).slice(1).map((p: UploadedFile | null | undefined) => p?.publicUrl || p?.signedUrl).filter(Boolean) as string[];
 				if (chosenMain) {
 					setSelectedImages(prev => {
 						const copy = [...prev];
 						const existingRaw = (copy[activeProductIndex] && typeof copy[activeProductIndex] === 'object') ? (copy[activeProductIndex] as Record<string, unknown>) : {} as Record<string, unknown>;
 						// Use a plain record to safely assign new properties and avoid union-with-string issues
 						const curRec: Record<string, unknown> = { ...existingRaw };
-						curRec.url = chosenMain;
-						curRec.signedUrl = chosenMain;
+			curRec.url = chosenMain;
+			// prefer publicUrl; keep signedUrl as fallback
+			curRec.publicUrl = curRec.publicUrl ?? chosenMain;
+			curRec.signedUrl = curRec.signedUrl ?? (rec?.signedUrl ?? undefined);
 						curRec.gallery = Array.isArray(curRec.gallery) ? [...(curRec.gallery as string[])] : [];
 						for (const g of chosenGallery) {
 							if (!(curRec.gallery as string[]).includes(g)) (curRec.gallery as string[]).push(g);
@@ -1675,7 +1680,7 @@ const renderField = (
 								return (
 
 										<Box key={idx} sx={{ position: 'relative', width: 80, height: 80, borderRadius: 2,  border: '1px solid #e0e0e0' }}>
-													<PreviewImage src={imgUrl} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 2, }} />
+													<PreviewImage key={imgUrl || `thumb-${idx}`} src={imgUrl} alt={`Product ${idx + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 2, }} />
 											<IconButton
 												size="small"
 												onClick={() => setSelectedImages(images => images.filter((_, i) => i !== idx))}
@@ -1728,7 +1733,7 @@ const renderField = (
 		<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
 
 				{selectedImages.map((img, idx) => {
-					//console.log('Rendering thumbnail for image:', img); // Debug log to verify the image object
+					console.log('Rendering thumbnail for image:', img); // Debug log to verify the image object
 				const thumbSrc = resolvePreviewSrc(img);
       //console.log('Thumbnail Source:', thumbSrc); // Debug log to verify the thumbnail source
 				return (
@@ -1739,7 +1744,7 @@ const renderField = (
 					onClick={() => setActiveProductIndex(idx)}
 					sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
 				>
-					<PreviewImage src={thumbSrc} alt={`Product ${idx + 1}`} width={48} height={48} style={{ width:48, height:48,borderRadius: 4,  marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
+					<PreviewImage key={thumbSrc || `tab-${idx}`} src={thumbSrc} alt={`Product ${idx + 1}`} width={48} height={48} style={{ width:48, height:48,borderRadius: 4,  marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
 					Product {idx + 1}
 				</Button>
 				);
@@ -2000,7 +2005,7 @@ const renderField = (
 									<Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
 										<Box sx={{ position: 'relative', width: 80, height: 80, borderRadius: 1, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
 											{mainUrl ? (
-												<PreviewImage src={mainUrl} alt={`Main ${activeProductIndex + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 }} onClick={changeMainImage} />
+												<PreviewImage key={mainUrl || `main-${activeProductIndex}`} src={mainUrl} alt={`Main ${activeProductIndex + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 }} onClick={changeMainImage} />
 											) : (
 												<Box
 													onClick={() => openPerProductInput(false)}
@@ -2026,11 +2031,37 @@ const renderField = (
 									{/* Gallery thumbnails */}
 										{gallery.map((g, gi) => (
 										<Box key={gi} sx={{display:"flex", flexDirection: 'column', alignItems: 'center', gap: 1}}>
-											<Box sx={{ position: 'relative', width: 80, height: 80, borderRadius: 8,  border: '1px solid #e0e0e0' }}>
-												<PreviewImage src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8 }} />
+											<Box
+												sx={{ position: 'relative', width: 80, height: 80, borderRadius: 8,  border: '1px solid #e0e0e0', cursor: 'pointer' }}
+												onClick={() => {
+													// Promote this gallery image to be the main image for the active product
+													setSelectedImages(prev => {
+														const copy = [...prev];
+														const existing = copy[activeProductIndex];
+														if (typeof existing === 'string') {
+															// replace string entry with selected gallery url
+															copy[activeProductIndex] = g;
+															return copy;
+														}
+														const cur = existing && typeof existing === 'object' ? { ...(existing as Record<string, unknown>) } as Record<string, unknown> : {} as Record<string, unknown>;
+														cur.url = g;
+														// if the promoted image exists in gallery, move it to front of gallery array
+														cur.gallery = Array.isArray(cur.gallery) ? [...(cur.gallery as string[])] : [];
+														// remove the promoted image from gallery to avoid duplication
+														const idxInGallery = (cur.gallery as string[]).indexOf(g);
+														if (idxInGallery > -1) {
+															(cur.gallery as string[]).splice(idxInGallery, 1);
+														}
+														// Optionally keep it in gallery (append) or just set as main; keep existing behavior of not duplicating
+														copy[activeProductIndex] = cur as SelectedImageItem;
+														return copy;
+													});
+												}}
+											>
+												<PreviewImage key={g || `gallery-${activeProductIndex}-${gi}`} src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8 }} />
 												<IconButton
 													size="small"
-													onClick={() => removeGalleryAt(gi)}
+													onClick={(ev) => { ev.stopPropagation(); removeGalleryAt(gi); }}
 													sx={{ position: 'absolute', top: -6, right: -6, background: '#1b1717ff', width: 18, height: 18, p: 0 ,  color:' #e0e0e0',
 														"&:hover": {
 																background: "#3b3636ff",

@@ -97,7 +97,7 @@ function TabsFilter() : React.JSX.Element {
           return;
         }
         const data = await res.json();
-        //console.log('data', data);
+        console.log('data', data);
         setOrder(data);
       } catch (error_: unknown) {
         if (error_ instanceof Error) {
@@ -123,13 +123,33 @@ function TabsFilter() : React.JSX.Element {
   }, [searchParams, router, user]);
 
   // Delete handler
-  const handleDelete = async (orderId: string) => {
+  //const handleDelete = async (orders_id: string) => {
+  //if (!globalThis.confirm('Are you sure you want to delete this order?')) return;
+  //  try {
+  //    const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + 'order/' + orders_id;
+  //    const res = await fetch(apiUrl, { method: 'DELETE' });
+  //    if (!res.ok) throw new Error('Failed to delete order');
+  //    setOrder((prev) => prev.filter((order) => order.orders_id !== orders_id));
+  //  } catch (error_: unknown) {
+  //    if (error_ instanceof Error) {
+  //      alert(error_.message || 'Error deleting order');
+  //    } else {
+  //      alert('Error deleting order');
+  //    }
+  //  }
+  //};
+  const handleAccept = async (orders_id: string) => {
   if (!globalThis.confirm('Are you sure you want to delete this order?')) return;
     try {
-      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + 'order/' + orderId;
-      const res = await fetch(apiUrl, { method: 'DELETE' });
+      const data = { sta: 'Ready To Ship' }; // Update status to 'Ready To Ship'
+      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + '/order/' + orders_id;
+      const res = await fetch(apiUrl, { method: 'POST' , 
+      headers: { 'Content-Type': 'application/json' }, 
+      body: JSON.stringify(data) });
+      console.log('data', data);
       if (!res.ok) throw new Error('Failed to delete order');
-      setOrder((prev) => prev.filter((order) => order.ordersId !== orderId));
+      setOrder((prev) => prev.filter((order) => order.orders_id !== orders_id));
+      
     } catch (error_: unknown) {
       if (error_ instanceof Error) {
         alert(error_.message || 'Error deleting order');
@@ -138,6 +158,23 @@ function TabsFilter() : React.JSX.Element {
       }
     }
   };
+  const handleCancel = async (orders_id: string) => {
+  if (!globalThis.confirm('Are you sure you want to delete this order?')) return;
+    try {
+      const data = { sta: 'on hold' }; // Update status to 'Cancelled'
+      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_URL + '/order/' + orders_id;
+      const res = await fetch(apiUrl, { method: 'POST' , headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data) });
+      if (!res.ok) throw new Error('Failed to delete order');
+      setOrder((prev) => prev.filter((order) => order.orders_id !== orders_id));
+    } catch (error_: unknown) {
+      if (error_ instanceof Error) {
+        alert(error_.message || 'Error deleting order');
+      } else {
+        alert('Error deleting order');
+      }
+    }
+  };
+
 
   // Filter categories based on start and end date
   const filteredOrders = React.useMemo(() => {
@@ -189,6 +226,7 @@ function TabsFilter() : React.JSX.Element {
         // SLA Status filter
         if (rtsSlaStatus.length > 0) {
           result = result.filter(order => rtsSlaStatus.includes(order.slaStatus));
+          
         }
         // Label Downloaded filter
         if (labelDownloaded) {
@@ -300,7 +338,7 @@ function TabsFilter() : React.JSX.Element {
 
 
   return (
-    <div>
+    <>
       {/* Top bar with filter, search, and add button */}
       <Box sx={{  mt: 1  }}>
         <Tabs sx={{ mr:-3, ml:-3, backgroundColor: '#ffffff', padding: '0px'  }}
@@ -856,7 +894,8 @@ function TabsFilter() : React.JSX.Element {
             {tabFilteredOrders.length > 0 ? (
               <Order
                 order={tabFilteredOrders}
-                onDelete={handleDelete}
+                onCancel={handleCancel}
+                onAccept={handleAccept}
                 sx={{ height: '100%', borderRadius: 0, mt: 0.3, mb: 2 , ml: -2, mr: -2, }}
               />
             ) : (
@@ -886,12 +925,7 @@ function TabsFilter() : React.JSX.Element {
         </>
       )}
       <ToastContainer position="top-right" autoClose={3000} />
-
-
-
-
-      
-    </div>
+    </>
   )
 }
 

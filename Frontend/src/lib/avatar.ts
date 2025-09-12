@@ -74,13 +74,26 @@ export async function getAvatarUrl(path: string, expiresIn: number = 3600) {
   try {
     if (!path) return null;
 
-  const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'techpotli';
+    const bucket = process.env.NEXT_PUBLIC_SUPABASE_STORAGE_BUCKET || 'techpotli';
+
+    // Prefer public URL when available (safe for public buckets/objects)
+    // getPublicUrl is synchronous and returns { data: { publicUrl } }
+    try {
+      const publicResult = supabase.storage.from(bucket).getPublicUrl(path);
+      if (publicResult?.data?.publicUrl) {
+        return publicResult.data.publicUrl;
+      }
+    } catch (e) {
+      // fallthrough to signed URL
+    }
+
+    // Fallback to signed URL when public URL is not available
     const { data, error } = await supabase.storage
       .from(bucket)
       .createSignedUrl(path, expiresIn);
 
     if (error) {
-      console.error('Error getting avatar URL:', error);
+      console.error('Error getting avatar URL (signed):', error);
       return null;
     }
 
