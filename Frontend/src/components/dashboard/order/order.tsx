@@ -16,22 +16,21 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 import IconButton from '@mui/material/IconButton';
-import DeleteIcon from '@mui/icons-material/Delete';
-import EditIcon from '@mui/icons-material/Edit';
-import Link from 'next/link';
+import CloseIcon from '@mui/icons-material/Close';
+import CheckIcon from '@mui/icons-material/Check';
 
 const statusMap = {
   'On Hold': { label: 'On Hold', color: 'warning' },
-  pending: { label: 'pending', color: 'info' },
+  'pending': { label: 'pending', color: 'info' },
   'Ready To Ship': { label: 'ready to ship', color: 'primary'  },
-  Shipped: { label: 'shipped', color: 'success' },
-  Cancelled: { label: 'cancelled', color: 'error' },
+  'Shipped': { label: 'shipped', color: 'success' },
+  'Cancelled': { label: 'cancelled', color: 'error' },
  
   
 } as const;
 
 export interface order {
-  ordersId: string;
+  orders_id: string;
   descrip: string;
   skuId: string;
   amount: number;
@@ -45,14 +44,15 @@ export interface order {
 export interface orderProps {
   order?: order[];
   sx?: SxProps;
-  onDelete?: (ordersId: string) => void;
+  onCancel?: (ordersId: string) => void;
+  onAccept?: (ordersId: string) => void;
 }
 
-export function Order({ order = [], sx, onDelete }: orderProps): React.JSX.Element {
-  const [sortBy, setSortBy] = React.useState<'ordersId' | 'descrip' | 'skuId' | 'sta' | 'orderDate'>('ordersId');
+export function Order({ order = [], sx, onAccept, onCancel }: orderProps): React.JSX.Element {
+  const [sortBy, setSortBy] = React.useState<'orders_id' | 'descrip' | 'skuId' | 'sta' | 'orderDate'>('orders_id');
   const [sortOrder, setSortOrder] = React.useState<'asc' | 'desc'>('asc');
 
-  const handleSort = (column: 'ordersId' | 'descrip' | 'skuId' | 'sta' | 'orderDate') => {
+  const handleSort = (column: 'orders_id' | 'descrip' | 'skuId' | 'sta' | 'orderDate') => {
     if (sortBy === column) {
       setSortOrder((prev) => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -92,8 +92,8 @@ export function Order({ order = [], sx, onDelete }: orderProps): React.JSX.Eleme
         <Table sx={{ minWidth: 800 }}>
           <TableHead>
             <TableRow>
-              <TableCell onClick={() => handleSort('ordersId')} sx={{ cursor: 'pointer' }}>
-                Order Id {sortBy === 'ordersId' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
+              <TableCell onClick={() => handleSort('orders_id')} sx={{ cursor: 'pointer' }}>
+                Order Id {sortBy === 'orders_id' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
               </TableCell>
               <TableCell onClick={() => handleSort('descrip')} sx={{ cursor: 'pointer' }}>
                 Order Details {sortBy === 'descrip' ? (sortOrder === 'asc' ? '▲' : '▼') : ''}
@@ -111,12 +111,13 @@ export function Order({ order = [], sx, onDelete }: orderProps): React.JSX.Eleme
             </TableRow>
           </TableHead>
           <TableBody>
+            
             {sortedOrders.map((order) => {
               const { label, color } = statusMap[order.sta] ?? { label: 'Unknown', color: 'default' };
               //console.log('order', order);
               return (
-                <TableRow hover key={order.ordersId}>
-                  <TableCell>{order.ordersId}</TableCell>
+                <TableRow hover key={order.orders_id}>
+                  <TableCell>{order.orders_id}</TableCell>
                   <TableCell>{order.descrip}</TableCell>
                   <TableCell>{order.skuId}</TableCell>
                   <TableCell>
@@ -131,15 +132,14 @@ export function Order({ order = [], sx, onDelete }: orderProps): React.JSX.Eleme
                   }</TableCell>
                   <TableCell align="center">
                     <IconButton
-                      color="primary"
-                      component={Link}
-                      href={`/dashboard/product/categories/edit?edit=${order.ordersId}`}
+                      color="success"
+                      onClick={() => onAccept?.(order.orders_id)}
                       sx={{ mr: 1 }}
                     >
-                      <EditIcon />
+                      <CheckIcon />
                     </IconButton>
-                    <IconButton color="error" onClick={() => onDelete?.(order.ordersId)}>
-                      <DeleteIcon />
+                    <IconButton color="warning" onClick={() => onCancel?.(order.orders_id)}>
+                      <CloseIcon />
                     </IconButton>
                   </TableCell>
                 </TableRow>
