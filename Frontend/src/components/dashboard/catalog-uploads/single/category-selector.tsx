@@ -195,11 +195,13 @@ function PreviewImage(props: { src?: string | null; alt?: string; width?: number
 }
 
 // Resolve a preview source from a SelectedImageItem or string.
+// Prefer `publicUrl` for previewing. Signed URLs are kept only as a fallback in the rest of the code,
+// but previews should use `publicUrl` when available.
 function resolvePreviewSrc(item?: SelectedImageItem | string): string {
 	if (!item) return '';
 	if (typeof item === 'string') return item;
 	const rec = item as { signedUrl?: string; publicUrl?: string; url?: string };
-	return (rec.publicUrl as string) ?? (rec.signedUrl as string) ?? (rec.url as string) ?? '';
+	return (rec.publicUrl as string) ?? (rec.url as string) ?? '';
 }
 
 export default function CategorySelector(): React.JSX.Element {
@@ -212,10 +214,10 @@ export default function CategorySelector(): React.JSX.Element {
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
 	const [_uploadedImagesjson, _setUploadedImagesjson] = useState<UploadedFile[]>([]);
-	console.log('uploadedImagesjson', _uploadedImagesjson);
+	//console.log('uploadedImagesjson', _uploadedImagesjson);
 	// Store form data for each product
 	const [productForms, setProductForms] = useState<ProductForm[]>([]);
-	console.log('productForms', productForms);
+	//console.log('productForms', productForms);
 	const imageTypeList = [
 		{ label: 'Watermark image', icon: '/assets/invalid-image-1.png' },
 		{ label: 'Fake branded/1st copy', icon: '/assets/invalid-image-2.png' },
@@ -282,29 +284,31 @@ export default function CategorySelector(): React.JSX.Element {
 			 const uploaded: UploadedFile[] = (body.files || []) as UploadedFile[];
 			_setUploadedImagesjson(uploaded);
 			//console.log('Upload response', uploaded);
-			// Use only signedUrl from the upload response for UI and JSON.
+			// Use publicUrl from the upload response for UI and JSON (fall back to signedUrl only if necessary).
 			try {
 				setProductForms(prev => {
 					const copy = [...prev];
-					for (const [i, fileRec] of uploaded.entries()) {
-						const rec = fileRec as UploadedFile | null;
-						const signed = rec?.signedUrl ?? null;
-						if (!signed) continue;
+			for (const [i, fileRec] of uploaded.entries()) {
+				const rec = fileRec as UploadedFile | null;
+				// Only use publicUrl for stored image URLs. Skip if publicUrl not available.
+				const pub = rec?.publicUrl ?? null;
+				if (!pub) continue;
 						if (!copy[i]) copy[i] = initialFormData();
 						if (!copy[i].OtherAttributes) copy[i].OtherAttributes = {};
 						const other = copy[i].OtherAttributes as Record<string, unknown>;
 						const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
-						other.image_urls = [...new Set([...existing, signed])];
+						other.image_urls = [...new Set([...existing, pub])];
 					}
 					return copy;
 				});
-			} catch (error) {
-				console.error('Failed to merge uploaded signed URLs into productForms', error);
+				} catch (error) {
+				console.error('Failed to merge uploaded URLs into productForms', error);
 			}
-
+//console.log('uploaded', uploaded);
 			// Replace local previews with server-provided URLs (prefer publicUrl, fallback to signedUrl)
 			try {
-				const urls = uploaded.map((u) => u.publicUrl || u.signedUrl || '');
+				// Prefer publicUrl for previews; do not fall back to signedUrl for preview URLs.
+				const urls = uploaded.map((u) => u.publicUrl || '');
 
 				setSelectedImages((prev) => prev.map((item, idx) => {
 					const chosen = urls[idx] || '';
@@ -313,7 +317,7 @@ export default function CategorySelector(): React.JSX.Element {
 					const it = { ...(item as Record<string, unknown>) } as Record<string, unknown>;
 					const rec = uploaded[idx] || {};
 					if (rec.publicUrl) it.publicUrl = rec.publicUrl;
-					else if (rec.signedUrl) it.signedUrl = rec.signedUrl;
+					// do not set signedUrl as an image URL; keep signedUrl only in uploaded metadata
 					it.url = chosen;
 					return it as SelectedImageItem;
 				}));
@@ -634,10 +638,31 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const addProductInputRef = React.useRef<HTMLInputElement>(null);
+    // track the index of the last preview slot added by handleAddProductImage
+    const lastAddedIndexRef = React.useRef<number | null>(null);
+
+	// Helper to immutably update selectedImages at a given index.
+	// `updater` can be an object to merge or a function (cur => newCur).
+	const updateSelectedImageAt = (index: number, updater: Record<string, unknown> | ((cur?: SelectedImageItem) => SelectedImageItem)) => {
+		setSelectedImages(prev => {
+			const copy = [...prev];
+			const cur = copy[index];
+			let newVal: SelectedImageItem;
+			if (typeof updater === 'function') {
+				// @ts-ignore
+				newVal = (updater as Function)(cur);
+			} else {
+				const base = (cur && typeof cur === 'object') ? { ...(cur as Record<string, unknown>) } : {} as Record<string, unknown>;
+				newVal = { ...base, ...(updater as Record<string, unknown>) } as SelectedImageItem;
+			}
+			copy[index] = newVal;
+			return copy;
+		});
+	};
 
 	// ...existing code...
 
-	// Handler for file input change (Add Product) — upload selected file immediately and add product using signedUrl
+	// Handler for file input change (Add Product) — upload selected file immediately and add product using uploaded URLs (prefer publicUrl)
 	const handleAddProductImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
 		if (!files || files.length === 0) return;
@@ -647,6 +672,8 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 		// Reserve the new slot immediately so UI shows the product entry
 		setSelectedImages(prev => {
 			const newImages = [...prev, { url: previewUrl, file } as SelectedImageItem];
+			// remember index of the last added slot so we can update it after upload
+			lastAddedIndexRef.current = newImages.length - 1;
 			setProductForms(forms => {
 				const formsCopy = [...forms];
 				while (formsCopy.length < newImages.length) formsCopy.push(initialFormData());
@@ -672,26 +699,23 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 			const body = await res.json();
 			const uploaded: UploadedFile[] = (body.files || []) as UploadedFile[];
 			const rec = uploaded[0] || null;
-			const signed = rec?.signedUrl ?? null;
 			const pub = rec?.publicUrl ?? null;
+			const signed = rec?.signedUrl ?? null;
 
 			// Update the last added selectedImages entry to use publicUrl (preferred) or signedUrl
-			setSelectedImages(prev => {
-				const copy = [...prev];
-				const idx = copy.length - 1;
-				if (idx < 0) return prev;
-				if (pub || signed) {
-					const it = { ...(copy[idx] as Record<string, unknown>) } as Record<string, unknown>;
-					if (pub) it.publicUrl = pub;
-					else if (signed) it.signedUrl = signed;
-					it.url = pub || signed || it.url;
-					copy[idx] = it as SelectedImageItem;
-				}
-				return copy;
+			const lastIdx = lastAddedIndexRef.current ?? Math.max(0, (selectedImages.length - 1));
+			updateSelectedImageAt(lastIdx, (cur) => {
+				const base = (cur && typeof cur === 'object') ? { ...(cur as Record<string, unknown>) } : {} as Record<string, unknown>;
+				if (pub) base.publicUrl = pub;
+				else if (signed) base.signedUrl = signed; // keep as fallback metadata
+				base.url = pub || base.url || signed || base.url;
+				return base as SelectedImageItem;
 			});
+			// clear the ref once applied
+			lastAddedIndexRef.current = null;
 
-			// Merge signedUrl into productForms OtherAttributes.image_urls for this last product
-			if (signed) {
+			// Merge publicUrl (preferred) or signedUrl into productForms OtherAttributes.image_urls for this last product
+			if (pub || signed) {
 				setProductForms(prev => {
 					const copy = [...prev];
 					const idx = copy.length - 1;
@@ -699,29 +723,27 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 					if (!copy[idx].OtherAttributes) copy[idx].OtherAttributes = {};
 					const other = copy[idx].OtherAttributes as Record<string, unknown>;
 					const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
-					other.image_urls = [...new Set([...existing, signed])];
+					// Only add public URLs to image_urls (signedUrl kept as metadata only)
+					other.image_urls = [...new Set([...existing, ...(pub ? [pub] : []) ])];
 					return copy;
 				});
 
 				// Deterministically update selectedImages[activeProductIndex] so React re-renders with the new signed url
-		const chosenMain = (rec?.publicUrl) || (rec?.signedUrl) || signed;
-		const chosenGallery = (uploaded || []).slice(1).map((p: UploadedFile | null | undefined) => p?.publicUrl || p?.signedUrl).filter(Boolean) as string[];
+	// For display use publicUrl only. signedUrl remains available as metadata but should not be used for previews.
+	const chosenMain = (rec?.publicUrl) || undefined;
+	const chosenGallery = (uploaded || []).slice(1).map((p: UploadedFile | null | undefined) => p?.publicUrl).filter(Boolean) as string[];
 				if (chosenMain) {
-					setSelectedImages(prev => {
-						const copy = [...prev];
-						const existingRaw = (copy[activeProductIndex] && typeof copy[activeProductIndex] === 'object') ? (copy[activeProductIndex] as Record<string, unknown>) : {} as Record<string, unknown>;
-						// Use a plain record to safely assign new properties and avoid union-with-string issues
+					updateSelectedImageAt(activeProductIndex, (cur) => {
+						const existingRaw = (cur && typeof cur === 'object') ? (cur as Record<string, unknown>) : {} as Record<string, unknown>;
 						const curRec: Record<string, unknown> = { ...existingRaw };
-			curRec.url = chosenMain;
-			// prefer publicUrl; keep signedUrl as fallback
-			curRec.publicUrl = curRec.publicUrl ?? chosenMain;
-			curRec.signedUrl = curRec.signedUrl ?? (rec?.signedUrl ?? undefined);
+						curRec.url = chosenMain;
+						curRec.publicUrl = curRec.publicUrl ?? chosenMain;
+						curRec.signedUrl = curRec.signedUrl ?? (rec?.signedUrl ?? undefined); // keep as metadata fallback
 						curRec.gallery = Array.isArray(curRec.gallery) ? [...(curRec.gallery as string[])] : [];
 						for (const g of chosenGallery) {
 							if (!(curRec.gallery as string[]).includes(g)) (curRec.gallery as string[]).push(g);
 						}
-						copy[activeProductIndex] = curRec as SelectedImageItem;
-						return copy;
+						return curRec as SelectedImageItem;
 					});
 				}
 
@@ -1733,7 +1755,7 @@ const renderField = (
 		<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
 
 				{selectedImages.map((img, idx) => {
-					console.log('Rendering thumbnail for image:', img); // Debug log to verify the image object
+					//console.log('Rendering thumbnail for image:', img); // Debug log to verify the image object
 				const thumbSrc = resolvePreviewSrc(img);
       //console.log('Thumbnail Source:', thumbSrc); // Debug log to verify the thumbnail source
 				return (
@@ -1981,7 +2003,7 @@ const renderField = (
 								el.value = '';
 								el.click();
 							};
-
+//console.log('gallery:', gallery); // Debug log to verify the gallery array
 							const removeGalleryAt = (gIndex: number) => {
 								setSelectedImages(prev => {
 									const copy = [...prev];
@@ -2142,8 +2164,8 @@ const renderField = (
 																					const previews: { previewUrl: string; imgId?: string; publicUrl?: string; signedUrl?: string }[] = await Promise.all(
 																						files.map(async (file, idx) => {
 																							const fileRec = uploaded[idx] || {};
-																							// prefer signedUrl for private buckets
-																							const previewUrl = fileRec.signedUrl || fileRec.publicUrl || fileRec.storagePath || fileRec.url;
+																							// prefer publicUrl for previews (signedUrl kept only as metadata)
+																							const previewUrl = fileRec.publicUrl || fileRec.signedUrl || fileRec.storagePath || fileRec.url;
 																							if (previewUrl) {
 																								return { previewUrl, imgId: fileRec.img_id, publicUrl: fileRec.publicUrl, signedUrl: fileRec.signedUrl };
 																							}
@@ -2154,34 +2176,54 @@ const renderField = (
 																					);
 
 																					// Update selectedImages and productForms for this product index
-																					// Build deterministic chosenMain and chosenGallery from server response (prefer signedUrl)
+																					// Build deterministic chosenMain and chosenGallery from server response (prefer publicUrl)
 																					const first = previews[0];
-																					const chosenMain = first?.signedUrl || first?.publicUrl || first?.previewUrl || undefined;
-																					const chosenGallery = previews.slice(1).map(p => p.signedUrl || p.publicUrl || p.previewUrl).filter(Boolean) as string[];
+																					const chosenMain = first?.publicUrl || first?.previewUrl || undefined;
+																					const chosenGallery = previews.slice(1).map(p => p.publicUrl || p.previewUrl).filter(Boolean) as string[];
 																					const newImgIds = previews.map(p => p.imgId).filter(Boolean) as string[];
 
-																					setSelectedImages(prev => {
-																						const copy = [...prev];
-																						const existing = copy[activeProductIndex];
-																						const existingObj = (existing && typeof existing === 'object') ? (existing as { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string }) : {} as { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string };
-																						// Create a fresh object for mutation
-																						const curObj: { url?: string; gallery?: string[]; img_id?: string[]; signedUrl?: string; publicUrl?: string } = { ...existingObj };
+																					// Update selectedImages for this product index deterministically
+																					updateSelectedImageAt(activeProductIndex, (cur) => {
+																						const existingObj = (cur && typeof cur === 'object') ? (cur as Record<string, unknown>) : {} as Record<string, unknown>;
+																						const curObj: Record<string, unknown> = { ...existingObj };
 
-																						// If replacing main image, set chosenMain; otherwise if no main, promote first preview
 																						if (replaceMain) {
-																							if (chosenMain) curObj.url = chosenMain;
-																							if (first?.signedUrl) curObj.signedUrl = first.signedUrl;
-																							else if (first?.publicUrl) curObj.publicUrl = first.publicUrl;
+																							// Explicitly replace the main image using publicUrl (preferred) or previewUrl.
+																							const newMain = first?.publicUrl || first?.previewUrl || chosenMain;
+																							// capture previous main so we can remove it from galleries and productForms
+																							const oldMain = curObj.url as string | undefined;
+																							if (newMain) {
+																								curObj.url = newMain;
+																								if (first?.publicUrl) curObj.publicUrl = first.publicUrl;
+																								if (first?.signedUrl) curObj.signedUrl = curObj.signedUrl ?? first.signedUrl;
+																								// ensure gallery does not contain the new main (avoid duplicates)
+																								curObj.gallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
+																								// remove both the newMain (if present) and the oldMain (we want to drop the previous main)
+																								curObj.gallery = (curObj.gallery as string[]).filter(g => g !== newMain && g !== oldMain);
+																							}
+																							// Merge the new main image into productForms OtherAttributes.image_urls (prefer publicUrl)
+																							const toAdd = first?.publicUrl ? [first.publicUrl] : (newMain ? [newMain] : []);
+																							if (toAdd.length) {
+																								setProductForms(forms => {
+																									const fcopy = [...forms];
+																									while (fcopy.length <= activeProductIndex) fcopy.push(initialFormData());
+																									if (!fcopy[activeProductIndex].OtherAttributes) fcopy[activeProductIndex].OtherAttributes = {};
+																									const other = fcopy[activeProductIndex].OtherAttributes as Record<string, unknown>;
+																									const existingImgs = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
+																									// remove the oldMain from existing images (if present)
+																									const filtered = existingImgs.filter(u => u !== oldMain);
+																									// toAdd contains only publicUrl values; ensure uniqueness
+																									other.image_urls = [...new Set([...filtered, ...toAdd])];
+																									return fcopy;
+																								});
+																							}
 																						} else {
 																							if (chosenMain) {
-																								// if main exists, append to gallery; otherwise set as main
 																								if (curObj.url) {
 																									curObj.gallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
-																									if (curObj.gallery.length < MAX_PER_PRODUCT) {
-																										if (curObj.gallery.includes(chosenMain)) {
-																											// already present
-																										} else {
-																											curObj.gallery.push(chosenMain);
+																									if ((curObj.gallery as string[]).length < MAX_PER_PRODUCT) {
+																										if (!(curObj.gallery as string[]).includes(chosenMain)) {
+																											(curObj.gallery as string[]).push(chosenMain as string);
 																										}
 																									}
 																								} else {
@@ -2203,36 +2245,21 @@ const renderField = (
 																						for (const id of newImgIds) if (!curImgIds.includes(id)) curImgIds.push(id);
 																						curObj.img_id = curImgIds;
 
-																						copy[activeProductIndex] = curObj as SelectedImageItem;
-
-																						// ensure productForms length matches
+																						// also merge into productForms OtherAttributes.image_ids
 																						setProductForms(forms => {
 																							const fcopy = [...forms];
-																							while (fcopy.length < copy.length) fcopy.push(initialFormData());
+																							while (fcopy.length <= activeProductIndex) fcopy.push(initialFormData());
+																							if (!fcopy[activeProductIndex].OtherAttributes) fcopy[activeProductIndex].OtherAttributes = {};
+																							const other = fcopy[activeProductIndex].OtherAttributes as Record<string, unknown>;
+																							const existingIds = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
+																							other.image_ids = [...new Set([...existingIds, ...newImgIds])];
 																							return fcopy;
 																						});
 
-																						// Merge uploaded img ids into productForms.OtherAttributes.image_ids
-																						try {
-																							setProductForms(forms => {
-																								const fcopy = [...forms];
-																								if (!fcopy[activeProductIndex]) fcopy[activeProductIndex] = initialFormData();
-																								if (!fcopy[activeProductIndex].OtherAttributes) fcopy[activeProductIndex].OtherAttributes = {};
-																								const other = fcopy[activeProductIndex].OtherAttributes as Record<string, unknown>;
-																								const existingIds = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-																								other.image_ids = [...new Set([...existingIds, ...newImgIds])];
-																								return fcopy;
-																							});
-																						} catch (error) {
-																							console.error('Failed to merge img ids into productForms', error);
-																						}
-
-																						return copy;
+																						return curObj as SelectedImageItem;
 																					});
 
-																					// Force a shallow update to ensure any consumers re-render and pick up new signedUrl values
-																					setSelectedImages(prev => [...prev]);
-																					console.log('selectedImages refreshed for product', activeProductIndex, 'chosenMain=', chosenMain);
+																					//console.log('selectedImages updated for product', activeProductIndex, 'chosenMain=', chosenMain);
 
 																					toast.success('Images uploaded and added', { autoClose: 1500 });
 																				} catch (error) {
@@ -2346,11 +2373,29 @@ const renderField = (
 											inventoryJson[pf.id] = pf.ProductSizeInventory || {};
 										}
 
+										// Clean product forms for server: remove image_ids from OtherAttributes
+										const cleanedForDraft = ensured.map(pf => {
+											const copy = deepClone(pf) as ProductForm & { id?: string };
+											if (copy.OtherAttributes && typeof copy.OtherAttributes === 'object') {
+												const oa = copy.OtherAttributes as Record<string, unknown>;
+												if ('image_ids' in oa) delete oa.image_ids;
+												// Normalize image_urls: keep only http(s) urls (avoid blob/data or non-public urls)
+												if (Array.isArray(oa.image_urls)) {
+													try {
+														const arr = (oa.image_urls as unknown[]).filter(i => typeof i === 'string') as string[];
+														const filtered = Array.from(new Set(arr.filter(u => /^https?:\/\//i.test(u))));
+														oa.image_urls = filtered;
+													} catch { /* ignore */ }
+												}
+											}
+											return copy as ProductForm & { id?: string };
+										});
+
 										const draft = {
 											catalog_id: catalogId,
 											user_id: user?.id ?? null,
 											category_path: selectionPath,
-											product_forms: ensured,
+											product_forms: cleanedForDraft,
 											inventory_json: inventoryJson,
 										};
 
@@ -2386,7 +2431,7 @@ const renderField = (
 													toast.success('Draft uploaded to server', { autoClose: 2000 });
 													// navigate back after small delay
 													setTimeout(() => {
-																					   try { router.push('/dashboard/catalog-uploads'); } catch { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch { globalThis.history.back(); } }
+													try { router.push('/dashboard/catalog-uploads'); } catch { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch { globalThis.history.back(); } }
 													}, 600);
 												}
 											} catch (error) {
@@ -2436,11 +2481,29 @@ const renderField = (
 																				inventoryJson[pf.id] = pf.ProductSizeInventory || {};
 																			}
 
+																			// Remove image_ids from OtherAttributes before sending to server
+																			const cleanedForSubmit = ensured.map(pf => {
+																				const copy = deepClone(pf) as ProductForm & { id?: string };
+																				if (copy.OtherAttributes && typeof copy.OtherAttributes === 'object') {
+																					const oa = copy.OtherAttributes as Record<string, unknown>;
+																					if ('image_ids' in oa) delete oa.image_ids;
+																					// Ensure image_urls only contains http(s) public urls
+																					if (Array.isArray(oa.image_urls)) {
+																						try {
+																							const arr = (oa.image_urls as unknown[]).filter(i => typeof i === 'string') as string[];
+																							const filtered = Array.from(new Set(arr.filter(u => /^https?:\/\//i.test(u))));
+																							oa.image_urls = filtered;
+																						} catch { /* ignore */ }
+																					}
+																				}
+																				return copy as ProductForm & { id?: string };
+																			});
+
 																			const payload = {
 																				catalog_id: catalogId,
 																				user_id: user?.id ?? null,
 																				category_path: selectionPath,
-																				product_forms: ensured,
+																				product_forms: cleanedForSubmit,
 																				inventory_json: inventoryJson,
 																				status: 'submitted',
 																				QC_status: 'pending',
@@ -2494,7 +2557,7 @@ const renderField = (
 																					setSubmitError(msg);
 																					toast.error(msg);
 																				} else {
-																					console.log('Server saved', body);
+																					//console.log('Server saved', body);
 																					// Clear any previous submit error
 																					setSubmitError(null);
 																					toast.success('Catalog submitted and saved to database', { autoClose: 2500 });
