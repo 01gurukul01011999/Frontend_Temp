@@ -11,6 +11,7 @@ import IconButton from '@mui/material/IconButton';
 dayjs.extend(relativeTime);
 import SearchIcon from '@mui/icons-material/Search';
 import InputAdornment from '@mui/material/InputAdornment';
+import CloseIcon from '@mui/icons-material/Close';
 
 function HeadCatalogUploads(): React.JSX.Element {
    const [learnOpen, setLearnOpen] = React.useState(false);
@@ -64,7 +65,7 @@ function HeadCatalogUploads(): React.JSX.Element {
             onClick={() => setLearnOpen(false)}
             sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
           >
-            <span className="material-icons" style={{ fontSize: 24 }}>X</span>
+            <CloseIcon sx={{ fontSize: 24 }} />
           </IconButton>
           <Typography variant="h6" sx={{ mb: 2 }}>How to Process Your Orders</Typography>
           <Box sx={{ width: '100%', maxWidth: 800, height: 0, paddingBottom: '56.25%', position: 'relative', mb: 0 }}>
