@@ -2407,6 +2407,7 @@ const renderField = (
 													// Ensure server-friendly keys used by submit flow
 		                                        	status: 'draft',
 													QC_status: 'notyet',
+													trough: 'single',
 												};
 												const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`, {
 													method: 'POST',
@@ -2507,6 +2508,7 @@ const renderField = (
 																				inventory_json: inventoryJson,
 																				status: 'submitted',
 																				QC_status: 'pending',
+																				trough: 'single',
 																			};
 																			console.log('Submitting payload to server API:', payload);
 

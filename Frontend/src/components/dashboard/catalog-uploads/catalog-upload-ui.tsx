@@ -40,14 +40,28 @@ export default function CatalogUploadUI(): React.JSX.Element {
   const [tabValuef, setTabValuef] = React.useState(0);
   const [imagePopup, setImagePopup] = useState(false);
   const [selectedRow, setSelectedRow] = useState<RowData | null>(null); // Track selected row
-  console.log('selectedRow', selectedRow);
+  //console.log('selectedRow', selectedRow);
   const [catalog, setCatalog] = React.useState([]);
   const [loading, setLoading] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
+  const [totaluploads, setTotaluploads] = React.useState<number>(0);
+    const [bulkuploads, setBulkuploads] = React.useState<number>(0);
+    const [singleuploads, setSingleuploads] = React.useState<number>(0);
+    const [bulkqcProgress, setBulkQCprogress] = React.useState<number>(0);
+    const [bulkqcError, setBulkQCerror] = React.useState<number>(0);
+    const [bulkqcPass, setBulkQCpass] = React.useState<number>(0);
+    const [bulkactionRequired, setBulkActionrequired] = React.useState<number>(0);
+    const [singleqcProgress, setSingleQCprogress] = React.useState<number>(0);
+    const [singleqcError, setSingleQCerror] = React.useState<number>(0);
+    const [singleqcPass, setSingleQCpass] = React.useState<number>(0);
+    const [singleactionRequired, setSingleActionrequired] = React.useState<number>(0);
+    const [singledrafts, setSingleDrafts] = React.useState<number>(0);
+    const [bulkData, setBulkData] = React.useState<any[]>([]);
+    const [singleData, setSingleData] = React.useState<any[]>([]);
 
-  console.log('catalog', catalog);
-  console.log('loading', loading);
-  console.log('error', error);
+ // console.log('catalog', catalog);
+ // console.log('loading', loading);
+  //console.log('error', error);
 
     const userContext = React.useContext(UserContext);
     const user = userContext?.user;
@@ -61,7 +75,7 @@ export default function CatalogUploadUI(): React.JSX.Element {
     product_forms: { OtherAttributes?: { image_urls?: string[] } }[];
     QC_status: string;
     qcColor: string;
-    
+    trough?: string;
     action: string;
   };
 
@@ -88,12 +102,76 @@ export default function CatalogUploadUI(): React.JSX.Element {
   };
 
   // Only show "Draft" sub tab for Single Uploads (tabValue === 1)
+  // Use the state values we compute below so the tab labels show live counts
   const subTabs = tabValue === 0
-    ? ['All', 'Action Required (30)', 'QC in Progress (1)', 'QC Error (19)', 'QC Pass (144)']
-    : ['All', 'Action Required (30)', 'QC in Progress (1)', 'QC Error (19)', 'QC Pass (144)', 'Draft (30)'];
+    ? [
+        'All',
+        `Action Required (${bulkactionRequired})`,
+        `QC in Progress (${bulkqcProgress})`,
+        `QC Error (${bulkqcError})`,
+        `QC Pass (${bulkqcPass})`,
+      ]
+    : [
+        'All',
+        `Action Required (${singleactionRequired})`,
+        `QC in Progress (${singleqcProgress})`,
+        `QC Error (${singleqcError})`,
+        `QC Pass (${singleqcPass})`,
+        `Draft (${singledrafts})`,
+      ];
 
  const rows = catalog as RowData[]; 
+  // derive the rows to display according to selected main tab (bulk/single) and sub-tab filter
+  const displayedRows = React.useMemo(() => {
+    if (!Array.isArray(catalog)) return [];
+    // start from catalog
+    let list = [...(catalog as RowData[])];
+
+    // filter by trough according to main tab
+    if (tabValue === 0) {
+      list = list.filter(item => item.trough === 'bulk');
+    } else {
+      list = list.filter(item => item.trough === 'single');
+    }
+
+    // map subTab index to status filter
+    // 0: All
+    // 1: Action Required -> 'action'
+    // 2: QC in Progress -> 'pending' or 'inprogress'
+    // 3: QC Error -> 'error'
+    // 4: QC Pass -> 'pass'
+    // 5: Draft (only for single) -> 'notyet'
+    const statusMap: Record<number, string | string[] | null> = {
+      0: null,
+      1: 'action',
+      2: ['pending', 'inprogress'],
+      3: 'error',
+      4: 'pass',
+      5: 'notyet',
+    };
+
+    const filterStatus = statusMap[subTab] ?? null;
+    if (filterStatus) {
+      if (Array.isArray(filterStatus)) {
+        list = list.filter(item => filterStatus.includes(item.QC_status));
+      } else {
+        list = list.filter(item => item.QC_status === filterStatus);
+      }
+    }
+
+    // sort by created_at descending (newest first). Guard against missing dates.
+    list.sort((a, b) => {
+      const ta = a.created_at ? new Date(a.created_at).getTime() : 0;
+      const tb = b.created_at ? new Date(b.created_at).getTime() : 0;
+      return tb - ta;
+    });
+
+    return list;
+  }, [catalog, tabValue, subTab]);
 React.useEffect(() => {
+    // Only fetch when a user is available to avoid sending requests with an undefined userId
+    if (!user || !user.id) return;
+
     const fetchCatalog = async () => {
       setLoading(true);
       setError(null);
@@ -102,18 +180,24 @@ React.useEffect(() => {
         const res = await fetch(apiUrl, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(user ? { userId: user.id } : {}),
+          body: JSON.stringify({ userId: user.id }),
         });
 
         if (!res.ok) throw new Error('Failed to fetch categories');
         if (res.status === 204) {
           setError('No Order Found');
-         
           return;
         }
         const data = await res.json();
-        console.log('data', data);
         setCatalog(data);
+        setTotaluploads(data.length);
+  setBulkuploads(data.filter((item: { trough: string }) => item.trough === 'bulk').length);
+  setSingleuploads(data.filter((item: { trough: string }) => item.trough === 'single').length);
+  // Use `data` (just fetched) rather than `rows` to avoid stale reads
+  setBulkData(data.filter((item: { trough: string }) => item.trough === 'bulk'));
+  setSingleData(data.filter((item: { trough: string }) => item.trough === 'single'));
+
+        // console.log('Fetched catalog data:', data); // Debug log
       } catch (error_: unknown) {
         if (error_ instanceof Error) {
           setError(error_.message || 'Error fetching categories');
@@ -127,9 +211,24 @@ React.useEffect(() => {
     fetchCatalog();
   }, [user]);
 
+React.useEffect(() => {
+        setBulkQCprogress(bulkData.filter((item: { QC_status: string }) => item.QC_status === 'pending').length);
+        setBulkQCerror(bulkData.filter((item: { QC_status: string }) => item.QC_status === 'error').length);
+        setBulkQCpass(bulkData.filter((item: { QC_status: string }) => item.QC_status === 'pass').length);
+        setBulkActionrequired(bulkData.filter((item: { QC_status: string }) => item.QC_status === 'action').length);
+        setSingleDrafts(singleData.filter((item: { QC_status: string }) => item.QC_status === 'notyet').length);
+        setSingleQCprogress(singleData.filter((item: { QC_status: string }) => item.QC_status === 'pending').length);
+        setSingleQCerror(singleData.filter((item: { QC_status: string }) => item.QC_status === 'error').length);
+        setSingleQCpass(singleData.filter((item: { QC_status: string }) => item.QC_status === 'pass').length);
+        setSingleActionrequired(singleData.filter((item: { QC_status: string }) => item.QC_status === 'action').length);
+      
 
 
+      }, [bulkData, singleData]);
 
+
+console.log('rows', singleData);
+console.log('bulkData', bulkData);
 
 
 
@@ -182,7 +281,7 @@ React.useEffect(() => {
 
 
 
-console.log('rows', rows);
+//console.log('rows', rows);
 
   function formatIsoDate(iso?: string | null): string {
    // if (!iso) return '';
@@ -221,8 +320,8 @@ console.log('rows', rows);
     <Box sx={{ p: 3, backgroundColor: '#ffff', mr: -3, ml: -3 , mt: 1}}>
       {/* Tabs */}
       <Tabs value={tabValue} onChange={handleTabChange} sx={{ mb: 2 }}>
-        <Tab label="Bulk Uploads (0)" />
-        <Tab label="Single Uploads (194)" />
+        <Tab label={`Bulk Uploads (${bulkuploads})`} />
+        <Tab label={`Single Uploads (${singleuploads})`} />
       </Tabs>
       <Tabs value={subTab} onChange={handleSubTabChange} variant="scrollable" scrollButtons="auto" sx={{ mb: 3 }}>
         {subTabs.map((label, index) => (
@@ -255,18 +354,19 @@ console.log('rows', rows);
       <Alert severity="info" sx={{  mr: -3, ml: -3, backgroundColor: '#fffbe6', border: '1px solid #ffe58f', color: '#664d03', mt:0.5 }}>
         💡 QC (Quality-Check) error products can now be fixed as they appear. Try to fix QC errors faster to speed up your catalog creation process.
       </Alert>
-      {rows.length <= 0 && (
-    <Box sx={{ p: 15, backgroundColor: '#fff', mr: -3, ml: -3 , mt: 0.5, textAlign: 'center' }}>
+      {displayedRows.length <= 0 && (
+    <Box sx={{ p: 15, backgroundColor: '#fff', mr: -3, ml: -3 , mt: 0.5, textAlign: 'center',display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center' }}>
        <NoCatalogSVG />
   <Typography variant="h6" sx={{ mt: 2, mb: 1 }}>
+    
     No Results
 
   </Typography>
         
       <Typography variant="body2" sx={{ mb: 2 }}>
-        No Bulk catalogs exist. Upload a new catalog using Bulk upload button on the top</Typography>
+        No catalogs exist. Upload a new catalog using No catalogs found. Please upload button on the top</Typography>
   </Box>)}
-{rows.length >= 0 && (
+{displayedRows.length > 0 && (
 <TableContainer component={Paper} elevation={1} sx={{mr: -3 , ml: -3, mt: 0.5, width: '1150px', borderRadius: 0}}>
       <Table>
         <TableHead>
@@ -282,7 +382,7 @@ console.log('rows', rows);
           </TableRow>
         </TableHead>
         <TableBody>
-          {rows.map((row, index) => (
+          {displayedRows.map((row, index) => (
             
             <TableRow key={index}>
               <TableCell>{index + 1}</TableCell>

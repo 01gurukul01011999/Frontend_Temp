@@ -515,10 +515,20 @@ app.post("/order/:orders_id", async (req, res) => {
 
 app.post("/api/fetch-catalogs", async (req, res) => {
   try {
-    const { userId } = req.body;
-    console.log(req.body);
+    const { userId } = req.body || {};
+    console.log('fetch-catalogs request body:', req.body);
 
-    const { data, error } = await supabaseAdmin 
+    if (!userId) {
+      console.warn('/api/fetch-catalogs called without userId');
+      return res.status(400).json({ error: 'Missing userId in request body' });
+    }
+
+    if (!supabaseAdmin) {
+      console.error('/api/fetch-catalogs: Supabase admin client not configured');
+      return res.status(500).json({ error: 'Server configuration error: Supabase admin client not configured' });
+    }
+
+    const { data, error } = await supabaseAdmin
       .from("catalogs_old")
       .select("*")
       .eq("user_id", userId);
