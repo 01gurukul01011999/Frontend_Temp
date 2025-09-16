@@ -369,11 +369,92 @@ export default function CategorySelector(): React.JSX.Element {
 	//const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 	const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 	const [selectionPath, setSelectionPath] = useState<string[]>([]);
+	// If editing an existing catalog, store its catalog_id here
+	const [editingCatalogId, setEditingCatalogId] = useState<string | null>(null);
 	// currently selected form id derived from category tree when user picks a leaf
 	const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 	//console.log('selectedFormId', selectedFormId);
 	// Active form object loaded from formsJson when a formId is found
 	const [activeForm, setActiveForm] = useState<FormDef | null>(null);
+
+	// On mount, check if another page stored a selected catalog to edit.
+ 	React.useEffect(() => {
+		try {
+			const raw = typeof globalThis !== 'undefined' ? globalThis.localStorage?.getItem('techpotli_selected_catalog') : null;
+			if (raw) {
+				const parsed = JSON.parse(raw) as any;
+				console.log ('parsed', parsed);
+				if (parsed) {
+					// Preload images and product forms if available
+					if (Array.isArray(parsed.product_forms)) {
+						// Merge images from product_forms OtherAttributes.image_urls
+						const imgs: string[] = [];
+						parsed.product_forms.forEach((pf: any) => {
+							const urls = pf?.OtherAttributes?.image_urls;
+							if (Array.isArray(urls)) imgs.push(...urls.filter(Boolean));
+						});
+						if (imgs.length) {
+							setUploadedImages(imgs);
+							setSelectedImages(imgs as any[]);
+						}
+						// Ensure productForms exist and map existing OtherAttributes into the form state
+						const mappedForms: ProductForm[] = parsed.product_forms.map((pf: any) => ({
+							id: pf.id || undefined,
+							ProductSizeInventory: pf.ProductSizeInventory || {},
+							ProductDetails: pf.ProductDetails || {},
+							OtherAttributes: pf.OtherAttributes || {},
+						}));
+						setProductForms(ensureProductFormIds(mappedForms as ProductForm[]));
+					}
+					// Set selectionPath/category if available
+					if (Array.isArray(parsed.category_path)) {
+						setSelectionPath(parsed.category_path);
+						// derive form id from category tree and set active form if available
+						try {
+							const fid = getFormIdFromCategoryTree(categoryTree, parsed.category_path);
+							if (fid) {
+								setSelectedFormId(fid);
+								const formDef = (formsJson as unknown as Record<string, unknown>)[fid] as FormDef | undefined;
+								if (formDef) {
+									setActiveForm(formDef);
+								} else {
+									setActiveForm(null);
+								}
+							} else {
+								setSelectedFormId(null);
+								setActiveForm(null);
+							}
+						} catch (err) {
+							console.warn('Failed to derive form id from category_path', err);
+						}
+					}
+					// store editing catalog id if present so submit uses update
+					if (parsed.catalog_id) {
+						setEditingCatalogId(String(parsed.catalog_id));
+					}
+					// Open Add Product Details tab/step
+					setActiveStep(1);
+					// remove stored key so future navigations don't auto-open
+					globalThis.localStorage?.removeItem('techpotli_selected_catalog');
+				}
+			}
+		} catch (err) {
+			console.warn('Failed to hydrate selected catalog', err);
+		}
+		// Also check query param activeStep to set step accordingly
+		try {
+			if (typeof globalThis !== 'undefined') {
+				const params = new URLSearchParams(globalThis.location?.search || '');
+				const as = params.get('activeStep');
+				if (as) {
+					const n = Number(as);
+					if (!Number.isNaN(n)) setActiveStep(n);
+				}
+			}
+		} catch (err) {
+			// ignore
+		}
+	}, []);
 	// Snackbar for messages (prefix unused binding with _ to satisfy lint rule)
 
 	// Validation helper: returns an array of missing fields descriptions (empty if valid)
@@ -2409,11 +2490,16 @@ const renderField = (
 													QC_status: 'notyet',
 													trough: 'single',
 												};
-												const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`, {
-													method: 'POST',
-													headers: { 'Content-Type': 'application/json' },
-													body: JSON.stringify(payload),
-												});
+														// If editing an existing catalog, call PUT to update by catalog_id
+														const endpoint = editingCatalogId ?
+															`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs/${encodeURIComponent(editingCatalogId)}` :
+															`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`;
+														const method = editingCatalogId ? 'PUT' : 'POST';
+														const res = await fetch(endpoint, {
+															method,
+															headers: { 'Content-Type': 'application/json' },
+															body: JSON.stringify(payload),
+														});
 												let body: unknown = null;
 												const contentType = res.headers.get('content-type') || '';
 												if (contentType.includes('application/json')) {
@@ -2429,6 +2515,15 @@ const renderField = (
 													try { localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch { /* ignore localStorage failures */ }
                                                     
 												} else {
+													// If server returned JSON with the saved row, set editingCatalogId so future saves update instead of creating
+													try {
+														if (body && typeof body === 'object' && !Array.isArray(body)) {
+															const obj = body as any;
+															// support { data: [...] } shape from Supabase insert/select
+															const row = Array.isArray(obj.data) && obj.data.length ? obj.data[0] : (obj.data || obj);
+															if (row && row.catalog_id) setEditingCatalogId(String(row.catalog_id));
+														}
+													} catch (e) { /* ignore */ }
 													toast.success('Draft uploaded to server', { autoClose: 2000 });
 													// navigate back after small delay
 													setTimeout(() => {
@@ -2513,8 +2608,12 @@ const renderField = (
 																			console.log('Submitting payload to server API:', payload);
 
 																			try {
-																				const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`, {
-																					method: 'POST',
+																				const endpoint = editingCatalogId ?
+																					`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs/${encodeURIComponent(editingCatalogId)}` :
+																					`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`;
+																				const method = editingCatalogId ? 'PUT' : 'POST';
+																				const res = await fetch(endpoint, {
+																					method,
 																					headers: { 'Content-Type': 'application/json' },
 																					body: JSON.stringify(payload),
 																				});
@@ -2559,7 +2658,14 @@ const renderField = (
 																					setSubmitError(msg);
 																					toast.error(msg);
 																				} else {
-																					//console.log('Server saved', body);
+																					// If server returned JSON with the saved/updated row, set editingCatalogId to the returned catalog_id
+																					try {
+																						if (body && typeof body === 'object' && !Array.isArray(body)) {
+																							const obj = body as any;
+																							const row = Array.isArray(obj.data) && obj.data.length ? obj.data[0] : (obj.data || obj);
+																							if (row && row.catalog_id) setEditingCatalogId(String(row.catalog_id));
+																						}
+																					} catch (e) { /* ignore */ }
 																					// Clear any previous submit error
 																					setSubmitError(null);
 																					toast.success('Catalog submitted and saved to database', { autoClose: 2500 });

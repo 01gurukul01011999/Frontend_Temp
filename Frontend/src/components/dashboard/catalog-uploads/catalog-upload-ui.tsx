@@ -1,5 +1,6 @@
 'use client';
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Box,
   Button,
@@ -76,6 +77,7 @@ export default function CatalogUploadUI(): React.JSX.Element {
 
     const userContext = React.useContext(UserContext);
     const user = userContext?.user;
+    const router = useRouter();
 
   type RowData = {
     id: number;
@@ -597,8 +599,14 @@ console.log('selectedRow', selectedRow);
                     color="primary"
                     sx={{ textTransform: 'none', fontWeight: 600 }}
                     onClick={() => {
-                      setSelectedRow(row);
-                      setImagePopup(true);
+                      try {
+                        // persist selected row so single upload page can read it
+                        globalThis.localStorage?.setItem('techpotli_selected_catalog', JSON.stringify(row));
+                      } catch (e) {
+                        console.warn('failed to store selected catalog', e);
+                      }
+                      // navigate to single catalog upload and open second step (Add Product Details)
+                      router.push('/dashboard/catalog-uploads/single-catalog-upload?activeStep=1');
                     }}
                   >
                     Edit
