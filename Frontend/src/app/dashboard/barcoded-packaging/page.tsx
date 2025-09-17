@@ -11,7 +11,7 @@ import HeadBarcodedPacking from '@/components/dashboard/barcoded-packing/head-ba
 
 function page(): React.JSX.Element {
   return (
-    <div>
+    <>
       <HeadBarcodedPacking />
       {/* Additional content for the Barcoded Packaging page can go here */}
       <Barcodecomp/>
@@ -20,7 +20,7 @@ function page(): React.JSX.Element {
       <WhyUseBarcodedPackaging/>
       <Vendors/>
 
-    </div>
+    </>
   )
 }
 

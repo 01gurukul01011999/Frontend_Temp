@@ -326,6 +326,50 @@ app.post("/api/catalogs", async (req, res) => {
   }
 });
 
+// Update existing catalog by catalog_id
+app.put("/api/catalogs/:catalog_id", async (req, res) => {
+  try {
+    const catalogId = req.params.catalog_id;
+    const payload = req.body;
+
+    if (!catalogId) return res.status(400).json({ error: 'Missing catalog_id' });
+    if (!payload || typeof payload !== 'object') return res.status(400).json({ error: 'Invalid payload' });
+
+    if (!supabaseAdmin) {
+      console.error('Supabase admin client not configured');
+      return res.status(500).json({ error: 'Server configuration error: Supabase admin client not configured' });
+    }
+
+    // Prevent updates to immutable/primary-key columns that PostgREST/Supabase will reject.
+    // Make a shallow copy and remove catalog_id if present so the update does not attempt to change it.
+    const updatePayload = { ...payload };
+    if (Object.prototype.hasOwnProperty.call(updatePayload, 'catalog_id')) {
+      // If the client attempted to change the catalog_id, ignore it and log for debugging.
+      if (String(updatePayload.catalog_id) !== String(catalogId)) {
+        console.warn('Client attempted to change catalog_id; ignoring change', { attempted: updatePayload.catalog_id, expected: catalogId });
+      }
+      delete updatePayload.catalog_id;
+    }
+
+    // Update the matching row with the sanitized payload
+    const { data, error } = await supabaseAdmin
+      .from('catalogs_old')
+      .update(updatePayload)
+      .eq('catalog_id', catalogId)
+      .select();
+
+    if (error) {
+      console.error('Supabase update error', error);
+      return res.status(500).json({ error });
+    }
+
+    return res.status(200).json({ data });
+  } catch (err) {
+    console.error('API /api/catalogs/:catalog_id error', err);
+    return res.status(500).json({ error: String(err) });
+  }
+});
+
 
 app.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
   const userId = req.body.userId;

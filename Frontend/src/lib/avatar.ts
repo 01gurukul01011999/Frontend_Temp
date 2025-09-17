@@ -83,7 +83,7 @@ export async function getAvatarUrl(path: string, expiresIn: number = 3600) {
       if (publicResult?.data?.publicUrl) {
         return publicResult.data.publicUrl;
       }
-    } catch (e) {
+    } catch {
       // fallthrough to signed URL
     }
 

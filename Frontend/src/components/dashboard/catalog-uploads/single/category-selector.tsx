@@ -244,7 +244,9 @@ export default function CategorySelector(): React.JSX.Element {
 	};
 	const handleContinue = async () => {
 		// First, upload selected images to backend
-		if (!selectedImages || selectedImages.length === 0) {
+		if (selectedImages && selectedImages.length > 0) {
+			// proceed
+		} else {
 			toast.error('No images selected to upload');
 			return;
 		}
@@ -357,23 +359,116 @@ export default function CategorySelector(): React.JSX.Element {
 
 	// Inject loader CSS for the spinner animation
 	React.useEffect(() => {
-		if (typeof globalThis !== 'undefined' && !globalThis.document?.querySelector('#category-selector-loader-style')) {
-			const loaderStyle = globalThis.document?.createElement('style');
-			if (loaderStyle) {
-				loaderStyle.id = 'category-selector-loader-style';
-				loaderStyle.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
-				globalThis.document?.head?.append(loaderStyle);
-			}
+		// If document is not available or the loader style already exists, do nothing.
+		if (typeof globalThis === 'undefined' || globalThis.document?.querySelector('#category-selector-loader-style')) return;
+		const loaderStyle = globalThis.document?.createElement('style');
+		if (loaderStyle) {
+			loaderStyle.id = 'category-selector-loader-style';
+			loaderStyle.innerHTML = `@keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }`;
+			globalThis.document?.head?.append(loaderStyle);
 		}
 	}, []);
 	//const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 	const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 	const [selectionPath, setSelectionPath] = useState<string[]>([]);
+	// If editing an existing catalog, store its catalog_id here
+	const [editingCatalogId, setEditingCatalogId] = useState<string | null>(null);
 	// currently selected form id derived from category tree when user picks a leaf
 	const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 	//console.log('selectedFormId', selectedFormId);
 	// Active form object loaded from formsJson when a formId is found
 	const [activeForm, setActiveForm] = useState<FormDef | null>(null);
+
+	// On mount, check if another page stored a selected catalog to edit.
+ 	React.useEffect(() => {
+		try {
+			const raw = typeof globalThis === 'undefined' ? null : globalThis.localStorage?.getItem('techpotli_selected_catalog');
+			if (raw) {
+				const parsed = JSON.parse(raw) as unknown;
+				console.log ('parsed', parsed);
+				if (parsed) {
+					// Preload images and product forms if available
+					const parsedObj = parsed as Record<string, unknown>;
+					if (Array.isArray(parsedObj.product_forms)) {
+						// Merge images from product_forms OtherAttributes.image_urls
+						const imgs: string[] = [];
+						for (const pf of parsedObj.product_forms as unknown[]) {
+							const pfObj = pf as Record<string, unknown> | undefined;
+							const urls = pfObj?.OtherAttributes && (pfObj?.OtherAttributes as Record<string, unknown>)?.image_urls;
+							if (Array.isArray(urls)) imgs.push(...(urls as unknown[]).filter(Boolean) as string[]);
+							}
+							if (imgs.length > 0) {
+							setUploadedImages(imgs);
+							setSelectedImages(imgs as SelectedImageItem[]);
+						}
+						// Ensure productForms exist and map existing OtherAttributes into the form state
+						const mappedForms: ProductForm[] = (parsedObj.product_forms as unknown[]).map((pf) => {
+							const pfObj = pf as Record<string, unknown> | undefined;
+							return {
+								id: pfObj?.id ? String(pfObj.id) : undefined,
+								ProductSizeInventory: (pfObj?.ProductSizeInventory as ProductSection) || {},
+								ProductDetails: (pfObj?.ProductDetails as ProductSection) || {},
+								OtherAttributes: (pfObj?.OtherAttributes as ProductSection) || {},
+							} as ProductForm;
+						});
+						setProductForms(ensureProductFormIds(mappedForms as ProductForm[]));
+					}
+					// Set selectionPath/category if available
+					{
+						// parsedObj is already created above as Record<string, unknown>
+						const maybeCat = (parsedObj as Record<string, unknown>)?.category_path;
+						if (Array.isArray(maybeCat)) {
+							// Normalize to string[] before using
+							const path = (maybeCat as unknown[]).map(String);
+							setSelectionPath(path);
+							// derive form id from category tree and set active form if available
+							try {
+								const fid = getFormIdFromCategoryTree(categoryTree, path);
+								if (fid) {
+									setSelectedFormId(fid);
+									const formDef = (formsJson as unknown as Record<string, unknown>)[fid] as FormDef | undefined;
+									if (formDef) {
+										setActiveForm(formDef);
+									} else {
+										setActiveForm(null);
+									}
+								} else {
+									setSelectedFormId(null);
+									setActiveForm(null);
+								}
+							} catch (_error) {
+								console.warn('Failed to derive form id from category_path', _error);
+							}
+						}
+					}
+					// store editing catalog id if present so submit uses update
+					// use parsedObj (already narrowed to Record<string, unknown>) instead of raw parsed to satisfy TS
+					if (parsedObj && parsedObj.catalog_id) {
+						setEditingCatalogId(String(parsedObj.catalog_id));
+					}
+					// Open Add Product Details tab/step
+					setActiveStep(1);
+					// remove stored key so future navigations don't auto-open
+					globalThis.localStorage?.removeItem('techpotli_selected_catalog');
+				}
+			}
+					} catch (error) {
+						console.warn('Failed to hydrate selected catalog', error);
+					}
+		// Also check query param activeStep to set step accordingly
+		try {
+			if (typeof globalThis !== 'undefined') {
+				const params = new URLSearchParams(globalThis.location?.search || '');
+				const as = params.get('activeStep');
+				if (as) {
+					const n = Number(as);
+					if (!Number.isNaN(n)) setActiveStep(n);
+				}
+			}
+		} catch {
+			// ignore
+		}
+	}, []);
 	// Snackbar for messages (prefix unused binding with _ to satisfy lint rule)
 
 	// Validation helper: returns an array of missing fields descriptions (empty if valid)
@@ -649,8 +744,8 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 			const cur = copy[index];
 			let newVal: SelectedImageItem;
 			if (typeof updater === 'function') {
-				// @ts-ignore
-				newVal = (updater as Function)(cur);
+	                // call updater with the proper function signature
+	                newVal = (updater as (cur?: SelectedImageItem) => SelectedImageItem)(cur);
 			} else {
 				const base = (cur && typeof cur === 'object') ? { ...(cur as Record<string, unknown>) } : {} as Record<string, unknown>;
 				newVal = { ...base, ...(updater as Record<string, unknown>) } as SelectedImageItem;
@@ -2071,7 +2166,7 @@ const renderField = (
 														cur.gallery = Array.isArray(cur.gallery) ? [...(cur.gallery as string[])] : [];
 														// remove the promoted image from gallery to avoid duplication
 														const idxInGallery = (cur.gallery as string[]).indexOf(g);
-														if (idxInGallery > -1) {
+														if (idxInGallery !== -1) {
 															(cur.gallery as string[]).splice(idxInGallery, 1);
 														}
 														// Optionally keep it in gallery (append) or just set as main; keep existing behavior of not duplicating
@@ -2203,7 +2298,7 @@ const renderField = (
 																							}
 																							// Merge the new main image into productForms OtherAttributes.image_urls (prefer publicUrl)
 																							const toAdd = first?.publicUrl ? [first.publicUrl] : (newMain ? [newMain] : []);
-																							if (toAdd.length) {
+																							if (toAdd.length > 0) {
 																								setProductForms(forms => {
 																									const fcopy = [...forms];
 																									while (fcopy.length <= activeProductIndex) fcopy.push(initialFormData());
@@ -2217,18 +2312,14 @@ const renderField = (
 																									return fcopy;
 																								});
 																							}
-																						} else {
-																							if (chosenMain) {
-																								if (curObj.url) {
-																									curObj.gallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
-																									if ((curObj.gallery as string[]).length < MAX_PER_PRODUCT) {
-																										if (!(curObj.gallery as string[]).includes(chosenMain)) {
-																											(curObj.gallery as string[]).push(chosenMain as string);
-																										}
-																									}
-																								} else {
-																									curObj.url = chosenMain;
+																						} else if (chosenMain) {
+																							if (curObj.url) {
+																								curObj.gallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
+																								if ((curObj.gallery as string[]).length < MAX_PER_PRODUCT && !(curObj.gallery as string[]).includes(chosenMain)) {
+																									(curObj.gallery as string[]).push(chosenMain as string);
 																								}
+																							} else {
+																								curObj.url = chosenMain;
 																							}
 																						}
 
@@ -2383,7 +2474,7 @@ const renderField = (
 												if (Array.isArray(oa.image_urls)) {
 													try {
 														const arr = (oa.image_urls as unknown[]).filter(i => typeof i === 'string') as string[];
-														const filtered = Array.from(new Set(arr.filter(u => /^https?:\/\//i.test(u))));
+														const filtered = [...new Set(arr.filter(u => /^https?:\/\//i.test(u)))];
 														oa.image_urls = filtered;
 													} catch { /* ignore */ }
 												}
@@ -2409,11 +2500,16 @@ const renderField = (
 													QC_status: 'notyet',
 													trough: 'single',
 												};
-												const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`, {
-													method: 'POST',
-													headers: { 'Content-Type': 'application/json' },
-													body: JSON.stringify(payload),
-												});
+														// If editing an existing catalog, call PUT to update by catalog_id
+														const endpoint = editingCatalogId ?
+															`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs/${encodeURIComponent(editingCatalogId)}` :
+															`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`;
+														const method = editingCatalogId ? 'PUT' : 'POST';
+														const res = await fetch(endpoint, {
+															method,
+															headers: { 'Content-Type': 'application/json' },
+															body: JSON.stringify(payload),
+														});
 												let body: unknown = null;
 												const contentType = res.headers.get('content-type') || '';
 												if (contentType.includes('application/json')) {
@@ -2429,6 +2525,19 @@ const renderField = (
 													try { localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch { /* ignore localStorage failures */ }
                                                     
 												} else {
+													// If server returned JSON with the saved row, set editingCatalogId so future saves update instead of creating
+													try {
+														if (body && typeof body === 'object' && !Array.isArray(body)) {
+															const obj = body as Record<string, unknown>;
+															// support { data: [...] } shape from Supabase insert/select
+															const dataField = obj.data as unknown;
+															const row = Array.isArray(dataField) && ((dataField as unknown[]).length > 0) ? (dataField as unknown[])[0] : (obj.data ?? obj);
+															if (row && typeof row === 'object') {
+																const rowObj = row as Record<string, unknown>;
+																if (rowObj.catalog_id) setEditingCatalogId(String(rowObj.catalog_id));
+															}
+														}
+													} catch { /* ignore */ }
 													toast.success('Draft uploaded to server', { autoClose: 2000 });
 													// navigate back after small delay
 													setTimeout(() => {
@@ -2492,7 +2601,7 @@ const renderField = (
 																					if (Array.isArray(oa.image_urls)) {
 																						try {
 																							const arr = (oa.image_urls as unknown[]).filter(i => typeof i === 'string') as string[];
-																							const filtered = Array.from(new Set(arr.filter(u => /^https?:\/\//i.test(u))));
+																							const filtered = [...new Set(arr.filter(u => /^https?:\/\//i.test(u)))];
 																							oa.image_urls = filtered;
 																						} catch { /* ignore */ }
 																					}
@@ -2500,8 +2609,10 @@ const renderField = (
 																				return copy as ProductForm & { id?: string };
 																			});
 
-																			const payload = {
-																				catalog_id: catalogId,
+																			// Build payload. When editing an existing catalog (editingCatalogId)
+																			// do not include `catalog_id` in the request body — the identifier
+																			// is sent via the URL and trying to change it can trigger DB errors.
+																			const payloadBase = {
 																				user_id: user?.id ?? null,
 																				category_path: selectionPath,
 																				product_forms: cleanedForSubmit,
@@ -2509,12 +2620,17 @@ const renderField = (
 																				status: 'submitted',
 																				QC_status: 'pending',
 																				trough: 'single',
-																			};
+																			} as Record<string, unknown>;
+																			const payload = editingCatalogId ? payloadBase : { ...payloadBase, catalog_id: catalogId };
 																			console.log('Submitting payload to server API:', payload);
 
 																			try {
-																				const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`, {
-																					method: 'POST',
+																				const endpoint = editingCatalogId ?
+																					`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs/${encodeURIComponent(editingCatalogId)}` :
+																					`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`;
+																				const method = editingCatalogId ? 'PUT' : 'POST';
+																				const res = await fetch(endpoint, {
+																					method,
 																					headers: { 'Content-Type': 'application/json' },
 																					body: JSON.stringify(payload),
 																				});
@@ -2559,7 +2675,18 @@ const renderField = (
 																					setSubmitError(msg);
 																					toast.error(msg);
 																				} else {
-																					//console.log('Server saved', body);
+																					// If server returned JSON with the saved/updated row, set editingCatalogId to the returned catalog_id
+																					try {
+																						if (body && typeof body === 'object' && !Array.isArray(body)) {
+																							const obj = body as Record<string, unknown>;
+																							const dataField = obj.data as unknown;
+																							const row = Array.isArray(dataField) && ((dataField as unknown[]).length > 0) ? (dataField as unknown[])[0] : (obj.data ?? obj);
+																							if (row && typeof row === 'object') {
+																								const rowObj = row as Record<string, unknown>;
+																								if (rowObj.catalog_id) setEditingCatalogId(String(rowObj.catalog_id));
+																							}
+																						}
+																					} catch { /* ignore */ }
 																					// Clear any previous submit error
 																					setSubmitError(null);
 																					toast.success('Catalog submitted and saved to database', { autoClose: 2500 });
