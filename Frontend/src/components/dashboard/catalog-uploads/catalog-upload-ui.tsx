@@ -38,18 +38,38 @@ import DescriptionIcon from '@mui/icons-material/Description';
 import { UserContext } from '@/contexts/user-context';
 import NoCatalogSVG from './no-catalog-svg';
 
+// Helper: format ISO date string to a compact human readable form
+function formatIsoDate(iso?: string | null): string {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    const day = String(d.getDate()).padStart(2, '0');
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const month = months[d.getMonth()];
+    const year = String(d.getFullYear()).slice(-2);
+    let hours = d.getHours();
+    const minutes = String(d.getMinutes()).padStart(2, '0');
+    const ampm = hours >= 12 ? 'PM' : 'AM';
+    hours = hours % 12 || 12;
+    const hourStr = String(hours).padStart(2, '0');
+    return `${day} ${month} '${year} | ${hourStr}:${minutes} ${ampm}`;
+  } catch {
+    return iso;
+  }
+}
+
 export default function CatalogUploadUI(): React.JSX.Element {
   const [tabValue, setTabValue] = useState(0); // 0 = Bulk, 1 = Single
   const [subTab, setSubTab] = useState(0); // Index for sub-tabs
-  const [tabValuef, setTabValuef] = React.useState(0);
+  const [tabValuef, _setTabValuef] = React.useState(0);
   const [imagePopup, setImagePopup] = useState(false);
   const [selectedRow, setSelectedRow] = useState<RowData | null>(null); // Track selected row
   const [popupMainImage, setPopupMainImage] = React.useState<string | null>(null);
   //console.log('selectedRow', selectedRow);
-  const [catalog, setCatalog] = React.useState<any[]>([]);
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
-  const [totaluploads, setTotaluploads] = React.useState<number>(0);
+  const [catalog, setCatalog] = React.useState<RowData[]>([]);
+  const [_loading, setLoading] = React.useState(false);
+  const [_error, setError] = React.useState<string | null>(null);
+  const [_totaluploads, setTotaluploads] = React.useState<number>(0);
     const [bulkuploads, setBulkuploads] = React.useState<number>(0);
     const [singleuploads, setSingleuploads] = React.useState<number>(0);
     const [bulkqcProgress, setBulkQCprogress] = React.useState<number>(0);
@@ -61,8 +81,8 @@ export default function CatalogUploadUI(): React.JSX.Element {
     const [singleqcPass, setSingleQCpass] = React.useState<number>(0);
     const [singleactionRequired, setSingleActionrequired] = React.useState<number>(0);
     const [singledrafts, setSingleDrafts] = React.useState<number>(0);
-    const [bulkData, setBulkData] = React.useState<any[]>([]);
-    const [singleData, setSingleData] = React.useState<any[]>([]);
+  const [bulkData, setBulkData] = React.useState<RowData[]>([]);
+  const [singleData, setSingleData] = React.useState<RowData[]>([]);
     // infinite-scroll: how many rows are currently visible (uses main window scroll)
     const [visibleCount, setVisibleCount] = React.useState<number>(10);
     const [loadingMore, setLoadingMore] = React.useState<boolean>(false);
@@ -105,7 +125,7 @@ export default function CatalogUploadUI(): React.JSX.Element {
   const descriptionSectionRef = React.useRef<HTMLDivElement | null>(null);
   // ref for the table container so we can use its scroll instead of the window
   const tableContainerRef = React.useRef<HTMLDivElement | null>(null);
-  const [tableExpanded, setTableExpanded] = React.useState<boolean>(false);
+  const [_tableExpanded, setTableExpanded] = React.useState<boolean>(false);
 
   // When a user clicks the Images/Description tab we simply scroll to that section
   // instead of swapping tab content. This keeps the dialog content in a single flow.
@@ -127,7 +147,7 @@ export default function CatalogUploadUI(): React.JSX.Element {
    const handleSubTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setSubTab(newValue);
   };
-
+console.log('tabValue', tabValue);
   // Only show "Draft" sub tab for Single Uploads (tabValue === 1)
   // Use the state values we compute below so the tab labels show live counts
   const subTabs = tabValue === 0
@@ -147,17 +167,17 @@ export default function CatalogUploadUI(): React.JSX.Element {
         `Draft (${singledrafts})`,
       ];
 
- const rows = catalog as RowData[]; 
+// rows variable removed (use catalog/displayedRows directly)
 // compute unique categories from catalog items using category_path[3]
 const categories = React.useMemo(() => {
   if (!Array.isArray(catalog)) return [] as string[];
   const set = new Set<string>();
-  (catalog as RowData[]).forEach(item => {
+  for (const item of (catalog as RowData[])) {
     if (Array.isArray(item.category_path) && item.category_path[3]) {
       set.add(String(item.category_path[3]));
     }
-  });
-  return Array.from(set).sort();
+  }
+  return [...set].sort();
 }, [catalog]);
   // derive the rows to display according to selected main tab (bulk/single) and sub-tab filter
   const displayedRows = React.useMemo(() => { 
@@ -166,11 +186,9 @@ const categories = React.useMemo(() => {
     let list = [...(catalog as RowData[])];
 
     // filter by trough according to main tab
-    if (tabValue === 0) {
-      list = list.filter(item => item.trough === 'bulk');
-    } else {
-      list = list.filter(item => item.trough === 'single');
-    }
+    list = tabValue === 0
+      ? list.filter(item => item.trough === 'bulk')
+      : list.filter(item => item.trough === 'single');
 
     // map subTab index to status filter
     // 0: All
@@ -190,11 +208,9 @@ const categories = React.useMemo(() => {
 
     const filterStatus = statusMap[subTab] ?? null;
     if (filterStatus) {
-      if (Array.isArray(filterStatus)) {
-        list = list.filter(item => filterStatus.includes(item.QC_status));
-      } else {
-        list = list.filter(item => item.QC_status === filterStatus);
-      }
+      list = Array.isArray(filterStatus)
+        ? list.filter(item => filterStatus.includes(item.QC_status))
+        : list.filter(item => item.QC_status === filterStatus);
     }
 
     // sort by created_at descending (newest first). Guard against missing dates.
@@ -350,38 +366,7 @@ React.useEffect(() => {
 
 //console.log('rows', rows);
 
-  function formatIsoDate(iso?: string | null): string {
-   // if (!iso) return '';
-   // try {
-   //   const d = new Date(iso);
-   //   return d.toLocaleString(undefined, {
-   //     year: 'numeric',
-   //     month: 'short',
-   //     day: 'numeric',
-   //     hour: '2-digit',
-   //     minute: '2-digit',
-   //   });
-   // } catch {
-   //   return iso;
-   // }
-  if (!iso) return '';
-   try {
-     const d = new Date(iso);
-     const day = String(d.getDate()).padStart(2, '0');
-     const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-     const month = months[d.getMonth()];
-    const year = String(d.getFullYear()).slice(-2);
-      let hours = d.getHours();
-     const minutes = String(d.getMinutes()).padStart(2, '0');
-    const ampm = hours >= 12 ? 'PM' : 'AM';
-    hours = hours % 12 || 12;
-   const hourStr = String(hours).padStart(2, '0');
-   return `${day} ${month} '${year} | ${hourStr}:${minutes} ${ampm}`;
-   } 
-  catch {
-          return iso;
-   }
-}
+  // formatIsoDate is defined at module scope above; reuse that helper instead of redefining here.
 
   // Render a styled status chip matching the designs (Draft purple, QC Error red, QC Pass green)
   const renderStatusChip = (row: RowData) => {
@@ -394,7 +379,7 @@ React.useEffect(() => {
       fontWeight: 700,
       height: 28,
       fontSize: '0.8rem',
-    } as any;
+  } as Record<string, unknown>;
 
     if (status === 'notyet') {
       const color = '#5b3cc4';
@@ -524,7 +509,7 @@ console.log('selectedRow', selectedRow);
   </Typography>
         
       <Typography variant="body2" sx={{ mb: 2 }}>
-        No catalogs exist. Upload a new catalog using No catalogs found. Please upload button on the top</Typography>
+        No {tabValue === 0 ? 'Bulk' : 'Single'} catalogs exist. Upload a new catalog using {tabValue === 0 ? 'Bulk' : 'Single'} catalogs. Please add catalog {tabValue === 0 ? 'in bulk' : 'single'} button on the top</Typography>
   </Box>)}
 {displayedRows.length > 0 && (
   <TableContainer
@@ -602,8 +587,8 @@ console.log('selectedRow', selectedRow);
                       try {
                         // persist selected row so single upload page can read it
                         globalThis.localStorage?.setItem('techpotli_selected_catalog', JSON.stringify(row));
-                      } catch (e) {
-                        console.warn('failed to store selected catalog', e);
+                      } catch (error_) {
+                        console.warn('failed to store selected catalog', error_);
                       }
                       // navigate to single catalog upload and open second step (Add Product Details)
                       router.push('/dashboard/catalog-uploads/single-catalog-upload?activeStep=1');
@@ -662,7 +647,7 @@ console.log('selectedRow', selectedRow);
               </TableCell>
             </TableRow>
           ))}
-          {loadingMore && (
+            {loadingMore && (
             // show 3 skeleton rows while loading more
             Array.from({ length: 3 }).map((_, i) => (
               <TableRow key={`skeleton-${i}`}>
@@ -788,27 +773,7 @@ console.log('selectedRow', selectedRow);
           <Button onClick={onClose} variant="contained" color="primary">
             OK
           </Button>
-          <Button
-            variant="outlined"
-            size="small"
-            onClick={() => {
-              // Insert a placeholder product into selectedRow and update local catalog state
-              if (!selectedRow) return;
-              const newProduct = {
-                OtherAttributes: { image_urls: ['https://via.placeholder.com/300'], title: 'New Product' }
-              };
-              // update selectedRow in-place
-              const updatedRow = { ...selectedRow } as any;
-              updatedRow.product_forms = Array.isArray(updatedRow.product_forms) ? [...updatedRow.product_forms, newProduct] : [newProduct];
-              setSelectedRow(updatedRow);
-              // reflect change back into catalog state
-              setCatalog(prev => {
-                return Array.isArray(prev) ? prev.map((r: any) => (r.catalog_id === updatedRow.catalog_id ? updatedRow : r)) : prev;
-              });
-            }}
-          >
-            Add Product
-          </Button>
+          
       </DialogActions>
     </Dialog>
 

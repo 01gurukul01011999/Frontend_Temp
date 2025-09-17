@@ -12,9 +12,9 @@ export const metadata = { title: `Account | Dashboard | ${config.site.name}` } s
 export default function Page(): React.JSX.Element {
   return (
     <Stack spacing={3}>
-      <div>
+     
         <HeadAccount/>
-      </div>
+     
       <Grid container spacing={3}>
         <Grid
           size={{

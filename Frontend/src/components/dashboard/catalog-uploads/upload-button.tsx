@@ -13,8 +13,8 @@ import { useAuth } from '@/modules/authentication';
 
 
 function UploadButton(): React.JSX.Element {
-  const [loading, setLoading] = React.useState(false);
-  const [error, setError] = React.useState<string | null>(null);
+  const [_loading, setLoading] = React.useState(false);
+  const [_error, setError] = React.useState<string | null>(null);
   const [totaluploads, setTotaluploads] = React.useState<number>(0);
   const [bulkuploads, setBulkuploads] = React.useState<number>(0);
   const [singleuploads, setSingleuploads] = React.useState<number>(0);

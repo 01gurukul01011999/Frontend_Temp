@@ -340,10 +340,21 @@ app.put("/api/catalogs/:catalog_id", async (req, res) => {
       return res.status(500).json({ error: 'Server configuration error: Supabase admin client not configured' });
     }
 
-    // Update the matching row
+    // Prevent updates to immutable/primary-key columns that PostgREST/Supabase will reject.
+    // Make a shallow copy and remove catalog_id if present so the update does not attempt to change it.
+    const updatePayload = { ...payload };
+    if (Object.prototype.hasOwnProperty.call(updatePayload, 'catalog_id')) {
+      // If the client attempted to change the catalog_id, ignore it and log for debugging.
+      if (String(updatePayload.catalog_id) !== String(catalogId)) {
+        console.warn('Client attempted to change catalog_id; ignoring change', { attempted: updatePayload.catalog_id, expected: catalogId });
+      }
+      delete updatePayload.catalog_id;
+    }
+
+    // Update the matching row with the sanitized payload
     const { data, error } = await supabaseAdmin
       .from('catalogs_old')
-      .update(payload)
+      .update(updatePayload)
       .eq('catalog_id', catalogId)
       .select();
 
