@@ -16,6 +16,7 @@ import { paths } from '@/paths';
 import { logger } from '@/lib/default-logger';
 import { useAuth } from '@/modules/authentication';
 import { authService } from '@/lib/supabase/auth-service';
+import { useUser } from '@/hooks/use-user';
 
 export interface UserPopoverProps {
   anchorEl: Element | null;
@@ -24,7 +25,8 @@ export interface UserPopoverProps {
 }
 
 export function UserPopover({ anchorEl, onClose, open }: UserPopoverProps): React.JSX.Element {
-  const { user, signOut } = useAuth();
+  const {signOut } = useAuth();
+  const { user } = useUser();
 
   type Profile = { id: string; first_name?: string | null; last_name?: string | null; email?: string | null };
   const [profile, setProfile] = React.useState<Profile | null>(null);

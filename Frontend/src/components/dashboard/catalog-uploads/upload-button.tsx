@@ -7,7 +7,7 @@ import {
   Stack,
   Paper,
 } from '@mui/material';
-import { useAuth } from '@/modules/authentication';
+import { useUser } from '@/hooks/use-user';
 
 
 
@@ -22,8 +22,7 @@ function UploadButton(): React.JSX.Element {
   //  console.log('Error:', error);
   //console.log('Loading:', loading);
 
-  const { user } = useAuth();
-   
+ const { user } = useUser();
 
 React.useEffect(() => {
   if (!user || !user.id) return;

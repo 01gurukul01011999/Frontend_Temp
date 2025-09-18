@@ -35,8 +35,9 @@ import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DescriptionIcon from '@mui/icons-material/Description';
-import { UserContext } from '@/contexts/user-context';
 import NoCatalogSVG from './no-catalog-svg';
+import { useUser } from '@/hooks/use-user';
+
 
 // Helper: format ISO date string to a compact human readable form
 function formatIsoDate(iso?: string | null): string {
@@ -95,9 +96,10 @@ export default function CatalogUploadUI(): React.JSX.Element {
  // console.log('loading', loading);
   //console.log('error', error);
 
-    const userContext = React.useContext(UserContext);
-    const user = userContext?.user;
+   // const userContext = React.useContext(UserContext);
+   // const user = userContext?.user;
     const router = useRouter();
+    const { user } = useUser();
 
   type RowData = {
     id: number;
