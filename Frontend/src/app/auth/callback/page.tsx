@@ -1,7 +1,8 @@
 import React, { Suspense } from 'react';
 import AuthCallbackClient from './auth-callback-client';
 
-export default function Page() {
+export default function Page(): React.JSX.Element {
+ 
   // Server component that renders the client callback handler.
   // Wrap the client component in Suspense so hooks like useSearchParams don't cause a CSR bailout.
   return (
@@ -10,3 +11,4 @@ export default function Page() {
     </Suspense>
   );
 }
+ export const dynamic = "force-dynamic";
