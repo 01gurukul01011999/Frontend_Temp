@@ -1,6 +1,5 @@
 'use client';
 import React from "react";
-import { useAuth } from '@/modules/authentication';
 import { Box, Typography, Button, IconButton, Avatar, Stack, Tooltip,
 	Table,
 	TableBody,
@@ -12,6 +11,7 @@ import { Box, Typography, Button, IconButton, Avatar, Stack, Tooltip,
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import { useUser } from '@/hooks/use-user';
 
 const forbiddenImages = [
 	{ label: "Watermark image", img: "https://static.meeshosupply.com/supplier-new/invalid-image-1.png" },
@@ -27,7 +27,7 @@ export default function ImageBulkUpload(): React.JSX.Element {
 	const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
 	type UploadedFile = { img_name: string; name?: string; publicUrl?: string };
 	const [uploadedFiles, setUploadedFiles] = React.useState<UploadedFile[]>([]);
-	const { user } = useAuth();
+	const { user } = useUser();
 	//console.log(selectedFiles);
 
 	// Remove image by index
