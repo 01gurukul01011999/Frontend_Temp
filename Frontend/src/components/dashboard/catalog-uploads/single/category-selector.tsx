@@ -6,6 +6,7 @@ import { useAuth } from '@/modules/authentication';
 import Autocomplete from '@mui/material/Autocomplete';
 import TextField from '@mui/material/TextField';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteIcon from '@mui/icons-material/Delete';
 import HeadsetMicIcon from '@mui/icons-material/HeadsetMic';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
 import { Add, CheckCircle } from "@mui/icons-material";
@@ -209,7 +210,6 @@ export default function CategorySelector(): React.JSX.Element {
 	
 	const [popupOpen, setPopupOpen] = useState(false);
 	const [intropopupOpen, setIntroPopupOpen] = useState(false);
-	type SelectedImageItem = { url?: string; gallery?: string[]; img_id?: string | string[]; publicUrl?: string; signedUrl?: string; file?: File } | string;
 	const [selectedImages, setSelectedImages] = useState<SelectedImageItem[]>([]);
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
@@ -373,6 +373,8 @@ export default function CategorySelector(): React.JSX.Element {
 	const [selectionPath, setSelectionPath] = useState<string[]>([]);
 	// If editing an existing catalog, store its catalog_id here
 	const [editingCatalogId, setEditingCatalogId] = useState<string | null>(null);
+	// saving state for drafts
+	const [isSavingDraft, setIsSavingDraft] = useState(false);
 	// currently selected form id derived from category tree when user picks a leaf
 	const [selectedFormId, setSelectedFormId] = useState<string | null>(null);
 	//console.log('selectedFormId', selectedFormId);
@@ -390,18 +392,7 @@ export default function CategorySelector(): React.JSX.Element {
 					// Preload images and product forms if available
 					const parsedObj = parsed as Record<string, unknown>;
 					if (Array.isArray(parsedObj.product_forms)) {
-						// Merge images from product_forms OtherAttributes.image_urls
-						const imgs: string[] = [];
-						for (const pf of parsedObj.product_forms as unknown[]) {
-							const pfObj = pf as Record<string, unknown> | undefined;
-							const urls = pfObj?.OtherAttributes && (pfObj?.OtherAttributes as Record<string, unknown>)?.image_urls;
-							if (Array.isArray(urls)) imgs.push(...(urls as unknown[]).filter(Boolean) as string[]);
-							}
-							if (imgs.length > 0) {
-							setUploadedImages(imgs);
-							setSelectedImages(imgs as SelectedImageItem[]);
-						}
-						// Ensure productForms exist and map existing OtherAttributes into the form state
+						// Build productForms and selectedImages per product using OtherAttributes.image_urls
 						const mappedForms: ProductForm[] = (parsedObj.product_forms as unknown[]).map((pf) => {
 							const pfObj = pf as Record<string, unknown> | undefined;
 							return {
@@ -411,7 +402,21 @@ export default function CategorySelector(): React.JSX.Element {
 								OtherAttributes: (pfObj?.OtherAttributes as ProductSection) || {},
 							} as ProductForm;
 						});
+
+						// Create selectedImages array aligned to productForms: use first image as main and rest as gallery
+						const selImgs: SelectedImageItem[] = mappedForms.map((pf) => {
+							const oa = (pf.OtherAttributes as Record<string, unknown>) || {};
+							const arr = Array.isArray(oa.image_urls) ? (oa.image_urls as unknown[]).filter(i => typeof i === 'string').map(String) as string[] : [];
+							if (arr.length === 0) return '' as SelectedImageItem; // empty placeholder
+							const [first, ...rest] = arr;
+							return ({ url: first, publicUrl: first, gallery: rest } as SelectedImageItem);
+						});
+
+						// Store product forms and selectedImages aligned by index
 						setProductForms(ensureProductFormIds(mappedForms as ProductForm[]));
+						setSelectedImages(selImgs);
+						// Also store flat uploadedImages for UI conveniences (optional)
+						setUploadedImages(selImgs.map(s => (typeof s === 'string' ? s : (resolvePreviewSrc(s) || ''))).filter(Boolean) as string[]);
 					}
 					// Set selectionPath/category if available
 					{
@@ -733,8 +738,8 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 
 	const inputRef = React.useRef<HTMLInputElement>(null);
 	const addProductInputRef = React.useRef<HTMLInputElement>(null);
-    // track the index of the last preview slot added by handleAddProductImage
-    const lastAddedIndexRef = React.useRef<number | null>(null);
+	// allow multi-select for per-product input when triggered via Add Images in edit mode
+	const [perProductMultiSelect, setPerProductMultiSelect] = useState<boolean>(false);
 
 	// Helper to immutably update selectedImages at a given index.
 	// `updater` can be an object to merge or a function (cur => newCur).
@@ -757,108 +762,102 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 
 	// ...existing code...
 
-	// Handler for file input change (Add Product) — upload selected file immediately and add product using uploaded URLs (prefer publicUrl)
+	// Handler for file input change (Add Product) — support multiple files: create previews, reserve slots, upload each file and update corresponding entries
 	const handleAddProductImage = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
 		if (!files || files.length === 0) return;
-		const file = files[0];
-		// Show quick preview using object URL while upload runs
-		const previewUrl = URL.createObjectURL(file);
-		// Reserve the new slot immediately so UI shows the product entry
+	const fileArray = [...files];
+
+		// Create preview items and reserve product slots
+		const startIndex = selectedImages.length;
+		const newItems: SelectedImageItem[] = fileArray.map((file) => ({ url: URL.createObjectURL(file), file } as SelectedImageItem));
+
 		setSelectedImages(prev => {
-			const newImages = [...prev, { url: previewUrl, file } as SelectedImageItem];
-			// remember index of the last added slot so we can update it after upload
-			lastAddedIndexRef.current = newImages.length - 1;
-			setProductForms(forms => {
-				const formsCopy = [...forms];
-				while (formsCopy.length < newImages.length) formsCopy.push(initialFormData());
-				return formsCopy;
-			});
-			setActiveProductIndex(newImages.length - 1);
-			return newImages;
+			const merged = [...prev, ...newItems];
+			return merged;
 		});
 
+		setProductForms(prev => {
+			const formsCopy = [...prev];
+			while (formsCopy.length < startIndex + newItems.length) formsCopy.push(initialFormData());
+			return formsCopy;
+		});
+
+		// Move active product to last added
+		setActiveProductIndex(startIndex + newItems.length - 1);
+
 		try {
-			const formData = new FormData();
-			formData.append('images', file);
-			const uploaderId = (user as { id?: string } | null)?.id;
-			if (uploaderId) formData.append('uploaderId', uploaderId);
 			const uploadUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`;
-			const res = await fetch(uploadUrl, { method: 'POST', body: formData });
-			if (!res.ok) {
-				const txt = await res.text();
-				console.error('Upload failed', txt);
-				toast.error('Image upload failed. Showing preview only.');
-				return;
-			}
-			const body = await res.json();
-			const uploaded: UploadedFile[] = (body.files || []) as UploadedFile[];
-			const rec = uploaded[0] || null;
-			const pub = rec?.publicUrl ?? null;
-			const signed = rec?.signedUrl ?? null;
+			const uploaderId = (user as { id?: string } | null)?.id;
 
-			// Update the last added selectedImages entry to use publicUrl (preferred) or signedUrl
-			const lastIdx = lastAddedIndexRef.current ?? Math.max(0, (selectedImages.length - 1));
-			updateSelectedImageAt(lastIdx, (cur) => {
-				const base = (cur && typeof cur === 'object') ? { ...(cur as Record<string, unknown>) } : {} as Record<string, unknown>;
-				if (pub) base.publicUrl = pub;
-				else if (signed) base.signedUrl = signed; // keep as fallback metadata
-				base.url = pub || base.url || signed || base.url;
-				return base as SelectedImageItem;
-			});
-			// clear the ref once applied
-			lastAddedIndexRef.current = null;
-
-			// Merge publicUrl (preferred) or signedUrl into productForms OtherAttributes.image_urls for this last product
-			if (pub || signed) {
-				setProductForms(prev => {
-					const copy = [...prev];
-					const idx = copy.length - 1;
-					if (!copy[idx]) copy[idx] = initialFormData();
-					if (!copy[idx].OtherAttributes) copy[idx].OtherAttributes = {};
-					const other = copy[idx].OtherAttributes as Record<string, unknown>;
-					const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
-					// Only add public URLs to image_urls (signedUrl kept as metadata only)
-					other.image_urls = [...new Set([...existing, ...(pub ? [pub] : []) ])];
-					return copy;
-				});
-
-				// Deterministically update selectedImages[activeProductIndex] so React re-renders with the new signed url
-	// For display use publicUrl only. signedUrl remains available as metadata but should not be used for previews.
-	const chosenMain = (rec?.publicUrl) || undefined;
-	const chosenGallery = (uploaded || []).slice(1).map((p: UploadedFile | null | undefined) => p?.publicUrl).filter(Boolean) as string[];
-				if (chosenMain) {
-					updateSelectedImageAt(activeProductIndex, (cur) => {
-						const existingRaw = (cur && typeof cur === 'object') ? (cur as Record<string, unknown>) : {} as Record<string, unknown>;
-						const curRec: Record<string, unknown> = { ...existingRaw };
-						curRec.url = chosenMain;
-						curRec.publicUrl = curRec.publicUrl ?? chosenMain;
-						curRec.signedUrl = curRec.signedUrl ?? (rec?.signedUrl ?? undefined); // keep as metadata fallback
-						curRec.gallery = Array.isArray(curRec.gallery) ? [...(curRec.gallery as string[])] : [];
-						for (const g of chosenGallery) {
-							if (!(curRec.gallery as string[]).includes(g)) (curRec.gallery as string[]).push(g);
-						}
-						return curRec as SelectedImageItem;
-					});
-				}
-
-				// ensure productForms length matches
-			// store uploaded metadata
-				_setUploadedImagesjson(prev => {
-					try {
-						const toPush: UploadedFile = rec ?? { img_id: undefined, publicUrl: undefined, storagePath: undefined, signedUrl: undefined };
-						return [...prev, toPush];
-					} catch {
-						return prev;
+			// Upload files sequentially to keep server-friendly and preserve ordering
+			for (const [i, file] of fileArray.entries()) {
+				const idx = startIndex + i;
+				try {
+					const formData = new FormData();
+					formData.append('images', file);
+					if (uploaderId) formData.append('uploaderId', uploaderId);
+					const res = await fetch(uploadUrl, { method: 'POST', body: formData });
+					if (!res.ok) {
+						const txt = await res.text();
+						console.error('Upload failed', txt);
+						toast.error('Image upload failed. Showing preview only.');
+						continue;
 					}
-				});
+					const body = await res.json();
+					const uploaded: UploadedFile[] = (body.files || []) as UploadedFile[];
+					const rec = uploaded[0] || null;
+					const pub = rec?.publicUrl ?? null;
+					const signed = rec?.signedUrl ?? null;
 
-				if (signed) toast.success('Image uploaded and product added', { autoClose: 1500 });
-			} // end if (signed)
-		} // end try
-		catch (error) {
-			console.error('Error uploading add-product image', error);
-			toast.error('Failed to upload image. Showing preview only.');
+					// Update selectedImages at the specific index
+					updateSelectedImageAt(idx, (cur) => {
+						const base = (cur && typeof cur === 'object') ? { ...(cur as Record<string, unknown>) } : {} as Record<string, unknown>;
+						if (pub) base.publicUrl = pub;
+						else if (signed) base.signedUrl = signed;
+						base.url = pub || base.url || signed || base.url;
+						// ensure gallery exists
+						base.gallery = Array.isArray(base.gallery) ? [...(base.gallery as string[])] : [];
+						// any additional uploaded elements after first should go into gallery
+						const additional = (uploaded || []).slice(1).map((p: UploadedFile | null | undefined) => p?.publicUrl).filter(Boolean) as string[];
+						for (const g of additional) {
+							if (!(base.gallery as string[]).includes(g)) (base.gallery as string[]).push(g);
+						}
+						return base as SelectedImageItem;
+					});
+
+					// Merge publicUrl into productForms OtherAttributes.image_urls for this product
+					if (pub || signed) {
+						setProductForms(prev => {
+							const copy = [...prev];
+							if (!copy[idx]) copy[idx] = initialFormData();
+							if (!copy[idx].OtherAttributes) copy[idx].OtherAttributes = {};
+							const other = copy[idx].OtherAttributes as Record<string, unknown>;
+							const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
+							other.image_urls = [...new Set([...existing, ...(pub ? [pub] : [])])];
+							return copy;
+						});
+
+						// store uploaded metadata
+						_setUploadedImagesjson(prev => {
+							try {
+								const toPush: UploadedFile = rec ?? { img_id: undefined, publicUrl: undefined, storagePath: undefined, signedUrl: undefined };
+								return [...prev, toPush];
+							} catch {
+								return prev;
+							}
+						});
+
+						if (signed) toast.success('Image uploaded and product added', { autoClose: 1500 });
+					}
+				} catch (error) {
+					console.error('Error uploading add-product image', error);
+					toast.error('Failed to upload image. Showing preview only.');
+				}
+			}
+		} catch (error) {
+			console.error('Error during bulk add-product upload loop', error);
+			toast.error('Failed to add images');
 		} finally {
 			if (addProductInputRef.current) addProductInputRef.current.value = '';
 		}
@@ -867,18 +866,17 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 	const handleImageChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
 		const files = event.target.files;
 		if (!files || files.length === 0) return;
-	const fileArray = [...files];
+		const fileArray = [...files];
 		const prevCount = selectedImages.length;
 
-
 		try {
-				// For each file: create a preview object and keep the File for later upload
-				const newItems: SelectedImageItem[] = fileArray.map((file) => {
-					const dataUrl = URL.createObjectURL(file);
-					return { url: dataUrl, file, img_id: undefined } as SelectedImageItem;
-				});
+			// For each file: create a preview object and keep the File for later upload
+			const newItems: SelectedImageItem[] = fileArray.map((file) => {
+				const dataUrl = URL.createObjectURL(file);
+				return { url: dataUrl, file, img_id: undefined } as SelectedImageItem;
+			});
 
-			// Append previews and ensure productForms length; merge returned img_ids into OtherAttributes.image_ids
+			// Append previews and ensure productForms length
 			setSelectedImages(prev => {
 				const merged = [...prev, ...newItems];
 				return merged;
@@ -887,16 +885,7 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 			setProductForms(prev => {
 				const formsCopy = [...prev];
 				while (formsCopy.length < prevCount + newItems.length) formsCopy.push(initialFormData());
-				// Merge image ids into corresponding product forms
-				for (const [i, item] of newItems.entries()) {
-					const idx = prevCount + i;
-					const it = item as { img_id?: string };
-					if (!formsCopy[idx]) formsCopy[idx] = initialFormData();
-					if (!formsCopy[idx].OtherAttributes) formsCopy[idx].OtherAttributes = {};
-					const other = formsCopy[idx].OtherAttributes as Record<string, unknown>;
-					const existing = Array.isArray(other.image_ids) ? (other.image_ids as string[]) : [];
-					if (it.img_id) other.image_ids = [...new Set([...existing, it.img_id])];
-				}
+				// No img_id available at selection time; img_id will be set after server upload
 				return formsCopy;
 			});
 
@@ -993,6 +982,51 @@ const [sizePopoverLabel, setSizePopoverLabel] = useState<string>("");
 
 // Copy-all checkbox state (ensures `copyAll` is defined before any usage)
 const [copyAll, setCopyAll] = useState<boolean>(false);
+// Delete confirmation dialog state
+const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
+
+const handleProceedDelete = () => {
+	try {
+		const idx = activeProductIndex;
+		const oldLen = productForms.length;
+		// remove product at idx from productForms
+		setProductForms(prev => {
+			const copy = [...prev];
+			if (idx >= 0 && idx < copy.length) copy.splice(idx, 1);
+			return copy;
+		});
+		// remove corresponding selected image
+		setSelectedImages(prev => {
+			const copy = [...prev];
+			if (idx >= 0 && idx < copy.length) copy.splice(idx, 1);
+			return copy;
+		});
+		// remove uploadedImages entry
+		setUploadedImages(prev => {
+			const copy = [...prev];
+			if (idx >= 0 && idx < copy.length) copy.splice(idx, 1);
+			return copy;
+		});
+		// remove uploaded metadata
+		_setUploadedImagesjson(prev => {
+			const copy = [...prev];
+			if (idx >= 0 && idx < copy.length) copy.splice(idx, 1);
+			return copy;
+		});
+
+		const newLen = Math.max(0, oldLen - 1);
+		const newIndex = newLen === 0 ? 0 : Math.min(idx, newLen - 1);
+		setActiveProductIndex(newIndex);
+		setDeleteDialogOpen(false);
+		toast.success('Product deleted from catalog', { autoClose: 1500 });
+	} catch (error) {
+		console.error('Failed to delete product', error);
+		toast.error('Failed to delete product');
+		setDeleteDialogOpen(false);
+	}
+};
+
+const handleCancelDelete = () => setDeleteDialogOpen(false);
 
 const _handleSizeDropdownClick = (
   e: React.MouseEvent<HTMLElement>,
@@ -1773,7 +1807,8 @@ const renderField = (
 					</Button>
 				</DialogActions>
 			</Dialog>
-		
+			
+			{/* Delete confirmation dialog removed from here and rendered at top-level to avoid z-index/layout issues */}
 		</Box>
 
 
@@ -1845,13 +1880,24 @@ const renderField = (
 {activeStep === 1 && (() => {
 	const selectedSizes = productForms[activeProductIndex]?.ProductSizeInventory?.["Size"] || [];
 	return (
-	<Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
+	<Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2, }}>
 		{/* Product Tabs */}
-		<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2 }}>
+		<Box sx={{ display: "flex", alignItems: "center", gap: 2, mb: 2, maxWidth: '1150px', overflowX: 'auto' }}>
 
-				{selectedImages.map((img, idx) => {
-					//console.log('Rendering thumbnail for image:', img); // Debug log to verify the image object
-				const thumbSrc = resolvePreviewSrc(img);
+					{(productForms && productForms.length > 0 ? Array.from({ length: productForms.length }) : selectedImages).map((_, idx) => {
+						// Render tabs deterministically from productForms when present, otherwise use selectedImages
+						// Use a single main image per product; extra images remain in the gallery
+						let thumbSrc = '';
+						const prodItem = selectedImages[idx] as SelectedImageItem | undefined;
+						if (prodItem) thumbSrc = resolvePreviewSrc(prodItem);
+						// Fallback to productForms OtherAttributes.image_urls[0]
+						if (!thumbSrc && productForms && productForms[idx] && productForms[idx].OtherAttributes) {
+							const oa = productForms[idx].OtherAttributes as Record<string, unknown> | undefined;
+							if (oa) {
+								const arr = Array.isArray(oa.image_urls) ? (oa.image_urls as unknown[]) : [];
+								if (arr.length > 0 && typeof arr[0] === 'string') thumbSrc = String(arr[0]);
+							}
+						}
       //console.log('Thumbnail Source:', thumbSrc); // Debug log to verify the thumbnail source
 				return (
 				<Button
@@ -1866,31 +1912,49 @@ const renderField = (
 				</Button>
 				);
 			})}
-			<Button
-				variant="outlined"
-				color="primary"
-				sx={{ minWidth: 120, height: 56, display: 'flex', alignItems: 'center', gap: 1, borderStyle: 'dashed', borderColor: '#6366f1' }}
-				onClick={() => {
-					if (addProductInputRef.current) addProductInputRef.current.value = '';
-					addProductInputRef.current?.click();
-				}}
-			>
-				<Add sx={{ fontSize: 28, color: '#6366f1' }} />
-				Add Product
-			</Button>
-			<input
-				type="file"
-				accept="image/*"
-				ref={addProductInputRef}
-				style={{ display: 'none' }}
-				onChange={handleAddProductImage}
-			/>
+			{(productForms?.length ?? 0) < 9 && (
+				<>
+					<Button
+						variant="outlined"
+						color="primary"
+						sx={{ minWidth: 120, height: 56, display: 'flex', alignItems: 'center', gap: 1, borderStyle: 'dashed', borderColor: '#6366f1' }}
+						onClick={() => {
+							if (addProductInputRef.current) addProductInputRef.current.value = '';
+							addProductInputRef.current?.click();
+						}}
+					>
+						<Add sx={{ fontSize: 28, color: '#6366f1' }} />
+						Add Product
+					</Button>
+					<input
+						type="file"
+						accept="image/*"
+						multiple
+						ref={addProductInputRef}
+						style={{ display: 'none' }}
+						onChange={handleAddProductImage}
+					/>
+				</>
+			)}
 		</Box>
 		{/* Main Content */}
 		<Box sx={{ display: "flex", gap: 2, mb: 10 }}>
 			{/* Left: Form */}
 			<Paper sx={{ flex: 2, p: 2, display: "flex", flexDirection: "column", gap: 2 }}>
-				<Typography variant="h5" sx={{fontWeight:"1600px"}}>Add Product Details</Typography>
+				<Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+					<Typography variant="h5" sx={{fontWeight:"1600px"}}>Add Product Details</Typography>
+					{productForms.length > 1 && (
+						<Button
+						  color="primary"
+						  variant="text"
+						  onClick={() => setDeleteDialogOpen(true)}
+						  sx={{ textTransform: 'none', color: '#4d0aff', fontWeight: 600, ":hover": { backgroundColor: "#ffffffff" } }}
+						  startIcon={<DeleteIcon />}
+						>
+						  Delete this product from catalog
+						</Button>
+					)}
+				</Box>
 				{activeProductIndex === 0 && (
 					<>
 					<Box sx={{  mx: 1 ,backgroundColor: "#f2f5fa" , p:2 , borderRadius: 1, }}>
@@ -2091,14 +2155,24 @@ const renderField = (
 							const mainUrl: string | undefined = resolvePreviewSrc(prodItem) || undefined;
 							const gallery: string[] = prodItem && typeof prodItem === 'object' && Array.isArray((prodItem as { gallery?: unknown }).gallery) ? (prodItem as { gallery?: string[] }).gallery as string[] : [];
 
-							const openPerProductInput = (replaceMain = false) => {
+							const openPerProductInput = (replaceMain = false, allowMulti = false) => {
 								const el = document.querySelector<HTMLInputElement>(`#per-product-input-${activeProductIndex}`);
 								if (!el) return;
 								el.dataset.replace = replaceMain ? 'true' : 'false';
+								// set flag to allow multi-select when opening via Add Images button in edit flow
+								setPerProductMultiSelect(!!allowMulti);
+								el.multiple = !!allowMulti;
 								el.value = '';
 								el.click();
+								// clear the flag after short timeout to avoid leaving input in multi state
+								setTimeout(() => {
+									try { el.multiple = false; } catch { /* ignore */ }
+									setPerProductMultiSelect(false);
+								}, 5000);
 							};
 //console.log('gallery:', gallery); // Debug log to verify the gallery array
+							const MAX_PER_PRODUCT = 5;
+							const totalNow = (mainUrl ? 1 : 0) + (Array.isArray(gallery) ? gallery.length : 0);
 							const removeGalleryAt = (gIndex: number) => {
 								setSelectedImages(prev => {
 									const copy = [...prev];
@@ -2125,7 +2199,7 @@ const renderField = (
 												<PreviewImage key={mainUrl || `main-${activeProductIndex}`} src={mainUrl} alt={`Main ${activeProductIndex + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 }} onClick={changeMainImage} />
 											) : (
 												<Box
-													onClick={() => openPerProductInput(false)}
+													onClick={() => openPerProductInput(false, true)}
 													sx={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: '#fafafa', cursor: 'pointer' }}
 												>
 													<Add sx={{ color: '#6C63FF' }} />
@@ -2193,11 +2267,12 @@ const renderField = (
 										</Box>
 									))}
 
-									{/* Add Images tile */}
+									{/* Add Images tile - hide when total images reached MAX_PER_PRODUCT */}
+									{totalNow < MAX_PER_PRODUCT && (
 									<Box
 										role="button"
 										aria-label={`Add images for product ${activeProductIndex + 1}`}
-										onClick={() => openPerProductInput(false)}
+										onClick={() => openPerProductInput(false, true)}
 										sx={{
 											border: "1px dashed #c4c4c4",
 											borderRadius: 1,
@@ -2218,20 +2293,36 @@ const renderField = (
 										</Box>
 										<Typography sx={{ fontSize: 11, fontWeight: 700, lineHeight: 1 }}>Add Images</Typography>
 									</Box>
+									)}
 
 									
-																		<input
-																			id={`per-product-input-${activeProductIndex}`}
-																			type="file"
-																			multiple
-																			accept="image/*"
-																			style={{ display: "none" }}
-																			data-replace="false"
-																			onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
-																				const replaceMain = (e.currentTarget.dataset.replace === 'true');
-																				const files = e.target.files ? [...e.target.files] : [];
-																				if (files.length === 0) return;
-																				const MAX_PER_PRODUCT = 5;
+																			<input
+																				id={`per-product-input-${activeProductIndex}`}
+																				type="file"
+																				accept="image/*"
+																				style={{ display: "none" }}
+																				data-replace="false"
+																				multiple={perProductMultiSelect}
+																				onChange={async (e: React.ChangeEvent<HTMLInputElement>) => {
+																					const replaceMain = (e.currentTarget.dataset.replace === 'true');
+																					const files = e.target.files ? [...e.target.files] : [];
+																					if (files.length === 0) return;
+																					const MAX_PER_PRODUCT = 5;
+																					// Enforce max images per product (count primary + gallery)
+																					try {
+																						const sel = selectedImages[activeProductIndex] as SelectedImageItem | undefined;
+																						const hasMain = sel && typeof sel === 'object' && !!(sel as Record<string, unknown>).url;
+																						const galleryArr = sel && typeof sel === 'object' && Array.isArray((sel as Record<string, unknown>).gallery) ? (sel as Record<string, unknown>).gallery as string[] : [];
+																						const currentTotal = (hasMain ? 1 : 0) + galleryArr.length;
+																						const allowed = MAX_PER_PRODUCT - currentTotal;
+																						if (allowed <= 0) {
+																							toast.error(`Maximum ${MAX_PER_PRODUCT} images allowed per product`);
+																							if (e.currentTarget) e.currentTarget.value = '';
+																							return;
+																						}
+																					} catch {
+																						// if any error reading state, continue with upload but guard later
+																					}
 
 																				// use hoisted _readFileToDataUrl helper
 
@@ -2313,20 +2404,47 @@ const renderField = (
 																								});
 																							}
 																						} else if (chosenMain) {
-																							if (curObj.url) {
-																								curObj.gallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
-																								if ((curObj.gallery as string[]).length < MAX_PER_PRODUCT && !(curObj.gallery as string[]).includes(chosenMain)) {
-																									(curObj.gallery as string[]).push(chosenMain as string);
+																							// When user is adding images to gallery (replaceMain === false),
+																							// do NOT replace the existing primary image. Always append the
+																							// uploaded image to the gallery (if not present) and respect
+																							// the MAX_PER_PRODUCT limit.
+																							curObj.gallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
+																							// Only add to gallery when total images (main + gallery) stays within limit
+																							{
+																								const hasMainNow = !!curObj.url;
+																								const curGalleryNow = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
+																								const totalNow = (hasMainNow ? 1 : 0) + curGalleryNow.length;
+																								if (totalNow < MAX_PER_PRODUCT && !curGalleryNow.includes(chosenMain as string)) {
+																									curGalleryNow.push(chosenMain as string);
 																								}
-																							} else {
-																								curObj.url = chosenMain;
+																								curObj.gallery = curGalleryNow;
+																							}
+																							// Also ensure the product form's OtherAttributes.image_urls
+																							// is kept in sync with uploaded public/preview urls and
+																							// preserve any existing primary image entries.
+																							try {
+																								const toAddUrls = [chosenMain, ...chosenGallery].filter(Boolean) as string[];
+																								if (toAddUrls.length > 0) {
+																									setProductForms(forms => {
+																										const fcopy = [...forms];
+																										while (fcopy.length <= activeProductIndex) fcopy.push(initialFormData());
+																										if (!fcopy[activeProductIndex].OtherAttributes) fcopy[activeProductIndex].OtherAttributes = {};
+																										const other = fcopy[activeProductIndex].OtherAttributes as Record<string, unknown>;
+																										const existingImgs = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
+																										other.image_urls = [...new Set([...existingImgs, ...toAddUrls])];
+																										return fcopy;
+																									});
+																								}
+																							} catch {
+																								// ignore sync failures
 																							}
 																						}
 
 																						// Merge gallery while respecting MAX_PER_PRODUCT
 																						const curGallery = Array.isArray(curObj.gallery) ? [...(curObj.gallery as string[])] : [];
 																						for (const g of chosenGallery) {
-																							if (curGallery.length >= MAX_PER_PRODUCT) break;
+																							const totalNow = ((curObj.url) ? 1 : 0) + curGallery.length;
+																							if (totalNow >= MAX_PER_PRODUCT) break;
 																							if (!curGallery.includes(g)) curGallery.push(g);
 																						}
 																						curObj.gallery = curGallery;
@@ -2390,6 +2508,24 @@ const renderField = (
         pauseOnHover
         theme="colored"
       />
+					{/* Delete confirmation dialog (top-level so it's above fixed footer) */}
+					<Dialog
+						open={deleteDialogOpen}
+						onClose={handleCancelDelete}
+						maxWidth="xs"
+						fullWidth
+						BackdropProps={{ sx: { zIndex: 2000 } }}
+						PaperProps={{ sx: { zIndex: 2100, borderRadius: 2, p: 1 } }}
+						aria-labelledby="delete-product-dialog"
+					>
+						<DialogTitle id="delete-product-dialog">
+							<Typography sx={{ fontSize: 16, fontWeight: 600 }}>Are you sure you want to delete this product from catalog?</Typography>
+						</DialogTitle>
+						<DialogActions sx={{ px: 3, pb: 2 }}>
+							<Button variant="outlined" onClick={handleCancelDelete}>Cancel</Button>
+							<Button variant="contained" onClick={handleProceedDelete} sx={{ background: '#4d0aff', color: '#fff' }}>Proceed</Button>
+						</DialogActions>
+					</Dialog>
 			 <Box
         sx={{
           position: 'fixed',
@@ -2448,116 +2584,98 @@ const renderField = (
 							type="button"
 							variant="outlined"
 							color="inherit"
-							sx={{mr:2}}
-							onClick={() => {
-									// Save current form state to localStorage as a quick persistence then navigate back
-									try {
-										// ensure each product form has an id
-										const ensured = ensureProductFormIds(productForms);
+							sx={{ mr: 2 }}
+							onClick={async () => {
+								if (isSavingDraft) return;
+								setIsSavingDraft(true);
+								let draft: Record<string, unknown> | null = null;
+								try {
+									const ensured = ensureProductFormIds(productForms);
+									const catalogId = genUniqueId();
+									const inventoryJson: Record<string, ProductSection> = {};
+									for (const pf of ensured) inventoryJson[pf.id] = pf.ProductSizeInventory || {};
 
-										// create a catalog-level id
-										const catalogId = genUniqueId();
-
-										// build inventory JSON mapping productFormId -> ProductSizeInventory
-										const inventoryJson: Record<string, ProductSection> = {};
-										for (const pf of ensured) {
-											inventoryJson[pf.id] = pf.ProductSizeInventory || {};
+									const cleanedForDraft = ensured.map(pf => {
+										const copy = deepClone(pf) as ProductForm & { id?: string };
+										if (copy.OtherAttributes && typeof copy.OtherAttributes === 'object') {
+											const oa = copy.OtherAttributes as Record<string, unknown>;
+											if ('image_ids' in oa) delete oa.image_ids;
+											if (Array.isArray(oa.image_urls)) {
+												try {
+													const arr = (oa.image_urls as unknown[]).filter(i => typeof i === 'string') as string[];
+													const filtered = [...new Set(arr.filter(u => /^https?:\/\//i.test(u)))];
+													oa.image_urls = filtered;
+												} catch { /* ignore */ }
+											}
 										}
+										return copy as ProductForm & { id?: string };
+									});
 
-										// Clean product forms for server: remove image_ids from OtherAttributes
-										const cleanedForDraft = ensured.map(pf => {
-											const copy = deepClone(pf) as ProductForm & { id?: string };
-											if (copy.OtherAttributes && typeof copy.OtherAttributes === 'object') {
-												const oa = copy.OtherAttributes as Record<string, unknown>;
-												if ('image_ids' in oa) delete oa.image_ids;
-												// Normalize image_urls: keep only http(s) urls (avoid blob/data or non-public urls)
-												if (Array.isArray(oa.image_urls)) {
-													try {
-														const arr = (oa.image_urls as unknown[]).filter(i => typeof i === 'string') as string[];
-														const filtered = [...new Set(arr.filter(u => /^https?:\/\//i.test(u)))];
-														oa.image_urls = filtered;
-													} catch { /* ignore */ }
-												}
-											}
-											return copy as ProductForm & { id?: string };
-										});
+									draft = {
+										catalog_id: catalogId,
+										user_id: user?.id ?? null,
+										category_path: selectionPath,
+										product_forms: cleanedForDraft,
+										inventory_json: inventoryJson,
+									};
 
-										const draft = {
-											catalog_id: catalogId,
-											user_id: user?.id ?? null,
-											category_path: selectionPath,
-											product_forms: cleanedForDraft,
-											inventory_json: inventoryJson,
-										};
+									const payload = {
+										...draft,
+										status: 'draft',
+										QC_status: 'notyet',
+										trough: 'single',
+									};
 
-										// Attempt to send draft to server API (no required-field validation)
-										(async () => {
-											try {
-												const payload = {
-													...draft,
-													// Ensure server-friendly keys used by submit flow
-		                                        	status: 'draft',
-													QC_status: 'notyet',
-													trough: 'single',
-												};
-														// If editing an existing catalog, call PUT to update by catalog_id
-														const endpoint = editingCatalogId ?
-															`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs/${encodeURIComponent(editingCatalogId)}` :
-															`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`;
-														const method = editingCatalogId ? 'PUT' : 'POST';
-														const res = await fetch(endpoint, {
-															method,
-															headers: { 'Content-Type': 'application/json' },
-															body: JSON.stringify(payload),
-														});
-												let body: unknown = null;
-												const contentType = res.headers.get('content-type') || '';
-												if (contentType.includes('application/json')) {
-													try { body = await res.json(); } catch { body = null; }
-													console.warn('Non-JSON response for draft save', body);	
-												} else {
-													try { body = await res.text(); } catch { body = null; }
-													console.warn('Non-JSON response for draft save', body);	
-												}
-												if (res.ok === false) {
-													console.error('Draft save failed', res.status, body);
-													// fallback: persist locally so user doesn't lose work
-													try { localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch { /* ignore localStorage failures */ }
-                                                    
-												} else {
-													// If server returned JSON with the saved row, set editingCatalogId so future saves update instead of creating
-													try {
-														if (body && typeof body === 'object' && !Array.isArray(body)) {
-															const obj = body as Record<string, unknown>;
-															// support { data: [...] } shape from Supabase insert/select
-															const dataField = obj.data as unknown;
-															const row = Array.isArray(dataField) && ((dataField as unknown[]).length > 0) ? (dataField as unknown[])[0] : (obj.data ?? obj);
-															if (row && typeof row === 'object') {
-																const rowObj = row as Record<string, unknown>;
-																if (rowObj.catalog_id) setEditingCatalogId(String(rowObj.catalog_id));
-															}
-														}
-													} catch { /* ignore */ }
-													toast.success('Draft uploaded to server', { autoClose: 2000 });
-													// navigate back after small delay
-													setTimeout(() => {
-													try { router.push('/dashboard/catalog-uploads'); } catch { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch { globalThis.history.back(); } }
-													}, 600);
-												}
-											} catch (error) {
-												console.error('Error uploading draft', error);
-												// fallback to localStorage
-												try { localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch { /* ignore localStorage failures */ }
-												toast.error('Failed to upload draft. Saved locally as fallback.');
-											}
-										})();
-									
-									} catch { /* top-level draft save failure */
-										toast.error('Failed to save draft', { autoClose: 2500 });
+									const endpoint = editingCatalogId ?
+										`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs/${encodeURIComponent(editingCatalogId)}` :
+										`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/catalogs`;
+									const method = editingCatalogId ? 'PUT' : 'POST';
+									const res = await fetch(endpoint, {
+										method,
+										headers: { 'Content-Type': 'application/json' },
+										body: JSON.stringify(payload),
+									});
+
+									let body: unknown = null;
+									const contentType = res.headers.get('content-type') || '';
+									if (contentType.includes('application/json')) {
+										try { body = await res.json(); } catch { body = null; }
+									} else {
+										try { body = await res.text(); } catch { body = null; }
 									}
-								}}
+
+									if (res.ok) {
+										try {
+											if (body && typeof body === 'object' && !Array.isArray(body)) {
+												const obj = body as Record<string, unknown>;
+												const dataField = obj.data as unknown;
+												const row = Array.isArray(dataField) && ((dataField as unknown[]).length > 0) ? (dataField as unknown[])[0] : (obj.data ?? obj);
+												if (row && typeof row === 'object') {
+													const rowObj = row as Record<string, unknown>;
+													if (rowObj.catalog_id) setEditingCatalogId(String(rowObj.catalog_id));
+												}
+											}
+										} catch { /* ignore */ }
+										toast.success('Draft uploaded to server', { autoClose: 2000 });
+										setTimeout(() => {
+											try { router.push('/dashboard/catalog-uploads'); } catch { try { globalThis.window.location.href = '/dashboard/catalog-uploads'; } catch { globalThis.history.back(); } }
+										}, 600);
+									} else {
+										console.error('Draft save failed', res.status, body);
+										try { if (draft) localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch { /* ignore */ }
+										toast.error('Draft save failed. Saved locally as fallback.');
+									}
+								} catch (error) {
+									console.error('Error uploading draft', error);
+									try { if (draft) localStorage.setItem('draftProductCatalog', JSON.stringify(draft)); } catch { /* ignore */ }
+									toast.error('Failed to upload draft. Saved locally as fallback.');
+								} finally {
+									setIsSavingDraft(false);
+								}
+							}}
+							disabled={isSavingDraft}
 						>
-							Save and Go Back
+							{isSavingDraft ? 'Saving...' : 'Save and Go Back'}
 						</Button>
 
 
