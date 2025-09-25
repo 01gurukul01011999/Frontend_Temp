@@ -599,6 +599,77 @@ app.post("/api/fetch-catalogs", async (req, res) => {
   });
 
 
+app.post("/api/delete-image", async (req, res) => {
+  try {
+    // Expecting JSON body with either img_name, img_id or publicUrl
+    const { img_name, img_id, publicUrl } = req.body || {};
+    console.log('delete-image request body:', req.body);
+
+    if (!supabaseAdmin) return res.status(500).json({ success: false, error: 'Supabase admin client not configured' });
+
+    const bucket = process.env.SUPABASE_STORAGE_BUCKET || process.env.SUPABASE_BUCKET || 'images';
+
+    // Find record in images table by img_id or img_name
+    let record = null;
+    if (img_id) {
+      const { data, error } = await supabaseAdmin.from('images').select('storage_path,img_id,img_name').eq('img_id', img_id).maybeSingle();
+      if (error) throw error;
+      record = data;
+    } else if (img_name) {
+      const { data, error } = await supabaseAdmin.from('images').select('storage_path,img_id,img_name').eq('img_name', img_name).maybeSingle();
+      if (error) throw error;
+      record = data;
+    } else if (publicUrl) {
+      // Attempt to locate by publicUrl: simple approach - search by img_name derived from publicUrl's basename
+      try {
+        const parsed = new URL(String(publicUrl));
+        const parts = parsed.pathname.split('/');
+        const candidate = parts[parts.length - 1];
+        const { data, error } = await supabaseAdmin.from('images').select('storage_path,img_id,img_name').eq('img_name', candidate).maybeSingle();
+        if (error) throw error;
+        record = data;
+      } catch (e) {
+        // ignore URL parse errors
+      }
+    }
+
+    if (!record) {
+      return res.status(404).json({ success: false, error: 'Image record not found' });
+    }
+
+    const storagePath = record.storage_path || null;
+    // If we have a storage path, attempt to remove from storage
+    if (storagePath) {
+      const { data: removeData, error: removeErr } = await supabaseAdmin.storage.from(bucket).remove([storagePath]);
+      if (removeErr) {
+        console.error('Error removing from storage:', removeErr);
+        // continue to attempt DB cleanup but inform client
+        return res.status(500).json({ success: false, error: 'Failed to remove file from storage', detail: removeErr.message || removeErr });
+      }
+    }
+
+    // Delete DB record for this image
+    const { data: delData, error: delErr } = await supabaseAdmin.from('images').delete().eq('img_id', record.img_id || '').or(`img_name.eq.${record.img_name}`);
+    if (delErr) {
+      console.error('Error deleting DB record:', delErr);
+      return res.status(500).json({ success: false, error: 'Failed to delete DB record', detail: delErr.message || delErr });
+    }
+
+    return res.json({ success: true });
+  } catch (err) {
+    console.error('Server error:', err);
+    res.status(500).send('Internal Server Error');
+ }
+});
+
+
+
+
+
+
+// ============= End Server ============
+
+
 
 
 

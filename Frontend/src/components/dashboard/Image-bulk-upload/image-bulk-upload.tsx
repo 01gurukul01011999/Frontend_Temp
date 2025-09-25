@@ -7,10 +7,16 @@ import { Box, Typography, Button, IconButton, Avatar, Stack, Tooltip,
 	TableContainer,
 	TableHead,
 	TableRow,
-	Paper, } from "@mui/material";
+	Paper,
+	Dialog,
+	DialogTitle,
+	DialogContent,
+	DialogActions, } from "@mui/material";
 import CloudUploadIcon from "@mui/icons-material/CloudUpload";
 import CloseIcon from "@mui/icons-material/Close";
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
+import CircularProgress from '@mui/material/CircularProgress';
+import { toast } from 'react-toastify';
 import { useUser } from '@/hooks/use-user';
 
 const forbiddenImages = [
@@ -27,16 +33,78 @@ export default function ImageBulkUpload(): React.JSX.Element {
 	const [selectedFiles, setSelectedFiles] = React.useState<File[]>([]);
 	type UploadedFile = { img_name: string; name?: string; publicUrl?: string };
 	const [uploadedFiles, setUploadedFiles] = React.useState<UploadedFile[]>([]);
+	// track uploading state per index
+	const [uploadingIndices, setUploadingIndices] = React.useState<Record<number, boolean>>({});
+	const [uploadingDeleteIndex, setUploadingDeleteIndex] = React.useState<number | null>(null);
 	const { user } = useUser();
-	//console.log(selectedFiles);
+	//console.log(isLoading);
 
-	// Remove image by index
+	// Remove image from selected files (local only)
 	const handleRemoveImage = (idx: number) => {
 		setSelectedFiles(prev => prev.filter((_, i) => i !== idx));
-		setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
-		if (uploadedFiles.length > 0) {
-			setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
+		// if there is a matching uploadedFiles entry, remove it too
+		const file = selectedFiles[idx];
+		if (file) {
+			setUploadedFiles(prev => prev.filter(u => u.img_name !== file.name));
 		}
+	};
+
+	// Remove an uploaded image from server + UI. Assumes a delete endpoint exists at /api/delete-image
+	// Body: { img_name?, publicUrl? }
+	const handleRemoveUploadedImage = async (idx: number) => {
+		const img = uploadedFiles[idx];
+		if (!img) return;
+		setUploadingDeleteIndex(idx);
+		try {
+			// Attempt server delete. NOTE: backend endpoint and payload are assumed; adjust if your backend differs.
+			const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/delete-image`, {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ img_name: img.img_name, publicUrl: img.publicUrl }),
+			});
+			if (!res.ok) {
+				const txt = await res.text();
+				console.error('Delete failed', txt);
+				toast.error('Failed to delete image from server');
+				return;
+			}
+			const body = await res.json().catch(() => ({}));
+			const ok = body?.success ?? true; // allow fallback to true if backend returns 200 without JSON
+			if (!ok) {
+				toast.error('Server reported failure deleting image');
+				return;
+			}
+			// Remove from uploadedFiles
+			setUploadedFiles(prev => prev.filter((_, i) => i !== idx));
+			// Also remove any selectedFiles matching this img_name
+			setSelectedFiles(prev => prev.filter(f => f.name !== img.img_name));
+			toast.success('Image deleted from server', { autoClose: 1400 });
+		} catch (error) {
+			console.error('Delete image error', error);
+			toast.error('Failed to delete image');
+		} finally {
+			setUploadingDeleteIndex(null);
+		}
+	};
+
+	// Confirmation dialog state for deleting uploaded images
+	const [confirmOpen, setConfirmOpen] = React.useState(false);
+	const [confirmIndex, setConfirmIndex] = React.useState<number | null>(null);
+
+	const openConfirm = (idx: number) => {
+		setConfirmIndex(idx);
+		setConfirmOpen(true);
+	};
+
+	const closeConfirm = () => {
+		setConfirmIndex(null);
+		setConfirmOpen(false);
+	};
+
+	const handleConfirmDelete = async () => {
+		if (confirmIndex === null) return closeConfirm();
+		await handleRemoveUploadedImage(confirmIndex);
+		closeConfirm();
 	};
 
 	// Handle file selection
@@ -47,26 +115,41 @@ export default function ImageBulkUpload(): React.JSX.Element {
 	};
 
 	const handleUploadImages = async () => {
+
+		if (selectedFiles.length === 0) return;
+
+		// mark all selected indices as uploading
+		const uploadingMap: Record<number, boolean> = {};
+		for (const [i] of selectedFiles.entries()) {
+			uploadingMap[i] = true;
+		}
+		setUploadingIndices(uploadingMap);
+
 		const formData = new FormData();
-		for (const file of selectedFiles) {
-			formData.append('images', file);
-		}
-		// Add uploaderId from user context
-		if (user && user.id) {
-			formData.append('uploaderId', user.id);
-			console.log('Uploader ID:', user.id);
-		}
-	
-		const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`, {
-			method: 'POST',
-			body: formData,
-		});
-		console.log('formData', formData);
-		// Handle response (e.g., show links, success message)
-		const data = await res.json();
-		if (data.success && Array.isArray(data.files)) {
-			setUploadedFiles(data.files as UploadedFile[]);
-			//console.log('Uploaded files:', data.files);
+		for (const file of selectedFiles) formData.append('images', file);
+		if (user && user.id) formData.append('uploaderId', user.id);
+
+		try {
+			const res = await fetch(`${process.env.NEXT_PUBLIC_BACKEND_URL}/api/bulkImgupload`, {
+				method: 'POST',
+				body: formData,
+			});
+			const data = await res.json();
+			if (data.success && Array.isArray(data.files)) {
+				setUploadedFiles(data.files as UploadedFile[]);
+				// show toast per uploaded file with publicUrl
+				for (const f of (data.files as UploadedFile[])) {
+					if (f?.publicUrl) {
+						toast.success(`${f.img_name || f.name || 'Image'} uploaded`, { autoClose: 1400 });
+					}
+				}
+			}
+		} catch (error) {
+			console.error('Bulk upload failed', error);
+			toast.error('Failed to upload images');
+		} finally {
+			// clear uploading flags
+			setUploadingIndices({});
 		}
 	};
 
@@ -188,6 +271,11 @@ export default function ImageBulkUpload(): React.JSX.Element {
 												}}
 											/>
 										)}
+										{uploadingIndices[idx] && (
+											<Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.6)' }}>
+												<CircularProgress size={28} />
+											</Box>
+										)}
 									</Box>
 								);
 							})}
@@ -235,8 +323,8 @@ export default function ImageBulkUpload(): React.JSX.Element {
 											onClick={() => img.publicUrl ? navigator.clipboard.writeText(img.publicUrl) : Promise.resolve()}>
 											Copy Link
 										</Button>
-										<Button size="small" variant="outlined" color="secondary" onClick={() => handleRemoveImage(idx)}>
-											Remove Image
+										<Button size="small" variant="outlined" color="secondary" onClick={() => openConfirm(idx)} disabled={uploadingDeleteIndex === idx}>
+											{uploadingDeleteIndex === idx ? <CircularProgress size={18} /> : 'Remove Image'}
 										</Button>
 									</TableCell>
 								</TableRow>
@@ -247,6 +335,18 @@ export default function ImageBulkUpload(): React.JSX.Element {
 			</Box>)}
 					</Box>
 				)}
+
+				{/* Confirmation Dialog */}
+				<Dialog open={confirmOpen} onClose={closeConfirm}>
+					<DialogTitle>Confirm delete</DialogTitle>
+					<DialogContent>
+						<Typography>Are you sure you want to delete this image from the server?</Typography>
+					</DialogContent>
+					<DialogActions>
+						<Button onClick={closeConfirm} variant="outlined">No</Button>
+						<Button onClick={handleConfirmDelete} variant="contained" color="error">Yes</Button>
+					</DialogActions>
+				</Dialog>
 			</Box>
 			{/* Column 2: Right */}
 			<Box sx={{ width: '30%', p: 3, bgcolor: '#fff', flexBasis: '30%', borderLeft: '1px solid #e0e0e0' }}>
