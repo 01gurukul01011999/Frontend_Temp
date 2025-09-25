@@ -214,6 +214,8 @@ export default function CategorySelector(): React.JSX.Element {
 	// Track the active product tab (0-based index)
 	const [activeProductIndex, setActiveProductIndex] = useState(0);
 	const [_uploadedImagesjson, _setUploadedImagesjson] = useState<UploadedFile[]>([]);
+	// track which product indices are currently uploading
+	const [uploadingIndices, setUploadingIndices] = useState<Record<number, boolean>>({});
 	//console.log('uploadedImagesjson', _uploadedImagesjson);
 	// Store form data for each product
 	const [productForms, setProductForms] = useState<ProductForm[]>([]);
@@ -793,6 +795,8 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 			// Upload files sequentially to keep server-friendly and preserve ordering
 			for (const [i, file] of fileArray.entries()) {
 				const idx = startIndex + i;
+				// mark this index as uploading so the UI can show a loader
+				setUploadingIndices(prev => ({ ...prev, [idx]: true }));
 				try {
 					const formData = new FormData();
 					formData.append('images', file);
@@ -853,6 +857,13 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 				} catch (error) {
 					console.error('Error uploading add-product image', error);
 					toast.error('Failed to upload image. Showing preview only.');
+				} finally {
+					// clear uploading flag for this index
+					setUploadingIndices(prev => {
+						const copy = { ...prev };
+						delete copy[idx];
+						return copy;
+					});
 				}
 			}
 		} catch (error) {
@@ -1907,7 +1918,14 @@ const renderField = (
 					onClick={() => setActiveProductIndex(idx)}
 					sx={{ minWidth: 120, display: 'flex', alignItems: 'center', gap: 1 }}
 				>
-					<PreviewImage key={thumbSrc || `tab-${idx}`} src={thumbSrc} alt={`Product ${idx + 1}`} width={48} height={48} style={{ width:48, height:48,borderRadius: 4,  marginRight: 6, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
+					<Box sx={{ position: 'relative', width: 48, height: 48, mr: 1 }}>
+						<PreviewImage key={thumbSrc || `tab-${idx}`} src={thumbSrc} alt={`Product ${idx + 1}`} width={48} height={48} style={{ width:48, height:48,borderRadius: 4, border: activeProductIndex === idx ? '2px solid #6366f1' : '1px solid #ccc' }} />
+						{uploadingIndices[idx] && (
+							<Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.6)', borderRadius: 1 }}>
+								<Box sx={{ width: 24, height: 24, border: '3px solid #ccc', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+							</Box>
+						)}
+					</Box>
 					Product {idx + 1}
 				</Button>
 				);
@@ -2196,7 +2214,14 @@ const renderField = (
 									<Box sx={{display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 1 }}>
 										<Box sx={{ position: 'relative', width: 80, height: 80, borderRadius: 1, overflow: 'hidden', border: '1px solid #e0e0e0' }}>
 											{mainUrl ? (
-												<PreviewImage key={mainUrl || `main-${activeProductIndex}`} src={mainUrl} alt={`Main ${activeProductIndex + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 }} onClick={changeMainImage} />
+												<Box sx={{ position: 'relative', width: 80, height: 80 }}>
+													<PreviewImage key={mainUrl || `main-${activeProductIndex}`} src={mainUrl} alt={`Main ${activeProductIndex + 1}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 }} onClick={changeMainImage} />
+													{uploadingIndices[activeProductIndex] && (
+														<Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.6)' }}>
+															<Box sx={{ width: 32, height: 32, border: '4px solid #ddd', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+														</Box>
+													)}
+												</Box>
 											) : (
 												<Box
 													onClick={() => openPerProductInput(false, true)}
@@ -2249,7 +2274,14 @@ const renderField = (
 													});
 												}}
 											>
-												<PreviewImage key={g || `gallery-${activeProductIndex}-${gi}`} src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8 }} />
+												<Box sx={{ position: 'relative', width: 80, height: 80 }}>
+													<PreviewImage key={g || `gallery-${activeProductIndex}-${gi}`} src={g} alt={`gallery-${gi}`} width={80} height={80} style={{ objectFit: 'cover', width: 80, height: 80 , borderRadius: 8 }} />
+													{uploadingIndices[activeProductIndex] && (
+														<Box sx={{ position: 'absolute', inset: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', bgcolor: 'rgba(255,255,255,0.5)' }}>
+															<Box sx={{ width: 20, height: 20, border: '3px solid #ddd', borderTopColor: '#6366f1', borderRadius: '50%', animation: 'spin 1s linear infinite' }} />
+														</Box>
+													)}
+												</Box>
 												<IconButton
 													size="small"
 													onClick={(ev) => { ev.stopPropagation(); removeGalleryAt(gi); }}
