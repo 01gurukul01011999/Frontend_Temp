@@ -1,6 +1,6 @@
 'use client';
 import React, { useState } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Box,
   Button,
@@ -100,6 +100,7 @@ export default function CatalogUploadUI(): React.JSX.Element {
    // const user = userContext?.user;
     const router = useRouter();
     const { user } = useUser();
+    const searchParams = useSearchParams();
 
   type RowData = {
     id: number;
@@ -145,6 +146,13 @@ export default function CatalogUploadUI(): React.JSX.Element {
   const handleTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
     setSubTab(0);
+    // Update URL to reflect selected mode for deep-linking
+    try {
+      const q = newValue === 1 ? '?single' : '?bulk';
+      router.push(`/dashboard/catalog-uploads${q}`);
+    } catch {
+      try { globalThis.window.location.href = `/dashboard/catalog-uploads${newValue === 1 ? '?single' : '?bulk'}`; } catch { /* ignore */ }
+    }
   };
    const handleSubTabChange = (_: React.SyntheticEvent, newValue: number) => {
     setSubTab(newValue);
@@ -240,6 +248,22 @@ const categories = React.useMemo(() => {
     return list;
   }, [catalog, tabValue, subTab, searchQuery, categoryFilter]);
 React.useEffect(() => {
+    // Sync main tab with URL query param. Support key-only params like `?single` or `?bulk`.
+    try {
+      const hasSingle = !!searchParams?.has && searchParams.has('single');
+      const hasBulk = !!searchParams?.has && searchParams.has('bulk');
+      if (hasSingle && tabValue !== 1) {
+        setTabValue(1);
+        setSubTab(0);
+      } else if (hasBulk && tabValue !== 0) {
+        setTabValue(0);
+        setSubTab(0);
+      }
+    } catch {
+      // ignore if searchParams is not available (server-side) or malformed
+    }
+  }, [searchParams, tabValue]);
+  React.useEffect(() => {
     // Only fetch when a user is available to avoid sending requests with an undefined userId
     if (!user || !user.id) return;
 
@@ -693,8 +717,8 @@ console.log('selectedRow', selectedRow);
           <Tab label="Description" />
         </Tabs>
 
-        <div ref={imagesSectionRef}>
-        {selectedRow && (
+  <Box ref={imagesSectionRef}>
+  {selectedRow && (
 
           <Box mt={2}>
             {/* If there are multiple product_forms, show each product form's primary image as a horizontally scrollable thumbnail row */}
@@ -762,14 +786,14 @@ console.log('selectedRow', selectedRow);
           </Box>
         )}
 
-        </div>
-        <div ref={descriptionSectionRef}>
+        </Box>
+        <Box ref={descriptionSectionRef}>
         {selectedRow && (
           <Box mt={2}>
             
           </Box>
         )}
-        </div>
+        </Box>
       </DialogContent>
       <DialogActions>
           <Button onClick={onClose} variant="contained" color="primary">

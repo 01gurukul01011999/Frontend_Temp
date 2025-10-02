@@ -98,7 +98,7 @@ export default function DuplicateCatalogTable(): React.JSX.Element {
                 secondary={
                   <Typography sx={{ fontSize: 12, color: '#666' }}>
                     Catalog ID: {cat.id}
-                    <br />
+                    <Box component="span" sx={{ display: 'block' }} />
                     Category: {cat.category}
                   </Typography>
                 }
@@ -148,7 +148,7 @@ export default function DuplicateCatalogTable(): React.JSX.Element {
                       <Link href="#" underline="hover" sx={{ ml: 0.5 }}>
                         {sku.duplicateId}
                       </Link>
-                      <br />
+                      <Box component="span" sx={{ display: 'block' }} />
                       <Button variant="text" size="small" sx={{ p: 0, minWidth: 0, color: '#2563eb', fontWeight: 600 }}>
                         Report Issue
                       </Button>
