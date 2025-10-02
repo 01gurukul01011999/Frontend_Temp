@@ -292,17 +292,18 @@ export default function CategorySelector(): React.JSX.Element {
 			try {
 				setProductForms(prev => {
 					const copy = [...prev];
-			for (const [i, fileRec] of uploaded.entries()) {
-				const rec = fileRec as UploadedFile | null;
-				// Only use publicUrl for stored image URLs. Skip if publicUrl not available.
-				const pub = rec?.publicUrl ?? null;
-				if (!pub) continue;
-						if (!copy[i]) copy[i] = initialFormData();
-						if (!copy[i].OtherAttributes) copy[i].OtherAttributes = {};
-						const other = copy[i].OtherAttributes as Record<string, unknown>;
-						const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
-						other.image_urls = [...new Set([...existing, pub])];
-					}
+				for (const [i, fileRec] of uploaded.entries()) {
+					const rec = fileRec as UploadedFile | null;
+					// Prefer publicUrl, fallback to signedUrl or storagePath if available and looks like an http(s) URL
+					const candidate = (rec?.publicUrl || rec?.signedUrl || rec?.storagePath) ?? null;
+					const toAdd = (typeof candidate === 'string' && /^https?:\/\//i.test(candidate)) ? candidate : null;
+					if (!toAdd) continue;
+					if (!copy[i]) copy[i] = initialFormData();
+					if (!copy[i].OtherAttributes) copy[i].OtherAttributes = {};
+					const other = copy[i].OtherAttributes as Record<string, unknown>;
+					const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
+					other.image_urls = [...new Set([...existing, toAdd])];
+				}
 					return copy;
 				});
 				} catch (error) {
@@ -370,11 +371,163 @@ export default function CategorySelector(): React.JSX.Element {
 			globalThis.document?.head?.append(loaderStyle);
 		}
 	}, []);
+
+
 	//const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
 	const [uploadedImages, setUploadedImages] = useState<string[]>([]);
 	const [selectionPath, setSelectionPath] = useState<string[]>([]);
 	// If editing an existing catalog, store its catalog_id here
 	const [editingCatalogId, setEditingCatalogId] = useState<string | null>(null);
+
+	const { user } = useAuth();
+
+	// Normalize ProductSizeInventory so the UI can read per-size fields during edit.
+	// Backend may store sizes either as an object under `Size` (Size -> { field: value })
+	// or as `SizeList` (array) or as a single string. The inputs expect flattened keys
+	// like `${field}_${size}`. This helper fills those flattened keys from nested data
+	// without overwriting existing flattened keys.
+	const normalizeProductFormSizes = (pf: ProductForm) => {
+		if (!pf || !pf.ProductSizeInventory) return;
+		const psi = pf.ProductSizeInventory as Record<string, unknown>;
+		const rawSize = psi['Size'];
+		const rawSizeList = psi['SizeList'];
+		let sizes: string[] = [];
+		if (Array.isArray(rawSizeList) && rawSizeList.length > 0) sizes = rawSizeList.map(String);
+		else if (Array.isArray(rawSize) && rawSize.length > 0) sizes = rawSize.map(String);
+		else if (rawSize && typeof rawSize === 'object') sizes = Object.keys(rawSize as Record<string, unknown>);
+		else if (rawSize !== undefined && rawSize !== null && String(rawSize) !== '') sizes = [String(rawSize)];
+
+		// If Size was stored as an object mapping size -> { field: value }, flatten it.
+		if (rawSize && typeof rawSize === 'object' && !Array.isArray(rawSize)) {
+			const sizeObj = rawSize as Record<string, unknown>;
+			for (const sz of Object.keys(sizeObj)) {
+				const fields = sizeObj[sz] as Record<string, unknown> | undefined;
+				if (!fields || typeof fields !== 'object') continue;
+				for (const [k, v] of Object.entries(fields)) {
+					const flatKey = `${k}_${sz}`;
+					// Do not overwrite if flat key already exists (keep stored flattened values)
+					if (psi[flatKey] === undefined) psi[flatKey] = v as string | number | boolean | string[] | Record<string, unknown>;
+				}
+			}
+		}
+
+		// Ensure SizeList and Size are present in a normalized shape for the UI
+		if (!Array.isArray(psi['SizeList']) && sizes.length > 0) psi['SizeList'] = sizes;
+		// Keep Size as array for selectedSizes logic (older code also supports string/object)
+		psi['Size'] = sizes.length > 0 ? sizes : psi['Size'];
+		pf.ProductSizeInventory = psi as ProductSection;
+	};
+
+	// Return a deep-cloned ProductForm but strip image fields so copying details doesn't duplicate images
+	const copyProductWithoutImages = (src: ProductForm): ProductForm => {
+		const copy = deepClone(src) as ProductForm;
+		if (copy.OtherAttributes && typeof copy.OtherAttributes === 'object') {
+			const oa = copy.OtherAttributes as Record<string, unknown>;
+			if ('image_urls' in oa) delete oa.image_urls;
+			if ('image_ids' in oa) delete oa.image_ids;
+		}
+		return copy;
+	};
+	// Helper: extract http(s) URLs from a SelectedImageItem (main + gallery)
+	const extractHttpUrlsFromSelected = (item?: SelectedImageItem | string): string[] => {
+		if (!item) return [];
+		if (typeof item === 'string') return /^https?:\/\//i.test(item) ? [item] : [];
+		const rec = item as Record<string, unknown>;
+		const out: string[] = [];
+		const pushIfHttp = (v: unknown) => { if (typeof v === 'string' && /^https?:\/\//i.test(v)) out.push(v); };
+		pushIfHttp(rec.publicUrl ?? rec.url ?? rec.signedUrl ?? rec.storagePath);
+		if (Array.isArray(rec.gallery)) {
+			for (const g of rec.gallery as unknown[]) pushIfHttp(g);
+		}
+		return [...new Set(out)];
+	};
+	// When URL has ?catalog_id= or ?id= and user is present, fetch that catalog and hydrate the form for editing
+	React.useEffect(() => {
+		// Guard: only run in browser
+		if (typeof globalThis === 'undefined') return;
+
+		const params = new URLSearchParams(globalThis.location?.search || '');
+		const cid = params.get('catalog_id') || params.get('id');
+		if (!cid) return;
+
+		// If we've already loaded the same catalog and have forms, skip
+		if (editingCatalogId && String(editingCatalogId) === String(cid) && productForms.length > 0) return;
+
+		const fetchForEdit = async () => {
+			try {
+				if (!user?.id) return;
+				const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_URL || ''}/api/fetch-catalogs`;
+				const res = await fetch(apiUrl, {
+					method: 'POST',
+					headers: { 'Content-Type': 'application/json' },
+					body: JSON.stringify({ userId: user.id }),
+				});
+				if (!res.ok) {
+					console.error('Failed to fetch catalogs for edit', res.status, await res.text().catch(() => 'no body'));
+					return;
+				}
+				const data = await res.json() as unknown;
+				if (!Array.isArray(data)) return;
+				const found = (data as unknown[]).find((d) => {
+					if (!d || typeof d !== 'object') return false;
+					const dd = d as Record<string, unknown>;
+					const idVal = dd['catalog_id'] ?? dd['id'] ?? dd['_id'] ?? null;
+					return String(idVal) === String(cid);
+				});
+				if (!found) {
+					toast.error('Catalog not found for editing');
+					return;
+				}
+
+				// Build productForms
+				const rawForms = Array.isArray((found as Record<string, unknown>).product_forms) ? (found as Record<string, unknown>).product_forms as unknown[] : [];
+				const mappedForms: ProductForm[] = rawForms.map((pf) => {
+					const pfObj = (pf && typeof pf === 'object') ? (pf as Record<string, unknown>) : {};
+					return {
+						id: pfObj.id ? String(pfObj.id) : undefined,
+						ProductSizeInventory: (pfObj.ProductSizeInventory as ProductSection) || {},
+						ProductDetails: (pfObj.ProductDetails as ProductSection) || {},
+						OtherAttributes: (pfObj.OtherAttributes as ProductSection) || {},
+					} as ProductForm;
+				});
+
+				const selImgs: SelectedImageItem[] = mappedForms.map((pf) => {
+					const oa = (pf.OtherAttributes as Record<string, unknown>) || {};
+					const arr = Array.isArray(oa.image_urls) ? (oa.image_urls as unknown[]).filter(i => typeof i === 'string').map(String) as string[] : [];
+					if (arr.length === 0) return '' as SelectedImageItem;
+					const [first, ...rest] = arr;
+					return ({ url: first, publicUrl: first, gallery: rest } as SelectedImageItem);
+				});
+
+				// Normalize per-size structures so the UI can read flattened keys on edit
+				for (const mf of mappedForms) normalizeProductFormSizes(mf);
+				setProductForms(ensureProductFormIds(mappedForms));
+				setSelectedImages(selImgs);
+				setUploadedImages(selImgs.map(s => (typeof s === 'string' ? s : (resolvePreviewSrc(s) || ''))).filter(Boolean) as string[]);
+
+				const maybeCat = (found as Record<string, unknown>).category_path;
+				if (Array.isArray(maybeCat)) {
+					const path = (maybeCat as unknown[]).map(String);
+					setSelectionPath(path);
+					const fid = getFormIdFromCategoryTree(categoryTree, path);
+					setSelectedFormId(fid);
+					if (fid) {
+						const formDef = (formsJson as unknown as Record<string, unknown>)[fid] as FormDef | undefined;
+						if (formDef) setActiveForm(formDef);
+						else setActiveForm(null);
+					}
+				}
+
+				const foundId = (found as Record<string, unknown>)['catalog_id'] ?? (found as Record<string, unknown>)['id'] ?? null;
+				if (foundId) setEditingCatalogId(String(foundId));
+				setActiveStep(1);
+			} catch (error) {
+				console.error('Failed to fetch catalog for edit', error);
+			}
+		};
+
+		void fetchForEdit();
+	}, [user, editingCatalogId, productForms.length]);
 	// saving state for drafts
 	const [isSavingDraft, setIsSavingDraft] = useState(false);
 	// currently selected form id derived from category tree when user picks a leaf
@@ -414,6 +567,8 @@ export default function CategorySelector(): React.JSX.Element {
 							return ({ url: first, publicUrl: first, gallery: rest } as SelectedImageItem);
 						});
 
+						// Normalize per-size structures so the UI can read flattened keys on edit
+						for (const mf of mappedForms) normalizeProductFormSizes(mf);
 						// Store product forms and selectedImages aligned by index
 						setProductForms(ensureProductFormIds(mappedForms as ProductForm[]));
 						setSelectedImages(selImgs);
@@ -528,9 +683,7 @@ export default function CategorySelector(): React.JSX.Element {
 	// For Autocomplete
 	const allCategoryPaths = React.useMemo(() => getAllCategoryPaths(categoryTree), []);
 	const [searchValue, setSearchValue] = useState<string>('');
-	
 //console.log('uploadimages', uploadedImages);
-	const { user } = useAuth();
 	const router = useRouter();
 	const [_submitError, setSubmitError] = React.useState<string | null>(null);
 	// Upload images to backend
@@ -830,17 +983,22 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 						return base as SelectedImageItem;
 					});
 
-					// Merge publicUrl into productForms OtherAttributes.image_urls for this product
-					if (pub || signed) {
-						setProductForms(prev => {
-							const copy = [...prev];
-							if (!copy[idx]) copy[idx] = initialFormData();
-							if (!copy[idx].OtherAttributes) copy[idx].OtherAttributes = {};
-							const other = copy[idx].OtherAttributes as Record<string, unknown>;
-							const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
-							other.image_urls = [...new Set([...existing, ...(pub ? [pub] : [])])];
-							return copy;
-						});
+					// Merge uploaded URL into productForms OtherAttributes.image_urls for this product
+					{
+						const candidate = pub || signed || rec?.storagePath || null;
+						const toAdd = (typeof candidate === 'string' && /^https?:\/\//i.test(candidate)) ? candidate : null;
+						if (toAdd) {
+							setProductForms(prev => {
+								const copy = [...prev];
+								if (!copy[idx]) copy[idx] = initialFormData();
+								if (!copy[idx].OtherAttributes) copy[idx].OtherAttributes = {};
+								const other = copy[idx].OtherAttributes as Record<string, unknown>;
+								const existing = Array.isArray(other.image_urls) ? (other.image_urls as string[]) : [];
+								other.image_urls = [...new Set([...existing, toAdd])];
+								return copy;
+							});
+						}
+					}
 
 						// store uploaded metadata
 						_setUploadedImagesjson(prev => {
@@ -853,7 +1011,6 @@ const showRightPanel = selectionPath.length === 4 && activeForm !== null;
 						});
 
 						if (signed) toast.success('Image uploaded and product added', { autoClose: 1500 });
-					}
 				} catch (error) {
 					console.error('Error uploading add-product image', error);
 					toast.error('Failed to upload image. Showing preview only.');
@@ -1076,7 +1233,7 @@ const _handleSizePopoverApply = () => {
 	  const sectionObj = target[sectionKey] as ProductSection;
 	  sectionObj[sizePopoverLabel] = sizePopoverValue;
 			if (copyAll) {
-				return updated.map(() => deepClone(updated[sizePopoverProductIndex]));
+					return updated.map(() => copyProductWithoutImages(updated[sizePopoverProductIndex]));
 			}
 	  return updated;
 	});
@@ -1214,7 +1371,7 @@ const renderField = (
 			const sectionObj = updated[productIndex][section] as ProductSection;
 			sectionObj[field.label] = val;
 					if (copyAll) {
-						updated = updated.map(() => deepClone(updated[productIndex]));
+						updated = updated.map(() => copyProductWithoutImages(updated[productIndex]));
 					}
 			return updated;
 		});
@@ -1256,15 +1413,27 @@ const renderField = (
 	);
 
 	if (field.type === "dropdown" && field.label.toLowerCase().includes("size")) {
-		// For size fields, open our custom popover driven by sizeOptionsJson
-		const displayVal = Array.isArray(value) ? (value as string[]).join(', ') : (value as string);
+		// For size fields, accept multiple stored shapes:
+		// - array of sizes (['S','M'])
+		// - object mapping size -> fields ({ S: {...}, M: {...} })
+		// - single string 'Free Size'
+		const normalizeToArray = (v: unknown): string[] => {
+			if (Array.isArray(v)) return v.map(String);
+			if (v && typeof v === 'object') {
+				try { return Object.keys(v as Record<string, unknown>); } catch { return [] }
+			}
+			return v !== undefined && v !== null && String(v) !== '' ? [String(v)] : [];
+		};
+
+		const arrVal = normalizeToArray(value);
+		const displayVal = arrVal.join(', ');
 		return (
 			<Box key={index} sx={{ display: 'flex', alignItems: 'center', width: '100%', mb: 1 }}>
 				{labelNode}
 				<TextField
 					value={displayVal}
 					required={isRequired}
-					onClick={(e) => _handleSizeDropdownClick(e, value as string | string[], productIndex, section, field.label)}
+					onClick={(e) => _handleSizeDropdownClick(e, arrVal, productIndex, section, field.label)}
 					placeholder="Select size"
 					fullWidth
 					sx={{ minWidth: 200, background: '#fff', cursor: 'pointer' }}
@@ -1889,7 +2058,13 @@ const renderField = (
 			</>)}
 		{/* Step 2: Add Product Details - Image Slots */}
 {activeStep === 1 && (() => {
-	const selectedSizes = productForms[activeProductIndex]?.ProductSizeInventory?.["Size"] || [];
+	const rawSizeVal = productForms[activeProductIndex]?.ProductSizeInventory?.["Size"];
+	const selectedSizes: string[] = (() => {
+		if (Array.isArray(rawSizeVal)) return rawSizeVal.map(String);
+		if (rawSizeVal && typeof rawSizeVal === 'object') return Object.keys(rawSizeVal as Record<string, unknown>);
+		if (rawSizeVal !== undefined && rawSizeVal !== null && String(rawSizeVal) !== '') return [String(rawSizeVal)];
+		return [];
+	})();
 	return (
 	<Box sx={{ p: 2, display: "flex", flexDirection: "column", gap: 2, }}>
 		{/* Product Tabs */}
@@ -1981,7 +2156,7 @@ const renderField = (
 								const checked = e.target.checked;
 								setCopyAll(checked);
 											if (checked && productForms[activeProductIndex]) {
-												setProductForms(forms => forms.map(() => deepClone(forms[activeProductIndex])));
+												setProductForms(forms => forms.map(() => copyProductWithoutImages(forms[activeProductIndex])));
 											}
 							}} />}
 							label="Copy input details to all product "
@@ -2047,13 +2222,64 @@ const renderField = (
 			  />
 			
 			</Box>
+			
 			<Box sx={{ overflowX: "auto", borderRadius: 1, border: "1px solid #e0e0e0", width:800  }}>
 			  <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 1000 }}>
 				<thead style={{ background: "#f5f6fa" }}>
-								<tr>
-											<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Size</th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Techpotli Price&nbsp;<sup>*</sup><Tooltip title={<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>This is the normal/regular price at which you sell on Techpotli. This price shall be lower than the Maximum Retail Price (MRP) of the Product.</span>} arrow placement="bottom" enterTouchDelay={0} leaveTouchDelay={3000} slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}><InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} /></Tooltip></th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Wrong/Defective Returns Price&nbsp;<sup>*</sup><Tooltip title={<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>Customers buying at this price can only return wrong/defective delivered items</span>} arrow placement="bottom" enterTouchDelay={0} leaveTouchDelay={3000} slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}><InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} /></Tooltip></th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>MRP&nbsp;<sup>*</sup><Tooltip title={<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>“MRP” stands for “Maximum Retail Price”. It&apos;s the highest price that a seller is allowed to sell a product for including taxes, charges added on the basic price of the product. No seller can sell a product for a price higher than MRP. Acceptable in INR ONLY. This information is generally available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please provide the MRP as per the explanation above.</span>} arrow placement="bottom" enterTouchDelay={0} leaveTouchDelay={3000} slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}><InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} /></Tooltip></th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Inventory&nbsp;<sup>*</sup></th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>SKU (Optional)</th><th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Action</th>
-										</tr>
-				</thead>
+														<tr>
+															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Size</th>
+															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>
+																Techpotli Price&nbsp;<sup>*</sup>
+																<Tooltip
+																	title={
+																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
+																			This is the normal/regular price at which you sell on Techpotli. This price shall be lower than the Maximum Retail Price (MRP) of the Product.
+																		</span>
+																	}
+																	arrow
+																	placement="bottom"
+																	enterTouchDelay={0}
+																	leaveTouchDelay={3000}
+																	slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}
+																>
+																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
+																</Tooltip>
+															</th>
+															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>
+																Wrong/Defective Returns Price&nbsp;<sup>*</sup>
+																<Tooltip
+																	title={<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>Customers buying at this price can only return wrong/defective delivered items</span>}
+																	arrow
+																	placement="bottom"
+																	enterTouchDelay={0}
+																	leaveTouchDelay={3000}
+																	slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}
+																>
+																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
+																</Tooltip>
+															</th>
+															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>
+																MRP&nbsp;<sup>*</sup>
+																<Tooltip
+																	title={
+																		<span style={{ fontSize: 14, fontWeight: 500, lineHeight: 1.5 }}>
+																			“MRP” stands for “Maximum Retail Price”. It&apos;s the highest price that a seller is allowed to sell a product for including taxes, charges added on the basic price of the product. No seller can sell a product for a price higher than MRP. Acceptable in INR ONLY. This information is generally available on the packaging label for pre-packed products. If you are not listing a pre-packed product, please provide the MRP as per the explanation above.
+																		</span>
+																	}
+																	arrow
+																	placement="bottom"
+																	enterTouchDelay={0}
+																	leaveTouchDelay={3000}
+																	slotProps={{ popper: { sx: { '& .MuiTooltip-tooltip': { backgroundColor: '#2B2B2B', color: 'white', border: '1px solid #000000' } } } }}
+																>
+																	<InfoOutlinedIcon sx={{ fontSize: 18, color: '#888', cursor: 'pointer', ml: 0.5, verticalAlign: 'middle' }} />
+																</Tooltip>
+															</th>
+															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Inventory&nbsp;<sup>*</sup></th>
+															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>SKU (Optional)</th>
+															<th style={{ textAlign: "left", padding: 12, fontWeight: 600 }}>Action</th>
+														</tr>
+													</thead>
 				<tbody>
 									{selectedSizes.map((size: string, idx: number) => (
 										<tr key={size}>
@@ -2627,7 +2853,7 @@ const renderField = (
 									const inventoryJson: Record<string, ProductSection> = {};
 									for (const pf of ensured) inventoryJson[pf.id] = pf.ProductSizeInventory || {};
 
-									const cleanedForDraft = ensured.map(pf => {
+									const cleanedForDraft = ensured.map((pf, idx) => {
 										const copy = deepClone(pf) as ProductForm & { id?: string };
 										if (copy.OtherAttributes && typeof copy.OtherAttributes === 'object') {
 											const oa = copy.OtherAttributes as Record<string, unknown>;
@@ -2639,7 +2865,44 @@ const renderField = (
 													oa.image_urls = filtered;
 												} catch { /* ignore */ }
 											}
+											// If image_urls empty, try to pull from selectedImages (preview/publicUrl/gallery)
+											try {
+												if ((!Array.isArray(oa.image_urls) || (oa.image_urls as string[]).length === 0) && Array.isArray(selectedImages) && selectedImages.length > idx) {
+													const urls = extractHttpUrlsFromSelected(selectedImages[idx]);
+													if (urls.length > 0) oa.image_urls = urls;
+												}
+											} catch { /* ignore */ }
 										}
+
+										// Transform flat per-size keys like "Techpotli Price_Free Size" into structured data
+										try {
+											const psi = copy.ProductSizeInventory as Record<string, unknown> | undefined;
+											if (psi && typeof psi === 'object') {
+												const sizeMap: Record<string, Record<string, unknown>> = {};
+												const sizesSeen = new Set<string>();
+												for (const [k, v] of Object.entries(psi)) {
+													const m = k.match(/^(.*)_(.+)$/);
+													if (m) {
+														const fieldName = m[1];
+														const size = m[2];
+														sizesSeen.add(size);
+														if (!sizeMap[size]) sizeMap[size] = {};
+														sizeMap[size][fieldName] = v;
+													}
+												}
+												if (sizesSeen.size > 0) {
+													const sizeArray = [...sizesSeen];
+													for (const key of Object.keys(psi)) {
+														if (/^.+_.+$/.test(key)) delete psi[key];
+													}
+													(copy.ProductSizeInventory as Record<string, unknown>)['Size'] = sizeMap;
+													(copy.ProductSizeInventory as Record<string, unknown>)['SizeList'] = sizeArray;
+												}
+											}
+										} catch {
+											// ignore transform errors
+										}
+
 										return copy as ProductForm & { id?: string };
 									});
 
@@ -2742,7 +3005,7 @@ const renderField = (
 																			}
 
 																			// Remove image_ids from OtherAttributes before sending to server
-																			const cleanedForSubmit = ensured.map(pf => {
+																			const cleanedForSubmit = ensured.map((pf, idx) => {
 																				const copy = deepClone(pf) as ProductForm & { id?: string };
 																				if (copy.OtherAttributes && typeof copy.OtherAttributes === 'object') {
 																					const oa = copy.OtherAttributes as Record<string, unknown>;
@@ -2755,14 +3018,56 @@ const renderField = (
 																							oa.image_urls = filtered;
 																						} catch { /* ignore */ }
 																					}
+																					// If image_urls missing or empty, try to pull from selectedImages (preview/publicUrl/gallery)
+																					try {
+																						if ((!Array.isArray(oa.image_urls) || (oa.image_urls as string[]).length === 0) && Array.isArray(selectedImages) && selectedImages.length > idx) {
+																							const urls = extractHttpUrlsFromSelected(selectedImages[idx]);
+																							if (urls.length > 0) oa.image_urls = urls;
+																						}
+																					} catch { /* ignore */ }
 																				}
+
+																				// Transform flat per-size keys like "Techpotli Price_Free Size" into structured data
+																				try {
+																					const psi = copy.ProductSizeInventory as Record<string, unknown> | undefined;
+																					if (psi && typeof psi === 'object') {
+																						const sizeMap: Record<string, Record<string, unknown>> = {};
+																						const sizesSeen = new Set<string>();
+																						for (const [k, v] of Object.entries(psi)) {
+																							const m = k.match(/^(.*)_(.+)$/);
+																							if (m) {
+																								const fieldName = m[1];
+																								const size = m[2];
+																								sizesSeen.add(size);
+																								if (!sizeMap[size]) sizeMap[size] = {};
+																								sizeMap[size][fieldName] = v;
+																							}
+																						}
+																						if (sizesSeen.size > 0) {
+																							// Build array of sizes
+																							const sizeArray = [...sizesSeen];
+																							// Remove any per-size flat keys from psi
+																							for (const key of Object.keys(psi)) {
+																								if (/^.+_.+$/.test(key)) delete psi[key];
+																							}
+																							// Set Size as an object mapping size -> fields (preferred shape)
+																							(copy.ProductSizeInventory as Record<string, unknown>)['Size'] = sizeMap;
+																							// Keep SizeList (array) for backward compatibility
+																							(copy.ProductSizeInventory as Record<string, unknown>)['SizeList'] = sizeArray;
+																						}
+																					}
+																				} catch {
+																					// ignore transform errors — fall back to original psi
+																				}
+
 																				return copy as ProductForm & { id?: string };
 																			});
 
-																			// Build payload. When editing an existing catalog (editingCatalogId)
-																			// do not include `catalog_id` in the request body — the identifier
-																			// is sent via the URL and trying to change it can trigger DB errors.
-																			const payloadBase = {
+																			// Build payload using the original product_forms array (user requested old type)
+																			// but keep the transformed Size key inside each ProductSizeInventory.
+																			const topId = editingCatalogId ?? catalogId;
+																			const payload: Record<string, unknown> = {
+																				catalog_id: topId,
 																				user_id: user?.id ?? null,
 																				category_path: selectionPath,
 																				product_forms: cleanedForSubmit,
@@ -2770,9 +3075,8 @@ const renderField = (
 																				status: 'submitted',
 																				QC_status: 'pending',
 																				trough: 'single',
-																			} as Record<string, unknown>;
-																			const payload = editingCatalogId ? payloadBase : { ...payloadBase, catalog_id: catalogId };
-																			console.log('Submitting payload to server API:', payload);
+																			};
+																			console.log('Submitting product_forms payload to server API:', payload);
 
 																			try {
 																				const endpoint = editingCatalogId ?

@@ -10,6 +10,7 @@ import Dialog from '@mui/material/Dialog';
 import IconButton from '@mui/material/IconButton';
 dayjs.extend(relativeTime);
 import SearchIcon from '@mui/icons-material/Search';
+import CloseIcon from '@mui/icons-material/Close';
 import InputAdornment from '@mui/material/InputAdornment';
 
 function HeadInventory(): React.JSX.Element {
@@ -18,7 +19,7 @@ function HeadInventory(): React.JSX.Element {
   
   return (
     <>
-   <Box sx={{ mb: 0, mt: 0.5, ml:-3, mr:-3, backgroundColor: '#ffffff', padding: '5px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+   <Box sx={{ mb: 0.3, mt: 0.3,  ml:-3, mr:-3, backgroundColor: '#ffffff', padding: '2px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
       <Typography variant="h4" sx={{fontWeight: 600, ml:2}}>
         Inventory
       </Typography>
@@ -56,13 +57,12 @@ function HeadInventory(): React.JSX.Element {
 
        {/* Learn Dialog with YouTube embed */}
       <Dialog open={learnOpen} onClose={() => setLearnOpen(false)} maxWidth="md" fullWidth scroll="body" PaperProps={{ sx: { overflow: 'hidden' } }}>
-        <Box sx={{ p: 2, display: 'flex', flexDirection: 'column', alignItems: 'center', position: 'relative' }}>
           <IconButton
             aria-label="close"
             onClick={() => setLearnOpen(false)}
             sx={{ position: 'absolute', top: 8, right: 8, zIndex: 1 }}
           >
-            <span className="material-icons" style={{ fontSize: 24 }}>X</span>
+            <CloseIcon fontSize="small" />
           </IconButton>
           <Typography variant="h6" sx={{ mb: 2 }}>How to Process Your Orders</Typography>
           <Box sx={{ width: '100%', maxWidth: 800, height: 0, paddingBottom: '56.25%', position: 'relative', mb: 0 }}>
@@ -75,7 +75,7 @@ function HeadInventory(): React.JSX.Element {
               style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', borderRadius: 5 }}
             />
           </Box>
-        </Box>
+        
       </Dialog>
       </>
   )

@@ -8,7 +8,7 @@ import {
 
 function Add(): React.JSX.Element {
   return (
-    <div>
+    <Box>
         {/* Top Banner */}
       <Paper elevation={1} sx={{borderRadius:0, backgroundColor: '#ffeae2', p: 3, mb:0.5, mt:1, mr:-3,ml:-3, display: 'flex', justifyContent: 'space-between' }}>
         <Box>
@@ -23,7 +23,7 @@ function Add(): React.JSX.Element {
           Improve products here
         </Button>
       </Paper>
-    </div>
+    </Box>
   )
 }
 

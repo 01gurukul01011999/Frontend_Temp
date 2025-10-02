@@ -370,6 +370,156 @@ app.put("/api/catalogs/:catalog_id", async (req, res) => {
   }
 });
 
+// Update inventory for a single product form within a catalog
+app.post('/api/update-inventory', async (req, res) => {
+  try {
+    console.log('/api/update-inventory called with body:', JSON.stringify(req.body));
+    if (!supabaseAdmin) return res.status(500).json({ success: false, error: 'Supabase admin client not configured' });
+    const { catalogId, productIndex, productId, newInventory } = req.body || {};
+    console.log('Parsed params:', { catalogId, productIndex, productId, newInventory });
+    if (!catalogId) return res.status(400).json({ success: false, error: 'Missing catalogId' });
+    if (newInventory === undefined || newInventory === null) return res.status(400).json({ success: false, error: 'Missing newInventory' });
+
+    // Fetch existing catalog row
+    const { data: rows, error: fetchErr } = await supabaseAdmin.from('catalogs_old').select('*').eq('catalog_id', String(catalogId)).limit(1);
+    if (fetchErr) {
+      console.error('Failed to fetch catalog for update-inventory', fetchErr);
+      return res.status(500).json({ success: false, error: fetchErr.message || String(fetchErr) });
+    }
+    if (!rows || rows.length === 0) return res.status(404).json({ success: false, error: 'Catalog not found' });
+    const catalog = rows[0];
+
+    // Ensure product_forms is an array
+    const pforms = Array.isArray(catalog.product_forms) ? [...catalog.product_forms] : [];
+    let idx = -1;
+    if (typeof productIndex === 'number' && productIndex >= 0 && productIndex < pforms.length) {
+      idx = productIndex;
+    } else if (productId) {
+      idx = pforms.findIndex(pf => String(pf?.id ?? pf?.product_id ?? '') === String(productId));
+    }
+    if (idx === -1) {
+      // If productIndex not found but array empty and productIndex == 0, allow creation
+      if (pforms.length === 0 && Number(productIndex) === 0) {
+        pforms[0] = pforms[0] || {};
+        idx = 0;
+      } else {
+        return res.status(400).json({ success: false, error: 'Product form not found for given index or productId' });
+      }
+    }
+
+    // Update the ProductSizeInventory.Inventory (or create structure) for the target product form
+    try {
+      const target = pforms[idx] || {};
+      if (!target.ProductSizeInventory || typeof target.ProductSizeInventory !== 'object') target.ProductSizeInventory = {};
+      const psi = target.ProductSizeInventory;
+      // Prefer storing numeric values when possible
+      const numeric = Number(String(newInventory).replace(/[^0-9.-]+/g, ''));
+      const finalVal = Number.isNaN(numeric) ? String(newInventory) : Math.max(0, Math.floor(numeric));
+
+      // If there is a Size object, attempt to update the first size's Inventory field.
+      try {
+        const sizeObj = psi['Size'];
+        if (sizeObj && typeof sizeObj === 'object') {
+          const keys = Object.keys(sizeObj);
+          if (keys.length > 0) {
+            const first = keys[0];
+            const entry = sizeObj[first];
+            if (entry && typeof entry === 'object') {
+              entry['Inventory'] = finalVal;
+            } else if (entry && typeof entry === 'string') {
+              // Attempt to replace Inventory=... inside a string like "@{MRP=16; Inventory=5; ...}"
+              try {
+                let s = String(entry);
+                if (/Inventory\s*=/.test(s)) {
+                  s = s.replace(/Inventory\s*=\s*[^;\}]+/, 'Inventory=' + finalVal);
+                }
+                sizeObj[first] = s;
+              } catch (e) {
+                // ignore parse errors
+              }
+            }
+          }
+        }
+      } catch (e) {
+        // ignore size-handling errors
+      }
+
+      // Always set a top-level Inventory key for the product form as well (helps clients that read it)
+      psi['Inventory'] = finalVal;
+
+      // write back
+      pforms[idx] = target;
+    } catch (e) {
+      console.error('Failed to set inventory on product form', e);
+      return res.status(500).json({ success: false, error: 'Failed to set inventory on product form' });
+    }
+
+    // Persist update to Supabase (catalogs_old)
+    // Also attempt to keep inventory_json in sync for clients that read it
+    const updatePayload = { product_forms: pforms };
+    try {
+      const invJson = catalog.inventory_json && typeof catalog.inventory_json === 'object' ? { ...catalog.inventory_json } : {};
+      const pf = pforms[idx] || {};
+      const pid = String(pf.id ?? pf.product_id ?? '');
+      if (pid) {
+        // Ensure there's an object for this product in inventory_json
+        if (!invJson[pid] || typeof invJson[pid] !== 'object') invJson[pid] = {};
+        // If ProductSizeInventory exists, iterate sizes and set Inventory_<Size> keys
+        try {
+          const psi = pf.ProductSizeInventory || {};
+          const sizeObj = psi['Size'];
+          if (sizeObj && typeof sizeObj === 'object') {
+            for (const sname of Object.keys(sizeObj)) {
+              const entry = sizeObj[sname];
+              // read Inventory from entry if present, otherwise use top-level psi.Inventory
+              const found = (entry && typeof entry === 'object' && (entry['Inventory'] ?? entry['inventory'])) ?? psi['Inventory'];
+              const numeric = Number(String(found ?? newInventory).replace(/[^0-9.-]+/g, ''));
+              const finalVal = Number.isNaN(numeric) ? String(found ?? newInventory) : Math.max(0, Math.floor(numeric));
+              // set Inventory_<Size> key
+              try {
+                invJson[pid][`Inventory_${String(sname).replace(/\s+/g, '_')}`] = String(finalVal);
+              } catch (e) { /* ignore */ }
+            }
+          } else {
+            // no sizes: set a generic Inventory key
+            const numeric = Number(String(psi['Inventory'] ?? newInventory).replace(/[^0-9.-]+/g, ''));
+            invJson[pid]['Inventory'] = Number.isNaN(numeric) ? String(psi['Inventory'] ?? newInventory) : Math.max(0, Math.floor(numeric));
+          }
+        } catch (e) {
+          // ignore inventory_json sync errors
+        }
+      }
+      updatePayload.inventory_json = invJson;
+    } catch (e) {
+      // ignore
+    }
+    const { data: updated, error: updateErr } = await supabaseAdmin.from('catalogs_old').update(updatePayload).eq('catalog_id', String(catalogId)).select();
+    if (updateErr) {
+      console.error('Supabase update error for update-inventory', updateErr);
+      return res.status(500).json({ success: false, error: updateErr.message || String(updateErr) });
+    }
+console.log('Supabase update success for update-inventory', updatePayload);
+    return res.json({ success: true, data: updated && updated.length ? updated[0] : updated });
+  } catch (err) {
+    console.error('/api/update-inventory error', err);
+    return res.status(500).json({ success: false, error: String(err) });
+  }
+});
+
+// DEBUG: return first N catalogs (safe in dev only)
+app.get('/api/debug/catalogs', async (req, res) => {
+  try {
+    if (!supabaseAdmin) return res.status(500).json({ success: false, error: 'Supabase admin client not configured' });
+    const limit = Number(req.query.limit ?? 10);
+    const { data, error } = await supabaseAdmin.from('catalogs_old').select('*').limit(limit);
+    if (error) return res.status(500).json({ success: false, error: error.message || String(error) });
+    return res.json({ success: true, count: Array.isArray(data) ? data.length : 0, data });
+  } catch (e) {
+    console.error('/api/debug/catalogs error', e);
+    return res.status(500).json({ success: false, error: String(e) });
+  }
+});
+
 
 app.post("/upload-avatar", upload.single("avatar"), async (req, res) => {
   const userId = req.body.userId;
@@ -502,7 +652,7 @@ app.post("/orderfetch", async (req, res) => {
  
   try {
     const { userId } = req.body;
-    console.log(req.body);
+   // console.log(req.body);
 
     const { data, error } = await supabaseAdmin
       .from("orders")
@@ -516,7 +666,7 @@ app.post("/orderfetch", async (req, res) => {
 
     if (data.length > 0) {
       res.json(data);
-      console.log(data);
+      //console.log(data);
     } else {
       res.status(204).send("No orders found for this user");
     }
@@ -560,7 +710,7 @@ app.post("/order/:orders_id", async (req, res) => {
 app.post("/api/fetch-catalogs", async (req, res) => {
   try {
     const { userId } = req.body || {};
-    console.log('fetch-catalogs request body:', req.body);
+   // console.log('fetch-catalogs request body:', req.body);
 
     if (!userId) {
       console.warn('/api/fetch-catalogs called without userId');
@@ -584,7 +734,7 @@ app.post("/api/fetch-catalogs", async (req, res) => {
 
     if (data.length > 0) {
       res.json(data);
-      console.log(data);
+     // console.log(data);
     } else {
       res.status(204).send("No catalogs found for this user");
     }
@@ -603,7 +753,7 @@ app.post("/api/delete-image", async (req, res) => {
   try {
     // Expecting JSON body with either img_name, img_id or publicUrl
     const { img_name, img_id, publicUrl } = req.body || {};
-    console.log('delete-image request body:', req.body);
+    //e.log('delete-image request body:', req.body);
 
     if (!supabaseAdmin) return res.status(500).json({ success: false, error: 'Supabase admin client not configured' });
 
