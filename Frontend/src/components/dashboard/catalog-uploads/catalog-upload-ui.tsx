@@ -31,11 +31,14 @@ import DialogContent from "@mui/material/DialogContent";
 import DialogActions from "@mui/material/DialogActions";
 import IconButton from "@mui/material/IconButton";
 import CloseIcon from "@mui/icons-material/Close";
+import BlockIcon from '@mui/icons-material/Block';
 import PlayCircleOutlineIcon from '@mui/icons-material/PlayCircleOutline';
 import WarningAmberIcon from '@mui/icons-material/WarningAmber';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import DescriptionIcon from '@mui/icons-material/Description';
 import NoCatalogSVG from './no-catalog-svg';
+import QueryStatsIcon from '@mui/icons-material/QueryStats';
+import TouchAppIcon from '@mui/icons-material/TouchApp';
 import { useUser } from '@/hooks/use-user';
 
 
@@ -413,8 +416,8 @@ React.useEffect(() => {
         <Chip
           label="Draft"
           size="small"
-          icon={<DescriptionIcon sx={{ color }} />}
-          sx={{ ...baseSx, backgroundColor: '#f3e8ff', color }}
+          icon={<DescriptionIcon sx={{ color: 'inherit' }} />}
+           sx={{ ...baseSx, backgroundColor: '#f3e8ff', color, '--mui-palette-Chip-defaultIconColor': 'currentColor' }}
         />
       );
     }
@@ -425,8 +428,8 @@ React.useEffect(() => {
         <Chip
           label="QC Error"
           size="small"
-          icon={<WarningAmberIcon sx={{ color, fontSize: 16 }} />}
-          sx={{ ...baseSx, backgroundColor: '#fff1f0', color }}
+          icon={<WarningAmberIcon sx={{ color: 'inherit', fontSize: 16 }} />}
+           sx={{ ...baseSx, backgroundColor: '#fff1f0', color, '--mui-palette-Chip-defaultIconColor': 'currentColor' }}
         />
       );
     }
@@ -437,8 +440,8 @@ React.useEffect(() => {
         <Chip
           label="QC Pass"
           size="small"
-          icon={<CheckCircleIcon sx={{ color, fontSize: 16 }} />}
-          sx={{ ...baseSx, backgroundColor: '#ecfdf1', color }}
+          icon={<CheckCircleIcon sx={{ color: 'inherit', fontSize: 16 }} />}
+           sx={{ ...baseSx, backgroundColor: '#ecfdf1', color, '--mui-palette-Chip-defaultIconColor': 'currentColor' }}
         />
       );
     }
@@ -449,7 +452,8 @@ React.useEffect(() => {
         <Chip
           label="QC in Progress"
           size="small"
-          sx={{ ...baseSx, backgroundColor: '#e8f0ff', color }}
+          icon={<QueryStatsIcon sx={{ color: 'inherit', fontSize: 16 }} />}
+          sx={{ ...baseSx, backgroundColor: '#e8f0ff', color, '--mui-palette-Chip-defaultIconColor': 'currentColor'  }}
         />
       );
     }
@@ -459,8 +463,20 @@ React.useEffect(() => {
       return (
         <Chip
           label="Action Required"
+          size="small" 
+           icon={<TouchAppIcon sx={{ color: 'inherit', fontSize: 16 }} />}
+          sx={{ ...baseSx, backgroundColor: '#fff4f4', color,'--mui-palette-Chip-defaultIconColor': 'currentColor' }}
+        />
+      );
+    }
+    if (status === 'blocked'|| status === 'Blocked') {
+      const color = '#d32f2f';
+      return (
+        <Chip
+          label="Blocked"
           size="small"
-          sx={{ ...baseSx, backgroundColor: '#fff4f4', color }}
+          icon={<BlockIcon sx={{ color: 'inherit', fontSize: 16 }} />}
+           sx={{ ...baseSx, backgroundColor: '#fff4f4', color, '--mui-palette-Chip-defaultIconColor': 'currentColor' }}
         />
       );
     }
@@ -470,7 +486,7 @@ React.useEffect(() => {
       <Chip
         label={status || 'Unknown'}
         size="small"
-        sx={{ ...baseSx }}
+         sx={{ ...baseSx, '--mui-palette-Chip-defaultIconColor': 'currentColor' }}
       />
     );
   };
@@ -567,7 +583,7 @@ console.log('selectedRow', selectedRow);
               </TableCell>*/}
               {/* Catalog Image with Play icon */}
               <TableCell>
-                <Box sx={{ position: 'relative', width: 60, height: 60 }}>
+                <Box sx={{ position: 'relative', width: 60, height: 60, color: 'text.primary' }}>
                   <Avatar
                     variant="rounded"
                     src={row.product_forms?.[0]?.OtherAttributes?.image_urls?.[0]}
@@ -586,6 +602,7 @@ console.log('selectedRow', selectedRow);
                       background: '#fff',
                       borderRadius: '50%',
                       fontSize: 16,
+                      color: 'inherit'
                     }}
                   />
                 </Box>
@@ -656,6 +673,8 @@ console.log('selectedRow', selectedRow);
                   >
                     View Inventory
                   </Button>
+                ) : row.QC_status === 'blocked' || row.QC_status === 'Blocked' ? (
+                  null
                 ) : (
                   <Button
                     variant="outlined"
@@ -703,12 +722,12 @@ console.log('selectedRow', selectedRow);
  <Dialog open={imagePopup} onClose={() => {}} maxWidth="sm" fullWidth>
       <DialogTitle sx={{ m: 0, p: 2 }}>
         Product Details
-        <IconButton
+          <IconButton
           aria-label="close"
           onClick={onClose}
-          sx={{ position: "absolute", right: 8, top: 8, color: "#666" }}
+          sx={{ position: "absolute", right: 8, top: 8, color: 'text.primary' }}
         >
-          <CloseIcon />
+          <CloseIcon sx={{ color: 'inherit' }} />
         </IconButton>
       </DialogTitle>
       <DialogContent dividers>
