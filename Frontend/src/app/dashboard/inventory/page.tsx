@@ -8,12 +8,12 @@ export const metadata = { title: `Inventory | Dashboard | ${config.site.name}` }
 
 function page(): React.JSX.Element {
   return (
-    <div>
+    <>
       <HeadInventory />
       {/* Other components or content can go here */}
       <TabsInventory/>
 
-    </div>
+    </>
   )
 }
 

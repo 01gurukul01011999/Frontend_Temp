@@ -151,6 +151,22 @@ export function MainNav(): React.JSX.Element {
                   </Typography>
                 </>
               )}
+               {pathname == '/dashboard/notices' && (
+                <>
+                  <Typography
+                    variant="h4"
+                    sx={{
+                      fontWeight: 600,
+                      color: '#1a1a1a',
+                      lineHeight: 1.2,
+                      fontSize: '1.3rem',
+                    }}
+                  >
+                    Notices
+                  </Typography>
+                 
+                </>
+              )}
               
             </Box>
           </Stack>
