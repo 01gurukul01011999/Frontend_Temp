@@ -9,7 +9,7 @@ import {
   Card,
   CardContent,
   Typography,
-  IconButton,  
+  IconButton,
   Popover,
   RadioGroup,
   FormControlLabel,
@@ -34,10 +34,14 @@ import {
   Chip,
 } from '@mui/material';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
+import { ArrowUDownLeftIcon } from '@phosphor-icons/react/dist/ssr/ArrowUDownLeft';
+import { SquaresFourIcon } from '@phosphor-icons/react/dist/ssr/SquaresFour';
+import { PackageIcon } from '@phosphor-icons/react/dist/ssr/Package';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import AdvSupport from './adv';
 import mockTickets, { Ticket } from '@/lib/mock-tickets';
+
 
 export default function SupportTabs(): React.JSX.Element {
   const router = useRouter();
@@ -63,6 +67,11 @@ export default function SupportTabs(): React.JSX.Element {
   const [search, setSearch] = React.useState('');
   const [page, setPage] = React.useState(1);
   const [selectedTicketId, setSelectedTicketId] = React.useState<string | null>(null);
+  // URL-driven help form state (when navigating from help/[slug] list)
+  const [helpFormId, setHelpFormId] = React.useState<string | null>(null);
+  const [helpQuestion, setHelpQuestion] = React.useState<string | null>(null);
+  const [helpFormText, setHelpFormText] = React.useState('');
+  const [helpFormSubmitted, setHelpFormSubmitted] = React.useState(false);
 
   const rowsPerPage = 10;
 
@@ -181,7 +190,12 @@ export default function SupportTabs(): React.JSX.Element {
     const sp = searchParams;
     const s = sp?.get('support') || 'help';
     const sub = sp?.get('sub') || 'all';
-    const ticket = sp?.get('ticket') ?? null;
+  const ticket = sp?.get('ticket') ?? null;
+  const form = sp?.get('form') ?? null;
+  const question = sp?.get('question') ?? null;
+
+  // debug incoming params
+  try { console.debug('Support params:', { support: s, sub, ticket, form, question }); } catch(e) {}
 
     const newTab = s === 'my-tickets' || s === 'tickets' ? 1 : 0;
     const newSub = subKeyToIndex[sub] ?? 0;
@@ -190,6 +204,16 @@ export default function SupportTabs(): React.JSX.Element {
     if (newTab !== tab) setTab(newTab);
     if (newSub !== subTab) setSubTab(newSub);
   if (ticket !== selectedTicketId) setSelectedTicketId(ticket);
+  if (form !== helpFormId) {
+    setHelpFormId(form);
+    // when a new form is requested, ensure Help tab is active and reset form UI
+    if (form) {
+      if (tab !== 0) setTab(0);
+      setHelpFormSubmitted(false);
+      setHelpFormText('');
+    }
+  }
+  if (question !== helpQuestion) setHelpQuestion(question);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
@@ -220,6 +244,40 @@ export default function SupportTabs(): React.JSX.Element {
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, selectedTicketId]);
 
+  const helpCols: { title: string; items: string[]; icon?: React.ReactNode; slug?: string }[] = [
+    {
+      title: 'Returns/RTO & Exchange',
+      slug: 'returns',
+      icon: <ArrowUDownLeftIcon size={20} />,
+      items: ['I have received wrong return', 'I have received damaged return', 'I have not received my Return/RTO shipment'],
+    },
+    {
+      title: 'Cataloging & Pricing',
+      slug: 'cataloging',
+      icon: <SquaresFourIcon size={20} />,
+      items: ['My uploaded file is not live yet', 'I want to edit catalog details', 'I want catalog upload training'],
+    },
+    {
+      title: 'Orders & Delivery',
+      slug: 'orders',
+      icon: <PackageIcon size={20} />,
+      items: ['My orders are not picked up yet', 'My order is picked up but still in ready to ship tab', 'I want to know the delivery status of my order'],
+    },
+  ];
+
+  const getCategoryKeyFromText = (text: string) => {
+    const t = text.toLowerCase();
+    if (t.includes('return')) return 'returns';
+    if (t.includes('catalog')) return 'cataloging';
+    if (t.includes('order')) return 'orders';
+    if (t.includes('payment')) return 'payments';
+    if (t.includes('inventory')) return 'inventory';
+    if (t.includes('account')) return 'account';
+    if (t.includes('advert')) return 'advertisements';
+    if (t.includes('instant')) return 'instantcash';
+    return 'others';
+  };
+
   return (
     <> {/* show adv banner on Help tab only */}
           
@@ -246,27 +304,21 @@ export default function SupportTabs(): React.JSX.Element {
               InputProps={{ startAdornment: <InputAdornment position="start"><SearchIcon /></InputAdornment> }}
             />
           </Box>
-
+        
           <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', md: 'repeat(3, 1fr)' } }}>
-            {[
-              {
-                title: 'Returns/RTO & Exchange',
-                items: ['I have received wrong return', 'I have received damaged return', 'I have not received my Return/RTO shipment'],
-              },
-              {
-                title: 'Cataloging & Pricing',
-                items: ['My uploaded file is not live yet', 'I want to edit catalog details', 'I want catalog upload training'],
-              },
-              {
-                title: 'Orders & Delivery',
-                items: ['My orders are not picked up yet', 'My order is picked up but still in ready to ship tab', 'I want to know the delivery status of my order'],
-              },
-            ].map((col, i) => (
+            {helpCols.map((col, i) => (
               <Box key={i}>
                 <Card variant="outlined">
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
-                      <Typography fontWeight={700}>{col.title}</Typography>
+                        {col.icon ? (
+                          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                            {col.icon}
+                            <Typography fontWeight={700}>{col.title}</Typography>
+                          </Box>
+                        ) : (
+                          <Typography fontWeight={700}>{col.title}</Typography>
+                        )}
                     </Box>
                     {col.items.map((it, j) => (
                       <Box key={j} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, borderBottom: j < col.items.length - 1 ? '1px dashed #eee' : 'none' }}>
@@ -275,14 +327,128 @@ export default function SupportTabs(): React.JSX.Element {
                       </Box>
                     ))}
                     <Box sx={{ mt: 1 }}>
-                      <Typography color="primary" sx={{ fontWeight: 700 }}>View All</Typography>
+                      <Button color="primary" sx={{ fontWeight: 700 }} onClick={() => router.push(`/dashboard/support/help/${col.slug}`)}>View All</Button>
                     </Box>
                   </CardContent>
                 </Card>
               </Box>
             ))}
           </Box>
-         
+            {/* Extra quick category tiles (as in the screenshot) */}
+          <Box sx={{ mt: 1 }}>
+            <Box sx={{ display: 'grid', gap: 2, gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr 1fr' } }}>
+              {['Payments', 'Inventory', 'Account', 'Advertisements & Promotions', 'Instant Cash', 'Others'].map((t) => {
+                const emojiMap: Record<string, string> = {
+                  Payments: '💳',
+                  Inventory: '📦',
+                  Account: '👤',
+                  'Advertisements & Promotions': '📣',
+                  'Instant Cash': '💸',
+                  Others: '🧩',
+                };
+                const icon = emojiMap[t] ?? '🔖';
+
+                return (
+                  <Paper
+                    key={t}
+                    variant="outlined"
+                    onClick={() => router.push(`/dashboard/support/help/${t.toLowerCase().split(' ')[0]}`)}
+                    sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', p: 1, borderRadius: 1, cursor: 'pointer' }}
+                  >
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Box sx={{ width: 36, height: 36, borderRadius: 1, backgroundColor: '#f5f7fb', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                        <Box component="span" sx={{ fontSize: 18 }}>{icon}</Box>
+                      </Box>
+                      <Typography sx={{ fontWeight: 700 }}>{t}</Typography>
+                    </Box>
+                    <ArrowForwardIosIcon sx={{ color: 'action.active' }} />
+                  </Paper>
+                );
+              })}
+
+              
+            </Box>
+            
+
+            {/* Recently raised tickets table */}
+            <Box sx={{ mt: 1 }}>
+              <Typography sx={{ mb: 1, fontWeight: 700 }}>Recently raised tickets</Typography>
+              <TableContainer component={Paper} variant="outlined">
+                <Table size="small">
+                  <TableHead>
+                    <TableRow>
+                      <TableCell>Created On</TableCell>
+                      <TableCell>Ticket ID</TableCell>
+                      <TableCell>Issue</TableCell>
+                      <TableCell>Last Update</TableCell>
+                      <TableCell>Status</TableCell>
+                      <TableCell>Actions</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {mockTickets.slice(0, 6).map((t) => (
+                      <TableRow key={t.id} hover>
+                        <TableCell>{new Date(t.createdOn).toLocaleString()}</TableCell>
+                        <TableCell sx={{ color: 'primary.main', fontWeight: 600 }}>{t.id}</TableCell>
+                        <TableCell sx={{ fontWeight: 600 }}>{t.issue}</TableCell>
+                        <TableCell>{t.lastUpdate || ''}</TableCell>
+                        <TableCell>
+                          <Typography sx={{ color: t.status === 'Closed' ? 'success.main' : t.status === 'In Progress' ? 'warning.main' : undefined }}>{t.status}</Typography>
+                        </TableCell>
+                        <TableCell>
+                          <Button size="small" variant="outlined" onClick={() => router.push(`/dashboard/support/ticket/${t.id}`)}>View</Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+            </Box>
+          </Box>
+         <Button sx={{ mt: 2 }} variant="outlined" onClick={() => router.push('http://localhost:3000/dashboard/support?support=my-tickets&sub=all')}>View All Tickets</Button>
+          {/* render help form panel if form id provided in URL */}
+          {helpFormId && (
+            <Box sx={{ width: 480, ml: 2, mt: 2 }}>
+              <Card>
+                <CardContent>
+                  <Typography variant="h6" sx={{ mb: 1 }}>{helpQuestion ?? 'Describe your issue'}</Typography>
+                  {!helpFormSubmitted ? (
+                    <Box component="form" onSubmit={(e) => { e.preventDefault(); setHelpFormSubmitted(true); console.log('submit help form', { formId: helpFormId, question: helpQuestion, text: helpFormText }); }}>
+                      <TextField
+                        label="Describe your issue"
+                        value={helpFormText}
+                        onChange={(e) => setHelpFormText(e.target.value)}
+                        multiline
+                        rows={6}
+                        fullWidth
+                        sx={{ mb: 2 }}
+                      />
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                        <Button variant="outlined" onClick={() => {
+                          // remove the form params from URL
+                          const params = new URLSearchParams(searchParams?.toString() ?? '');
+                          params.delete('form'); params.delete('question');
+                          router.push(`${globalThis.location?.pathname ?? ''}?${params.toString()}`);
+                        }}>Close</Button>
+                        <Button type="submit" variant="contained">Submit</Button>
+                      </Box>
+                    </Box>
+                  ) : (
+                    <Box>
+                      <Typography>Your response was submitted. We'll get back to you soon.</Typography>
+                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>
+                        <Button variant="contained" onClick={() => {
+                          const params = new URLSearchParams(searchParams?.toString() ?? '');
+                          params.delete('form'); params.delete('question');
+                          router.push(`${globalThis.location?.pathname ?? ''}?${params.toString()}`);
+                        }}>Done</Button>
+                      </Box>
+                    </Box>
+                  )}
+                </CardContent>
+              </Card>
+            </Box>
+          )}
         </Box>
       )}
 
@@ -464,7 +630,7 @@ export default function SupportTabs(): React.JSX.Element {
 
               <TableBody>
                 {visibleRows.map((t) => (
-                  <TableRow key={t.id} hover sx={{ cursor: 'pointer' }} onClick={() => { console.debug('navigating to ticket', t.id); window.location.href = `/dashboard/support/ticket/${t.id}`; }}>
+                  <TableRow key={t.id} hover sx={{ cursor: 'pointer' }} onClick={() => { console.debug('navigating to ticket', t.id); router.push(`/dashboard/support/ticket/${t.id}`); }}>
                     <TableCell>{new Date(t.createdOn).toLocaleString()}</TableCell>
                     <TableCell sx={{ color: 'primary.main', fontWeight: 600 }}>{t.id}</TableCell>
                     <TableCell sx={{ fontWeight: 600 }}>{t.issue}</TableCell>
@@ -475,7 +641,7 @@ export default function SupportTabs(): React.JSX.Element {
                       </Typography>
                     </TableCell>
                     <TableCell>
-                      <Button variant="outlined" size="small" onClick={(e) => { e.stopPropagation(); console.debug('view button nav', t.id); window.location.href = `/dashboard/support/ticket/${t.id}`; }}>View</Button>
+                      <Button variant="outlined" size="small" onClick={(e) => { e.stopPropagation(); console.debug('view button nav', t.id); router.push(`/dashboard/support/ticket/${t.id}`); }}>View</Button>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -502,7 +668,7 @@ export default function SupportTabs(): React.JSX.Element {
                   <Typography variant="body2" color="text.secondary">Created on {new Date(selectedTicket.createdOn).toLocaleString()}</Typography>
 
                   <Box sx={{ mt: 2 }}>
-                    <Typography variant="subtitle2" color="success.main">Status</Typography>
+                      <Button color="primary" sx={{ fontWeight: 700 }} onClick={() => router.push(`/dashboard/support/help/${getCategoryKeyFromText(selectedTicket.issue)}`)}>View All</Button>
                     <Typography sx={{ mb: 1 }}>{selectedTicket.status}</Typography>
 
                     <Typography variant="subtitle2">Sub Order Number</Typography>

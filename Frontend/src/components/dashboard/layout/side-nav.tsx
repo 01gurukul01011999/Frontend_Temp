@@ -2,7 +2,7 @@
 
 import * as React from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Divider from '@mui/material/Divider';
@@ -25,6 +25,7 @@ import { StorefrontIcon } from '@phosphor-icons/react/dist/ssr/Storefront'; // A
 
 export function SideNav(): React.JSX.Element {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const userContext = React.useContext(UserContext);
   const user = userContext?.user;
 
@@ -48,7 +49,14 @@ export function SideNav(): React.JSX.Element {
 
   // Determine active state
   const isNoticesActive = pathname === noticesHref;
-  const isSupportActive = pathname === supportHref;
+  // Support should be active not only on /dashboard/support but also on any nested support route
+  const supportParam = searchParams?.get('support');
+  const isSupportActive =
+    pathname === supportHref ||
+    pathname.startsWith(`${supportHref}/`) ||
+    supportParam === 'help' ||
+    supportParam === 'my-tickets' ||
+    supportParam === 'tickets';
 
   return (
     <Box
@@ -251,7 +259,7 @@ function NavItem({ disabled,   external,    href,   icon,  matcher,   pathname, 
   const Icon = icon ? navIcons[icon] : null;
 
   return (
-    <li>
+    <Box component="li">
       <Box
      
 
@@ -312,7 +320,7 @@ function NavItem({ disabled,   external,    href,   icon,  matcher,   pathname, 
           ))}
       </Box>
       {children}
-    </li>
+    </Box>
   );
 }
 

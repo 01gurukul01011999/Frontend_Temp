@@ -31,7 +31,16 @@ export default function TicketPage(): React.JSX.Element {
     
       </Box>
 
-      <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>My Tickets &gt; {ticket.id}</Typography>
+      <Typography
+        variant="body2"
+        color="text.secondary"
+        sx={{ mt: 2, }}
+       
+      >
+      <Box component="span"  onClick={() => router.push('/dashboard/support?support=my-tickets&sub=all')}
+        role="link" sx={{":hover": { textDecoration: "underline" , color: "#0300bdff" , cursor: "pointer" ,}  }} >My Tickets</Box>  &gt; {ticket.id}
+      </Typography>
+     
 
       <Box sx={{ display: 'grid', gridTemplateColumns: '1fr 380px', gap: 2, mt: 2 }}>
         <Paper sx={{ p: 3 }}>
