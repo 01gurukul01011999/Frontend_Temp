@@ -40,7 +40,21 @@ import { PackageIcon } from '@phosphor-icons/react/dist/ssr/Package';
 import SearchIcon from '@mui/icons-material/Search';
 import CloseIcon from '@mui/icons-material/Close';
 import AdvSupport from './adv';
-import mockTickets, { Ticket } from '@/lib/mock-tickets';
+import { mockTickets } from '@/lib/mock-tickets';
+import { helpMap } from '@/lib/help-form';
+
+const getCategoryKeyFromText = (text: string) => {
+  const t = text.toLowerCase();
+  if (t.includes('return')) return 'returns';
+  if (t.includes('catalog')) return 'cataloging';
+  if (t.includes('order')) return 'orders';
+  if (t.includes('payment')) return 'payments';
+  if (t.includes('inventory')) return 'inventory';
+  if (t.includes('account')) return 'account';
+  if (t.includes('advert')) return 'advertisements';
+  if (t.includes('instant')) return 'instantcash';
+  return 'others';
+};
 
 
 export default function SupportTabs(): React.JSX.Element {
@@ -194,8 +208,10 @@ export default function SupportTabs(): React.JSX.Element {
   const form = sp?.get('form') ?? null;
   const question = sp?.get('question') ?? null;
 
-  // debug incoming params
-  try { console.debug('Support params:', { support: s, sub, ticket, form, question }); } catch(e) {}
+  // debug incoming params (guarded to avoid SSR issues)
+  if (typeof console !== 'undefined' && typeof console.debug === 'function') {
+    console.debug('Support params:', { support: s, sub, ticket, form, question });
+  }
 
     const newTab = s === 'my-tickets' || s === 'tickets' ? 1 : 0;
     const newSub = subKeyToIndex[sub] ?? 0;
@@ -244,39 +260,29 @@ export default function SupportTabs(): React.JSX.Element {
     return filtered.slice(start, start + rowsPerPage);
   }, [filtered, page, selectedTicketId]);
 
-  const helpCols: { title: string; items: string[]; icon?: React.ReactNode; slug?: string }[] = [
-    {
-      title: 'Returns/RTO & Exchange',
-      slug: 'returns',
-      icon: <ArrowUDownLeftIcon size={20} />,
-      items: ['I have received wrong return', 'I have received damaged return', 'I have not received my Return/RTO shipment'],
-    },
-    {
-      title: 'Cataloging & Pricing',
-      slug: 'cataloging',
-      icon: <SquaresFourIcon size={20} />,
-      items: ['My uploaded file is not live yet', 'I want to edit catalog details', 'I want catalog upload training'],
-    },
-    {
-      title: 'Orders & Delivery',
-      slug: 'orders',
-      icon: <PackageIcon size={20} />,
-      items: ['My orders are not picked up yet', 'My order is picked up but still in ready to ship tab', 'I want to know the delivery status of my order'],
-    },
-  ];
+  const helpCols: { title: string; items: { label: string; form_id?: string }[]; icon?: React.ReactNode; slug?: string }[] = React.useMemo(() => {
+    const iconMap: Record<string, React.ReactNode> = {
+      returns: <ArrowUDownLeftIcon size={20} />,
+      cataloging: <SquaresFourIcon size={20} />,
+      orders: <PackageIcon size={20} />,
+    };
 
-  const getCategoryKeyFromText = (text: string) => {
-    const t = text.toLowerCase();
-    if (t.includes('return')) return 'returns';
-    if (t.includes('catalog')) return 'cataloging';
-    if (t.includes('order')) return 'orders';
-    if (t.includes('payment')) return 'payments';
-    if (t.includes('inventory')) return 'inventory';
-    if (t.includes('account')) return 'account';
-    if (t.includes('advert')) return 'advertisements';
-    if (t.includes('instant')) return 'instantcash';
-    return 'others';
-  };
+    const order = ['returns', 'cataloging', 'orders'];
+
+    type HelpItem = { label: string; form_id?: string };
+    type HelpCategory = { title?: string; items?: HelpItem[] };
+
+    return order.map((slug) => {
+      const cat = (helpMap as unknown as Record<string, HelpCategory>)[slug];
+      const title = cat?.title ?? slug;
+      const items: HelpItem[] = Array.isArray(cat?.items)
+        ? cat.items.slice(0, 3).map((it) => ({ label: it.label ?? String(it), form_id: it.form_id }))
+        : [];
+      return { title, slug, icon: iconMap[slug], items };
+    }).filter(Boolean) as { title: string; items: HelpItem[]; icon?: React.ReactNode; slug?: string }[];
+  }, []);
+
+  // moved to top scope
 
   return (
     <> {/* show adv banner on Help tab only */}
@@ -321,8 +327,26 @@ export default function SupportTabs(): React.JSX.Element {
                         )}
                     </Box>
                     {col.items.map((it, j) => (
-                      <Box key={j} sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, borderBottom: j < col.items.length - 1 ? '1px dashed #eee' : 'none' }}>
-                        <Typography color="text.secondary">{it}</Typography>
+                      <Box
+                        key={j}
+                        onClick={() => {
+                          const formId = it.form_id ?? '';
+                          if (formId) {
+                            const params = new URLSearchParams();
+                            params.set('question', it.label);
+                            params.set('form', formId);
+                            params.set('support', 'help');
+                            try {
+                              const origin = globalThis.window ? globalThis.window.location.origin : '';
+                              globalThis.window.location.href = `${origin}/dashboard/support/form/${formId}?${params.toString()}`;
+                            } catch {
+                              router.push(`/dashboard/support/form/${formId}?${params.toString()}`);
+                            }
+                          }
+                        }}
+                        sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', py: 1, borderBottom: j < col.items.length - 1 ? '1px dashed #eee' : 'none', cursor: 'pointer' }}
+                      >
+                        <Typography color="text.secondary">{it.label}</Typography>
                         <IconButton size="small"><ArrowForwardIosIcon fontSize="small" /></IconButton>
                       </Box>
                     ))}
@@ -406,49 +430,7 @@ export default function SupportTabs(): React.JSX.Element {
             </Box>
           </Box>
          <Button sx={{ mt: 2 }} variant="outlined" onClick={() => router.push('http://localhost:3000/dashboard/support?support=my-tickets&sub=all')}>View All Tickets</Button>
-          {/* render help form panel if form id provided in URL */}
-          {helpFormId && (
-            <Box sx={{ width: 480, ml: 2, mt: 2 }}>
-              <Card>
-                <CardContent>
-                  <Typography variant="h6" sx={{ mb: 1 }}>{helpQuestion ?? 'Describe your issue'}</Typography>
-                  {!helpFormSubmitted ? (
-                    <Box component="form" onSubmit={(e) => { e.preventDefault(); setHelpFormSubmitted(true); console.log('submit help form', { formId: helpFormId, question: helpQuestion, text: helpFormText }); }}>
-                      <TextField
-                        label="Describe your issue"
-                        value={helpFormText}
-                        onChange={(e) => setHelpFormText(e.target.value)}
-                        multiline
-                        rows={6}
-                        fullWidth
-                        sx={{ mb: 2 }}
-                      />
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
-                        <Button variant="outlined" onClick={() => {
-                          // remove the form params from URL
-                          const params = new URLSearchParams(searchParams?.toString() ?? '');
-                          params.delete('form'); params.delete('question');
-                          router.push(`${globalThis.location?.pathname ?? ''}?${params.toString()}`);
-                        }}>Close</Button>
-                        <Button type="submit" variant="contained">Submit</Button>
-                      </Box>
-                    </Box>
-                  ) : (
-                    <Box>
-                      <Typography>Your response was submitted. We'll get back to you soon.</Typography>
-                      <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end', mt: 2 }}>
-                        <Button variant="contained" onClick={() => {
-                          const params = new URLSearchParams(searchParams?.toString() ?? '');
-                          params.delete('form'); params.delete('question');
-                          router.push(`${globalThis.location?.pathname ?? ''}?${params.toString()}`);
-                        }}>Done</Button>
-                      </Box>
-                    </Box>
-                  )}
-                </CardContent>
-              </Card>
-            </Box>
-          )}
+         
         </Box>
       )}
 
