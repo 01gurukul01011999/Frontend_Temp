@@ -1,24 +1,26 @@
 
 'use client';
-import React, { useState } from 'react';
-import { notFound } from 'next/navigation';
-import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemButton, Button, TextField, Breadcrumbs, Link as MuiLink } from '@mui/material';
+import React from 'react';
+import { notFound, useRouter } from 'next/navigation';
+import { Box, Typography, Card, CardContent, List, ListItem, ListItemText, ListItemButton, Breadcrumbs, Link as MuiLink } from '@mui/material';
 import NextLink from 'next/link';
-import { useRouter } from 'next/navigation';
 import ArrowForwardIosIcon from '@mui/icons-material/ArrowForwardIos';
-import sharedHelpMap from '../../../../../../src/lib/helpForm';
+import { helpMap as sharedHelpMap } from '../../../../../lib/help-form';
 
 
 const helpData = sharedHelpMap;
 
-export default function HelpCategoryPage(props: any) {
-  const { params } = props;
-  // Next.js may pass params as a Promise; unwrap with React.use()
-  const unwrappedParams = React.use(params) ?? {};
-  const slug = (unwrappedParams as any)?.slug;
+export default function HelpCategoryPage(props: { params?: { slug?: string } }) {
+  // Unwrap params which may be a Promise in newer Next.js versions.
+  // Use React.use(...) to unwrap the possibly-promise params object per Next.js guidance
+  // and provide a typed fallback to satisfy TypeScript.
+  const paramsObj = (React as unknown as { use: <T>(u: T | Promise<T>) => T }).use(
+    props.params ?? ({} as { slug?: string })
+  );
+  const router = useRouter();
+  const slug = paramsObj?.slug ?? '';
   const data = helpData[slug];
   if (!data) return notFound();
-  const router = useRouter();
 
   // prepare grouped categories (dedupe by form_id)
   const groupedCategories = Object.entries(helpData).map(([key, val]) => {
@@ -55,9 +57,14 @@ export default function HelpCategoryPage(props: any) {
                         // mark support=help so main support page will open Help tab when used
                         params.set('support', 'help');
                         try {
-                          const origin = typeof window !== 'undefined' ? window.location.origin : '';
-                          window.location.href = `${origin}/dashboard/support/form/${formId}?${params.toString()}`;
-                        } catch (e) {
+                          const g = globalThis as unknown as { location?: { origin?: string; href?: string } };
+                          const origin = g.location?.origin ?? '';
+                          if (g.location) {
+                            g.location.href = `${origin}/dashboard/support/form/${formId}?${params.toString()}`;
+                            return;
+                          }
+                          router.push(`/dashboard/support/form/${formId}?${params.toString()}`);
+                        } catch {
                           // fallback to router
                           router.push(`/dashboard/support/form/${formId}?${params.toString()}`);
                         }
@@ -88,13 +95,15 @@ export default function HelpCategoryPage(props: any) {
         <Card>
           <CardContent sx={{ py: 1, px: 1 }}>
             <List sx={{ p: 0, m: 0 }}>
-              {groupedCategories.map((cat) => (
-                <ListItem key={cat.key} divider>
-                  <NextLink href={`/dashboard/support/help/${cat.key}`} style={{ textDecoration: 'none', color: 'inherit', width: '100%' }}>
-                    <ListItemText primary={cat.title} primaryTypographyProps={{ sx: { fontWeight: 700 } }} />
-                  </NextLink>
-                </ListItem>
-              ))}
+              {groupedCategories
+                .filter((cat) => cat.key !== slug)
+                .map((cat) => (
+                  <ListItem key={cat.key} divider>
+                    <NextLink href={`/dashboard/support/help/${cat.key}`} style={{ textDecoration: 'none', color: 'inherit', width: '100%' }}>
+                      <ListItemText primary={cat.title} primaryTypographyProps={{ sx: { fontWeight: 700 } }} />
+                    </NextLink>
+                  </ListItem>
+                ))}
             </List>
           </CardContent>
         </Card>

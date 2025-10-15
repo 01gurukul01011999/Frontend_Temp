@@ -39,4 +39,4 @@ export const mockTickets: Ticket[] = [
   },
 ];
 
-export default mockTickets;
+// export default removed; use named export `mockTickets`

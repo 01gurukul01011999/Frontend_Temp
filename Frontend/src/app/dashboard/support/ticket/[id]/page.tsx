@@ -1,8 +1,8 @@
 "use client";
 import React from 'react';
 import { useRouter, useParams } from 'next/navigation';
-import { Box, Typography, Button, Paper, Tabs, Tab, Avatar } from '@mui/material';
-import mockTickets from '@/lib/mock-tickets';
+import { Box, Typography, Button, Paper, Avatar } from '@mui/material';
+import { mockTickets } from '@/lib/mock-tickets';
 
 export default function TicketPage(): React.JSX.Element {
   const router = useRouter();
