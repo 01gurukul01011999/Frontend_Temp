@@ -84,8 +84,8 @@ export default function SupportTabs(): React.JSX.Element {
   // URL-driven help form state (when navigating from help/[slug] list)
   const [helpFormId, setHelpFormId] = React.useState<string | null>(null);
   const [helpQuestion, setHelpQuestion] = React.useState<string | null>(null);
-  const [helpFormText, setHelpFormText] = React.useState('');
-  const [helpFormSubmitted, setHelpFormSubmitted] = React.useState(false);
+  const [_helpFormText, setHelpFormText] = React.useState('');
+  const [_helpFormSubmitted, setHelpFormSubmitted] = React.useState(false);
 
   const rowsPerPage = 10;
 

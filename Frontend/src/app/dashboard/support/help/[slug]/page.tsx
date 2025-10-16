@@ -10,7 +10,7 @@ import { helpMap as sharedHelpMap } from '../../../../../lib/help-form';
 
 const helpData = sharedHelpMap;
 
-export default function HelpCategoryPage(props: { params?: { slug?: string } }) {
+export default function HelpCategoryPage(props: { params?: Promise<Record<string, string | undefined>> }) {
   // Unwrap params which may be a Promise in newer Next.js versions.
   // Use React.use(...) to unwrap the possibly-promise params object per Next.js guidance
   // and provide a typed fallback to satisfy TypeScript.
