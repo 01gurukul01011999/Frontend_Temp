@@ -7,15 +7,12 @@ import ThumbDownIcon from '@mui/icons-material/ThumbDown';
 import NextLink from 'next/link';
 import { helpMap } from '../../../../../lib/help-form';
 
-type SupportFormProps = { params?: { formId?: string } };
+type SupportFormProps = { params?: Promise<Record<string, string | undefined>> };
 
 export default function SupportFormPage(props: SupportFormProps) {
-  const { params } = props;
-  // Next.js may pass params as a Promise; unwrap using React.use(...) shim
-  const unwrappedParams = (React as unknown as { use: <T>(u: T | Promise<T>) => T }).use(
-    params ?? ({} as { formId?: string })
-  );
-  const formId = unwrappedParams.formId as string | undefined;
+  // Next.js passes params as a Promise; unwrap using React.use
+  const unwrappedParams = (React as unknown as { use: <T>(u: T | Promise<T>) => T }).use(props.params);
+  const formId = unwrappedParams?.formId as string | undefined;
   const searchParams = useSearchParams();
   const router = useRouter();
 
